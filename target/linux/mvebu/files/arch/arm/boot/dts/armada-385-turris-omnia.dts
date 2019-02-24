@@ -27,9 +27,10 @@
 		internal-regs {
 			sdhci@d8000 {
 				status = "okay";
-				bus-width = <8>;
+				bus-width = <4>;
 				no-1-8-v;
-				non-removable;
+				disable-wp;
+				/* non-removable; */
 			};
 
 			sata@a8000 {
@@ -88,8 +89,11 @@
 	mvsw61xx {
 		status = "okay";
 		compatible = "marvell,88e6176";
-		reg = <0x10>;
+		reg = <0>;
+
+/*
 		is-indirect;
+*/
 		mii-bus = <&mdio>;
 		cpu-port-0 = <5>;
 		cpu-port-1 = <6>;
@@ -104,7 +108,7 @@
 	status = "okay";
 
 	spi-nor@0 {
-		compatible = "spansion,s25fl164k", "jedec,spi-nor";
+		compatible = "spansion,s25fl256l", "jedec,spi-nor";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0>;
@@ -133,155 +137,10 @@
 	status = "okay";
 	clock-frequency = <100000>;
 
-	i2cmux@70 {
-		compatible = "nxp,pca9547";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0x70>;
-		status = "okay";
-		i2c@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0>;
-			status = "okay";
-
-			/* Config memory */
-			eeprom@54 {
-				compatible = "at,24c64";
-				reg = <0x54>;
-			};
-
-			/* Additional device: STM-32, address 0x2a, INT on 43. */
-			leds@2b {
-				compatible = "turris-leds,omnia";
-				reg = <0x2b>;
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				led0 {
-					label = "user2";
-					reg = <0x0>;
-				};
-
-				led1 {
-					label = "user1";
-					reg = <0x1>;
-				};
-
-				led2 {
-					label = "pci3";
-					reg = <0x2>;
-				};
-
-				led3 {
-					label = "pci2";
-					reg = <0x3>;
-				};
-
-				led4 {
-					label = "pci1";
-					reg = <0x4>;
-				};
-
-				led5 {
-					label = "wan";
-					reg = <0x5>;
-				};
-
-				led6 {
-					label = "lan4";
-					reg = <0x6>;
-				};
-
-				led7 {
-					label = "lan3";
-					reg = <0x7>;
-				};
-
-				led8 {
-					label = "lan2";
-					reg = <0x8>;
-				};
-
-				led9 {
-					label = "lan1";
-					reg = <0x9>;
-				};
-
-				led10 {
-					label = "lan0";
-					reg = <0xa>;
-				};
-
-				led11 {
-					label = "power";
-					reg = <0xb>;
-				};
-
-				led12 {
-					label = "all";
-					reg = <0xc>;
-				};
-			};
-		};
-
-		i2c@1 {
-			/* SATA */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <1>;
-		};
-
-		i2c@2 {
-			/* PCI 1 */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <2>;
-		};
-
-		i2c@3 {
-			/* PCI 0 */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <3>;
-		};
-
-		i2c@4 {
-			/* SFP */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <4>;
-		};
-
-		i2c@5 {
-			/* ATSHA */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <5>;
-		};
-
-		i2c@6 {
-			/* User GPIO header */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <6>;
-		};
-
-		i2c@7 {
-			/* SFP+ GPIO expander */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <7>;
-
-			sfpgpio: gpio@71 {
-				compatible = "nxp,pca9538";
-				reg = <0x71>;
-				interrupt-parent = <&gpio1>;
-				interrupts = <14 IRQ_TYPE_LEVEL_LOW>;
-				gpio-controller;
-				#gpio-cells = <2>;
-			};
-		};
+	/* Config memory */
+	eeprom@54 {
+		compatible = "at,24c64";
+		reg = <0x54>;
 	};
 };
 
@@ -299,15 +158,6 @@
 
 &mdio {
 	status = "okay";
-
-	phy1: phy@1 {
-		status = "okay";
-		compatible = "marvell,88E1514", "marvell,88E1510", "ethernet-phy-ieee802.3-c22";
-		reg = <1>;
-		/* IRQ connected to MPP46. */
-		/* interrupt-parent = <&gpio1>;
-		interrupts = <14 IRQ_TYPE_LEVEL_LOW>; */
-	};
 };
 
 &eth0 {
@@ -332,6 +182,19 @@
 	};
 };
 
+/*
+&eth2 {
+	status = "okay";
+	phy-mode = "sgmii";
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+*/
+
+/*
 &eth2 {
 	status = "okay";
 
@@ -370,6 +233,7 @@
 		};
 	};
 };
+*/
 
 &pinctrl {
 	user_pin: user-pin {
