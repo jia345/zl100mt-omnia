@@ -36,7 +36,7 @@ make_defconfig() {
 # Clean feeds
 ./scripts/feeds clean
 ./scripts/feeds update -a
-<<COMMENTOUT
+
 # Patch feeds
 pushd patches
 for feed in *; do
@@ -49,7 +49,6 @@ for feed in *; do
 	popd
 done
 popd
-COMMENTOUT
 
 ./scripts/feeds update -i
 ./scripts/feeds install -a
