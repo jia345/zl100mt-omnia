@@ -33,7 +33,6 @@ make_defconfig() {
 	fi
 }
 
-:<<EOF
 # Clean feeds
 ./scripts/feeds clean
 ./scripts/feeds update -a
@@ -61,7 +60,6 @@ $([ \! -f ./disabled_packages.$TARGET_BOARD ] || echo $(cut -d '#' -f1 ./disable
 
 # Override packages release numbers
 scripts/override_release_numbers.sh
-EOF
 
 # Build NAND FW
 [ -z "$OPENWRT_BRANCH"  ] || PKG_BRANCH="-$OPENWRT_BRANCH"
@@ -131,7 +129,6 @@ fi
 mv ./bin ./bin-nand
 [ -d ./tmp ] && rm -rf ./tmp
 
-:<<EOF
 PUB_BIN_DIR="`ls -1d bin-nand/* | head -n1`"
 # Generate lists
 [ -n "$BUILD_ALL" ] || USRLISTS_ARGS="--minimal"
@@ -167,7 +164,6 @@ if [ "$TARGET_BOARD" = "omnia" ]; then
 		mkdir -p "$MED_PATH"
 		fakeroot ./scripts/updater-medkit.sh $MED_ARGS bin-nand/mvebu-musl "$MED_PATH/$MED_TAR"
 fi
-EOF
 
 if [ -n "$BUILD_ALL" ]; then
 	# Compile host tools
