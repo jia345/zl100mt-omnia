@@ -36,7 +36,6 @@ make_defconfig() {
 # Clean feeds
 ./scripts/feeds clean
 ./scripts/feeds update -a
-
 # Patch feeds
 pushd patches
 for feed in *; do
@@ -49,7 +48,6 @@ for feed in *; do
 	popd
 done
 popd
-
 ./scripts/feeds update -i
 ./scripts/feeds install -a
 
@@ -57,6 +55,7 @@ popd
 ./scripts/feeds uninstall \
 $([ \! -f ./disabled_packages.common ] || echo $(cut -d '#' -f1 ./disabled_packages.common)) \
 $([ \! -f ./disabled_packages.$TARGET_BOARD ] || echo $(cut -d '#' -f1 ./disabled_packages.$TARGET_BOARD))
+
 
 # Override packages release numbers
 scripts/override_release_numbers.sh
@@ -78,6 +77,7 @@ if [ -f "$HOME"/mime.key ]; then
 	cp "$HOME/mime.pub" key-build.pub
 fi
 
+
 make_defconfig
 
 if [ -d .git ] ; then
@@ -93,11 +93,6 @@ set -- "$@" PKG_BRANCH=${PKG_BRANCH/-/}
 [ -z "$PERSISTENT_CCACHE" ] || set -- "$@" CCACHE_DIR="`pwd`/ccache" CCACHE_HOST_DIR="`pwd`/ccache-host"
 
 make "$@"
-if [ -n "$FORCE" ]; then
-	make "$@" || make "$@" -j"`echo x"$@" | sed 's|.*-j\([0-9]\+\).*|\1 / 2 + 1|' | bc`" || make "$@" -j1 V=s
-else
-	make "$@"
-fi
 
 # Get Turris OS and OpenWRT version
 ./scripts/unpack-version.sh bin/*/packages bin/*/
@@ -163,25 +158,6 @@ if [ "$TARGET_BOARD" = "omnia" ]; then
 		MED_TAR="omnia-medkit-$(date -d "$COMMIT_DATE" +%Y%m%d%H%M).tar.gz"
 		mkdir -p "$MED_PATH"
 		fakeroot ./scripts/updater-medkit.sh $MED_ARGS bin-nand/mvebu-musl "$MED_PATH/$MED_TAR"
-fi
-
-if [ -n "$BUILD_ALL" ]; then
-	# Compile host tools
-	make package/curl/host/install package/libevent2/host/install package/lua/host/install package/usign/host/install
-	make package/updater-ng/host/install
-	# Generate medkit
-	if [ "$TARGET_BOARD" = "turris" ]; then
-		MED_ARCH=mpc85xx
-	else
-		MED_ARCH=mvebu-musl
-	fi
-	BASE_PATH="`pwd`"
-	MED_PATH="bin-nand/${MED_ARCH}/medkit"
-	MED_TAR="$TARGET_BOARD-medkit-$(date -d "$COMMIT_DATE" +%Y%m%d%H%M).tar.gz"
-	mkdir -p "$MED_PATH"
-	MED_BIN_SOURCE="bin-nand/${MED_ARCH}"
-	ERR_CMD="false"
-	if fakeroot ./scripts/updater-medkit.sh --model "$TARGET_BOARD" $MED_ARGS $MED_BIN_SOURCE "$MED_PATH/$MED_TAR"; then
 		pushd "$MED_PATH"
 		ln -s "$MED_TAR" omnia-medkit-latest.tar.gz
 		if [ -f "$HOME"/mime.key ]; then
