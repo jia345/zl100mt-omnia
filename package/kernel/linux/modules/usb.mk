@@ -1498,6 +1498,19 @@ endef
 
 $(eval $(call KernelPackage,usb-net-kalmia))
 
+define KernelPackage/usb-net-inno-cdc
+  TITLE:=Innofidei LTE USB modem
+  KCONFIG:=CONFIG_USB_NET_INNO_CDC
+  FILES:=$(LINUX_DIR)/drivers/net/usb/inno_cdc.ko
+  AUTOLOAD:=$(call AutoProbe,inno_cdc)
+  $(call AddDepends/usb-net)
+endef
+
+define KernelPackage/usb-net-inno-cdc/description
+ Kernel support for Innofidei LTE USB modem
+endef
+
+$(eval $(call KernelPackage,usb-net-inno-cdc))
 
 define KernelPackage/usb-hid
   TITLE:=Support for USB Human Input Devices

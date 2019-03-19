@@ -1,0 +1,362 @@
+Index: linux-4.4.173/drivers/net/usb/Kconfig
+===================================================================
+--- linux-4.4.173.orig/drivers/net/usb/Kconfig	2019-02-06 18:43:08.000000000 +0000
++++ linux-4.4.173/drivers/net/usb/Kconfig	2019-03-14 11:15:41.168640212 +0000
+@@ -607,4 +607,11 @@
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called ch9200.
+ 
++config USB_NET_INNO_CDC
++	tristate "CDC Ethernet support for Innofidei LTE modem"
++	depends on USB_USBNET
++	default y
++	help
++	  CDC Ethernet support for Innofidei LTE modem.
++
+ endif # USB_NET_DRIVERS
+Index: linux-4.4.173/drivers/net/usb/Makefile
+===================================================================
+--- linux-4.4.173.orig/drivers/net/usb/Makefile	2019-02-06 18:43:08.000000000 +0000
++++ linux-4.4.173/drivers/net/usb/Makefile	2019-03-14 11:15:41.168640212 +0000
+@@ -39,3 +39,5 @@
+ obj-$(CONFIG_USB_NET_QMI_WWAN)	+= qmi_wwan.o
+ obj-$(CONFIG_USB_NET_CDC_MBIM)	+= cdc_mbim.o
+ obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
++obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
++obj-$(CONFIG_USB_NET_INNO_CDC)	+= inno_cdc.o
+Index: linux-4.4.173/drivers/usb/serial/option.c
+===================================================================
+--- linux-4.4.173.orig/drivers/usb/serial/option.c	2019-02-06 18:43:08.000000000 +0000
++++ linux-4.4.173/drivers/usb/serial/option.c	2019-03-14 11:15:41.168640212 +0000
+@@ -555,6 +555,9 @@
+ #define WETELECOM_PRODUCT_6802			0x6802
+ #define WETELECOM_PRODUCT_WMD300		0x6803
+ 
++/* Innofidei products */
++#define INNOFIDEI_VENDOR_ID			0x1d53
++#define INNOFIDEI_PRODUCT_P4A			0x3d53
+ 
+ /* Device flags */
+ 
+@@ -1954,6 +1957,7 @@
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x13) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x14) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x1b) },
++	{ USB_DEVICE_AND_INTERFACE_INFO(INNOFIDEI_VENDOR_ID, INNOFIDEI_PRODUCT_P4A, 0x2, 0x2, 0x1) },
+ 	{ USB_DEVICE(0x1508, 0x1001),						/* Fibocom NL668 */
+ 	  .driver_info = RSVD(4) | RSVD(5) | RSVD(6) },
+ 	{ USB_DEVICE(0x2cb7, 0x0104),						/* Fibocom NL678 series */
+@@ -2034,6 +2038,19 @@
+ 	/* Store the device flags so we can use them during attach. */
+ 	usb_set_serial_data(serial, (void *)device_flags);
+ 
++	if (id->idVendor == INNOFIDEI_VENDOR_ID) {
++		struct usb_device *udev = NULL;
++
++		udev = interface_to_usbdev(serial->interface);
++		printk("Innofidei LTE modem\n");
++#ifdef CONFIG_PM
++		pm_runtime_set_autosuspend_delay(&udev->dev, 10000);
++		usb_enable_autosuspend(udev);
++#else
++		usb_disable_autosuspend(udev);
++#endif
++	}
++
+ 	return 0;
+ }
+ 
+Index: linux-4.4.173/drivers/net/usb/inno_cdc.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ linux-4.4.173/drivers/net/usb/inno_cdc.c	2019-03-14 11:38:45.232203156 +0000
+@@ -0,0 +1,289 @@
++/*
++ * USB Driver for Innofidei LTE modems
++ *
++ * Base on cdc_ncm.c
++ *
++ * This software is available to you under a choice of one of two
++ * licenses. You may choose this file to be licensed under the terms
++ * of the GNU General Public License (GPL) Version 2 or the 2-clause
++ * BSD license listed below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++
++#include <linux/module.h>
++#include <linux/netdevice.h>
++#include <linux/etherdevice.h>
++#include <linux/ctype.h>
++#include <linux/ethtool.h>
++#include <linux/workqueue.h>
++#include <linux/mii.h>
++#include <linux/usb.h>
++#include <linux/crc32.h>
++#include <linux/usb/cdc.h>
++#include <linux/usb/usbnet.h>
++#include <linux/gfp.h>
++#include <linux/if_vlan.h>
++
++
++#define INNO_CDC_HEADER_LEN			4		/* 4 byte header */
++#define INNO_CDC_PACKETS_COUNT                  2
++#define INNO_CDC_PACKET_LEN                     2
++
++#define TX_FLOW_CONTROL_ENABLE
++#ifdef TX_FLOW_CONTROL_ENABLE
++#define CMD_START_QUEUE         "inno-lte-start-queue"
++#define CMD_STOP_QUEUE          "inno-lte-stop-queue"
++#endif
++
++#ifdef TX_FLOW_CONTROL_ENABLE
++static int skb_flow_control(struct usbnet *dev, struct sk_buff *skb)
++{
++	if (memcmp(skb->data, CMD_START_QUEUE, strlen(CMD_START_QUEUE)) == 0) {
++		netif_wake_queue(dev->net);
++		return 1;
++	}
++
++ 	if (memcmp(skb->data, CMD_STOP_QUEUE, strlen(CMD_STOP_QUEUE)) == 0) {
++		netif_stop_queue(dev->net);
++		return 1;
++	}
++
++	return 0;
++}
++#endif
++
++static int inno_cdc_bind(struct usbnet *dev, struct usb_interface *intf)
++{
++	int status = 0;
++
++	status = usbnet_get_endpoints(dev, intf);
++	if (status < 0) {
++		usb_set_intfdata(intf, NULL);
++		usb_driver_release_interface(driver_of(intf), intf);
++		return status;
++	}
++
++	/* no jumbogram (16K) support for now */
++	//dev->net->hard_header_len += INNO_CDC_HEADER_LEN;
++
++	dev->rx_urb_size = 1024 * 16;
++	dev->net->flags |= IFF_NOARP;
++
++	dev->net->dev_addr[0] = 0x1A;
++	dev->net->dev_addr[1] = 0x74;
++	dev->net->dev_addr[2] = 0xBA;
++	dev->net->dev_addr[3] = 0x23;
++	dev->net->dev_addr[4] = 0xF2;
++	dev->net->dev_addr[5] = 0xAC;
++
++	return 0;
++}
++
++static void inno_cdc_unbind(struct usbnet *dev, struct usb_interface *intf)
++{
++	printk("@ inno_cdc_unbind \n");
++
++	usb_set_intfdata(intf, NULL);
++	usb_driver_release_interface(driver_of(intf), intf);
++}
++
++static struct sk_buff *inno_cdc_tx_fixup(struct usbnet *dev, struct sk_buff *skb,
++				       gfp_t flags)
++{
++	struct sk_buff	*skb2 = NULL;
++	u16		len = skb->len;
++	int		padlen = 0;
++
++	//printk("len=%d\n", len);
++
++	/* When ((len + PKG_LEN + ETH_FCS_LEN) % dev->maxpacket) is
++	 * zero, stick two bytes of zero length EEM packet on the end.
++	 * Else the framework would add invalid single byte padding,
++	 * since it can't know whether ZLPs will be handled right by
++	 * all the relevant hardware and software.
++	 */
++	padlen = (len + INNO_CDC_HEADER_LEN) % dev->maxpacket;
++	padlen = ((512-padlen)+1)%512;
++
++	if (!skb_cloned(skb)) {
++		int	headroom = skb_headroom(skb);
++		int	tailroom = skb_tailroom(skb);
++
++		if ((tailroom >= padlen)
++				&& (headroom >= INNO_CDC_HEADER_LEN))
++			goto done;
++
++		if ((headroom + tailroom)
++				> (INNO_CDC_HEADER_LEN + padlen)) {
++			skb->data = memmove(skb->head +
++					INNO_CDC_HEADER_LEN,
++					skb->data,
++					skb->len);
++			skb_set_tail_pointer(skb, len);
++			goto done;
++		}
++	}
++
++	skb2 = skb_copy_expand(skb, INNO_CDC_HEADER_LEN, padlen, flags);
++	if (!skb2)
++		return NULL;
++
++	dev_kfree_skb_any(skb);
++	skb = skb2;
++
++done:
++	put_unaligned_be16(len, skb_push(skb, INNO_CDC_PACKET_LEN));
++	put_unaligned_be16(1, skb_push(skb, INNO_CDC_PACKETS_COUNT));
++
++	/* Bundle a zero length EEM packet if needed */
++	if (padlen)
++		put_unaligned_be16(0, skb_put(skb, padlen));
++
++	return skb;
++}
++
++static int inno_cdc_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
++{
++	int packetnum = 0;
++
++	if (skb->len < INNO_CDC_PACKETS_COUNT)
++		return 0;
++
++	packetnum = get_unaligned_be16(skb->data);
++	skb_pull(skb, INNO_CDC_PACKETS_COUNT);
++
++	if (packetnum <= 0)
++		return 0;
++
++	do {
++		struct sk_buff	*skb2 = NULL;
++		u16		header;
++		u16		len = 0;
++
++		if (skb->len < INNO_CDC_PACKET_LEN)
++			return 0;
++
++		header = get_unaligned_be16(skb->data);
++		skb_pull(skb, INNO_CDC_PACKET_LEN);
++
++		len = header & 0x3FFF;
++
++		if (skb->len < len)
++			return 0;
++
++#ifdef TX_FLOW_CONTROL_ENABLE
++		if (skb_flow_control(dev, skb))
++		{
++			skb_pull(skb, len);
++			continue;
++		}
++#endif
++
++		if (packetnum == 1)
++		{
++			skb_trim(skb, len);
++			return 1;
++		}
++
++		skb2 = skb_clone(skb, GFP_ATOMIC);
++
++		if (unlikely(!skb2))
++			return 0;
++
++		skb_trim(skb2, len);
++
++		usbnet_skb_return(dev, skb2);
++		skb_pull(skb, len);
++	} while (skb->len > 0 && (--packetnum));
++
++	return 0;
++}
++
++static const struct driver_info inno_cdc_info = {
++	.description =	"INNO CDC Device",
++	.flags =	FLAG_ETHER,
++	.unbind =	inno_cdc_unbind,
++	.bind =		inno_cdc_bind,
++	.manage_power = usbnet_manage_power,
++	.rx_fixup =	inno_cdc_rx_fixup,
++	.tx_fixup =	inno_cdc_tx_fixup,
++};
++
++/*-------------------------------------------------------------------------*/
++
++static const struct usb_device_id products[] = {
++{
++    USB_DEVICE_AND_INTERFACE_INFO(0x1d53, 0x3d53, 0x2, 0x6, 0x0),
++	.driver_info = (unsigned long) &inno_cdc_info,
++},
++{
++	/* EMPTY == end of list */
++},
++};
++MODULE_DEVICE_TABLE(usb, products);
++
++static int inno_cdc_probe(struct usb_interface *intf,	const struct usb_device_id *id)
++{
++	struct usb_device *udev = NULL;
++
++	udev = interface_to_usbdev(intf);
++
++	printk("inno_cdc_probe\n");
++#ifdef CONFIG_PM
++	pm_runtime_set_autosuspend_delay(&udev->dev, 10000);
++	usb_enable_autosuspend(udev);
++#else
++	usb_disable_autosuspend(udev);
++#endif
++	return usbnet_probe(intf, id);
++}
++
++static struct usb_driver inno_cdc_driver = {
++	.name =		"inno_cdc_eem",
++	.id_table =	products,
++	.probe =	inno_cdc_probe,
++	.disconnect =	usbnet_disconnect,
++	.suspend =	usbnet_suspend,
++	.resume =	usbnet_resume,
++	//.reset_resume = usbnet_resume,
++	.disable_hub_initiated_lpm = 1,
++	.supports_autosuspend = 1,
++};
++
++static int __init inno_cdc_init(void)
++{
++	printk("@ inno-cdc-init \n");
++	return usb_register(&inno_cdc_driver);
++}
++module_init(inno_cdc_init);
++
++static void __exit inno_cdc_exit(void)
++{
++	usb_deregister(&inno_cdc_driver);
++}
++module_exit(inno_cdc_exit);
++
++MODULE_AUTHOR("Innofidei");
++MODULE_DESCRIPTION("USB Driver for Innofidei LTE modems");
++MODULE_LICENSE("GPL");

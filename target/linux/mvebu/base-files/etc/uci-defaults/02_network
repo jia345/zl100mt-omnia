@@ -34,7 +34,10 @@ armada-xp-gp)
 	ucidef_set_interface_lan "eth0 eth1 eth2 eth3"
 	;;
 rtrom01)
-        ucidef_set_interfaces_lan_wan "eth0 eth2" "eth1"
+        #ucidef_set_interfaces_lan_wan "eth0 eth1" "eth2 usb0"
+        ucidef_set_interfaces_lan "eth0"
+        ucidef_set_interfaces_raw "lte_4g" "usb0" "dhcp"
+        ucidef_set_interfaces_raw "lte_z" "eth2" "dhcp"
         ucidef_add_switch "switch0" "1" "1"
         ucidef_add_switch_vlan "switch0" "1" "0 1 2 3 5"
         ucidef_add_switch_vlan "switch0" "2" "4 6"
