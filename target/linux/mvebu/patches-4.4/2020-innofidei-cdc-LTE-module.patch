@@ -1,7 +1,7 @@
-Index: linux-4.4.173/drivers/net/usb/Kconfig
+Index: linux-4.4.161/drivers/net/usb/Kconfig
 ===================================================================
---- linux-4.4.173.orig/drivers/net/usb/Kconfig	2019-02-06 18:43:08.000000000 +0000
-+++ linux-4.4.173/drivers/net/usb/Kconfig	2019-03-14 11:15:41.168640212 +0000
+--- linux-4.4.161.orig/drivers/net/usb/Kconfig	2019-03-19 17:47:58.115768297 +0000
++++ linux-4.4.161/drivers/net/usb/Kconfig	2019-03-19 17:47:58.111768287 +0000
 @@ -607,4 +607,11 @@
  	  To compile this driver as a module, choose M here: the
  	  module will be called ch9200.
@@ -14,20 +14,20 @@ Index: linux-4.4.173/drivers/net/usb/Kconfig
 +	  CDC Ethernet support for Innofidei LTE modem.
 +
  endif # USB_NET_DRIVERS
-Index: linux-4.4.173/drivers/net/usb/Makefile
+Index: linux-4.4.161/drivers/net/usb/Makefile
 ===================================================================
---- linux-4.4.173.orig/drivers/net/usb/Makefile	2019-02-06 18:43:08.000000000 +0000
-+++ linux-4.4.173/drivers/net/usb/Makefile	2019-03-14 11:15:41.168640212 +0000
+--- linux-4.4.161.orig/drivers/net/usb/Makefile	2019-03-19 17:47:58.115768297 +0000
++++ linux-4.4.161/drivers/net/usb/Makefile	2019-03-19 17:47:58.111768287 +0000
 @@ -39,3 +39,5 @@
  obj-$(CONFIG_USB_NET_QMI_WWAN)	+= qmi_wwan.o
  obj-$(CONFIG_USB_NET_CDC_MBIM)	+= cdc_mbim.o
  obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
 +obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
 +obj-$(CONFIG_USB_NET_INNO_CDC)	+= inno_cdc.o
-Index: linux-4.4.173/drivers/usb/serial/option.c
+Index: linux-4.4.161/drivers/usb/serial/option.c
 ===================================================================
---- linux-4.4.173.orig/drivers/usb/serial/option.c	2019-02-06 18:43:08.000000000 +0000
-+++ linux-4.4.173/drivers/usb/serial/option.c	2019-03-14 11:15:41.168640212 +0000
+--- linux-4.4.161.orig/drivers/usb/serial/option.c	2019-03-19 17:47:58.115768297 +0000
++++ linux-4.4.161/drivers/usb/serial/option.c	2019-03-19 17:49:12.355938634 +0000
 @@ -555,6 +555,9 @@
  #define WETELECOM_PRODUCT_6802			0x6802
  #define WETELECOM_PRODUCT_WMD300		0x6803
@@ -38,15 +38,15 @@ Index: linux-4.4.173/drivers/usb/serial/option.c
  
  /* Device flags */
  
-@@ -1954,6 +1957,7 @@
- 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x13) },
- 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x14) },
- 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0xa31d, 0xff, 0x06, 0x1b) },
+@@ -1942,6 +1945,7 @@
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(WETELECOM_VENDOR_ID, WETELECOM_PRODUCT_6802, 0xff, 0xff, 0xff) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(WETELECOM_VENDOR_ID, WETELECOM_PRODUCT_WMD300, 0xff, 0xff, 0xff) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(0x03f0, 0x421d, 0xff, 0xff, 0xff) }, /* HP lt2523 (Novatel E371) */
 +	{ USB_DEVICE_AND_INTERFACE_INFO(INNOFIDEI_VENDOR_ID, INNOFIDEI_PRODUCT_P4A, 0x2, 0x2, 0x1) },
- 	{ USB_DEVICE(0x1508, 0x1001),						/* Fibocom NL668 */
- 	  .driver_info = RSVD(4) | RSVD(5) | RSVD(6) },
- 	{ USB_DEVICE(0x2cb7, 0x0104),						/* Fibocom NL678 series */
-@@ -2034,6 +2038,19 @@
+ 	{ } /* Terminating entry */
+ };
+ MODULE_DEVICE_TABLE(usb, option_ids);
+@@ -2016,6 +2020,19 @@
  	/* Store the device flags so we can use them during attach. */
  	usb_set_serial_data(serial, (void *)device_flags);
  
@@ -66,10 +66,10 @@ Index: linux-4.4.173/drivers/usb/serial/option.c
  	return 0;
  }
  
-Index: linux-4.4.173/drivers/net/usb/inno_cdc.c
+Index: linux-4.4.161/drivers/net/usb/inno_cdc.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.4.173/drivers/net/usb/inno_cdc.c	2019-03-14 11:38:45.232203156 +0000
++++ linux-4.4.161/drivers/net/usb/inno_cdc.c	2019-03-19 17:47:58.111768287 +0000
 @@ -0,0 +1,289 @@
 +/*
 + * USB Driver for Innofidei LTE modems
