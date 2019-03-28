@@ -33,6 +33,7 @@ make_defconfig() {
 	fi
 }
 
+<< EOF
 # Clean feeds
 ./scripts/feeds clean
 ./scripts/feeds update -a
@@ -42,6 +43,7 @@ for feed in *; do
 	pushd $feed
 	for patch in *; do
 		pushd ../../feeds/$feed
+		#pushd ../../package/$feed
 		patch -p1 < ../../patches/$feed/$patch
 		popd
 	done
@@ -56,9 +58,9 @@ popd
 $([ \! -f ./disabled_packages.common ] || echo $(cut -d '#' -f1 ./disabled_packages.common)) \
 $([ \! -f ./disabled_packages.$TARGET_BOARD ] || echo $(cut -d '#' -f1 ./disabled_packages.$TARGET_BOARD))
 
-
 # Override packages release numbers
 scripts/override_release_numbers.sh
+EOF
 
 # Build NAND FW
 [ -z "$OPENWRT_BRANCH"  ] || PKG_BRANCH="-$OPENWRT_BRANCH"
