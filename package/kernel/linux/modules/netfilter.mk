@@ -491,7 +491,7 @@ $(eval $(call KernelPackage,ipt-tproxy))
 
 define KernelPackage/ipt-tee
   TITLE:=TEE support
-  DEPENDS:=+kmod-ipt-conntrack @!LINUX_4_4
+  DEPENDS:=+kmod-ipt-conntrack
   KCONFIG:= \
   	CONFIG_NETFILTER_XT_TARGET_TEE
   FILES:= \

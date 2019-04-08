@@ -149,9 +149,16 @@ CONFIG_PACKAGE_foris-controller-hotplug=y
 CONFIG_PACKAGE_foris-controller-openvpn-module=y
 CONFIG_PACKAGE_foris-openvpn-plugin=y
 CONFIG_PACKAGE_turris-maintain=y
+#CONFIG_PACKAGE_python-cffi=y
+#CONFIG_PACKAGE_python-ply=y
+#CONFIG_PACKAGE_python-pycparser=y
+#CONFIG_PACKAGE_python-setuptools=y
+#CONFIG_PACKAGE_python-turris-gpio=y
+#CONFIG_PACKAGE_python2-turrishw=y
+#CONFIG_PACKAGE_simplejson=y
 CONFIG_PACKAGE_python-constantly=y
 CONFIG_PACKAGE_python-incremental=y
-CONFIG_PACKAGE_python3-pyserial=y
+#CONFIG_PACKAGE_python3-pyserial=y
 CONFIG_PACKAGE_twisted=y
 CONFIG_PACKAGE_zope-interface=y
 CONFIG_PACKAGE_coreutils=y
@@ -188,3 +195,24 @@ CONFIG_PACKAGE_ipip=y
 CONFIG_PACKAGE_ulogd=y
 CONFIG_PACKAGE_ulogd-mod-pcap=y
 CONFIG_PACKAGE_ip-bridge=y
+
+# to support layer 7 protocols
+CONFIG_PACKAGE_kmod-lib-textsearch=y
+CONFIG_PACKAGE_kmod-ipt-filter=y
+CONFIG_PACKAGE_uclibcxx=y
+CONFIG_PACKAGE_iptables-mod-filter=y
+CONFIG_PACKAGE_l7-protocols=y
+CONFIG_PACKAGE_l7-protocols-testing=y
+# to support iptables TEE
+CONFIG_PACKAGE_kmod-ipt-tee=y
+CONFIG_PACKAGE_iptables-mod-tee=y
+CONFIG_PACKAGE_iptables-mod-ulog=y
+
+#CONFIG_PACKAGE_cznic-repo-keys-test=m
+
+#CONFIG_PACKAGE_kmod-nft-core=y
+#CONFIG_PACKAGE_kmod-nft-nat=y
+#CONFIG_PACKAGE_libnftnl=y
+#CONFIG_IPTABLES_NFTABLES=y
+#CONFIG_PACKAGE_nftables=y
+#CONFIG_PACKAGE_getbranch-deploy=y

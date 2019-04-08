@@ -4,3 +4,5 @@ mt-st
 subversion-server
 subversion-client
 seafile-server
+mariadb-server
+collectd

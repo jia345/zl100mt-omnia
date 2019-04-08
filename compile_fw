@@ -33,7 +33,7 @@ make_defconfig() {
 	fi
 }
 
-<< EOF
+<<EOF
 # Clean feeds
 ./scripts/feeds clean
 ./scripts/feeds update -a
@@ -43,7 +43,6 @@ for feed in *; do
 	pushd $feed
 	for patch in *; do
 		pushd ../../feeds/$feed
-		#pushd ../../package/$feed
 		patch -p1 < ../../patches/$feed/$patch
 		popd
 	done
