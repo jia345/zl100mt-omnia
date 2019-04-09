@@ -1,0 +1,34 @@
+#!/bin/sh /etc/rc.common
+
+DEVICE='/dev/ttyUSB9'
+
+# Interface name from /etc/config/network
+IFNAME='lte_z'
+
+# Your APN:
+APN=''
+
+START=25
+STOP=90
+
+start() {
+        if [ -e ${DEVICE} ]; then
+                echo -ne "AT^NDISDUP=1,0\r\n" > ${DEVICE}
+                sleep 3
+                echo -ne "AT^NDISDUP=1,1,\"${APN}\"\r\n" > ${DEVICE}
+                sleep 3
+                ifup $IFNAME
+        else
+                echo "No such device ${DEVICE}" | logger -t "LTE_Z[$$]" -p info
+        fi
+}
+
+stop() {
+        if [ -e ${DEVICE} ]; then
+                ifdown $IFNAME
+                sleep 3
+                echo -ne "AT^NDISDUP=1,0\r\n" > ${DEVICE}
+        else
+                echo "No such device ${DEVICE}" | logger -t "LTE_Z[$$]" -p info
+        fi
+}
