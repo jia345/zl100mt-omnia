@@ -3,7 +3,7 @@
 DEVICE='/dev/ttyUSB4'
 
 # Interface name from /etc/config/network
-IFNAME='lte-4g'
+IFNAME='lte_4g'
 
 # Your APN:
 APN=''

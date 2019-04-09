@@ -13,7 +13,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include "bdrelay.h"
+#include "zl100mt.h"
 
 int g_cancelled = 0;
 

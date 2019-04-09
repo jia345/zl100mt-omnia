@@ -12,7 +12,7 @@
 #define BD_DBG 1
 #define IOT_BD_PID_PATH "/run/bdrelay.pid"
 
-#define IOT_BD_CONF        "/etc/bdrelay.conf"
+#define IOT_BD_CONF        "/etc/zl100mt-app/zl100mt-app.conf"
 #define IOT_BD_SEC_GENERAL "GENERAL"
 #define IOT_BD_SEC_REMOTE  "REMOTE"
 #define IOT_BD_KEY_TTY     "ttypath"
