@@ -33,33 +33,33 @@ make_defconfig() {
 	fi
 }
 
-<<EOF
-# Clean feeds
-./scripts/feeds clean
-./scripts/feeds update -a
-# Patch feeds
-pushd patches
-for feed in *; do
-	pushd $feed
-	for patch in *; do
-		pushd ../../feeds/$feed
-		patch -p1 < ../../patches/$feed/$patch
+if [ -n "$BUILD_ALL" ]; then
+	# Clean feeds
+	./scripts/feeds clean
+	./scripts/feeds update -a
+	# Patch feeds
+	pushd patches
+	for feed in *; do
+		pushd $feed
+		for patch in *; do
+			pushd ../../feeds/$feed
+			patch -p1 < ../../patches/$feed/$patch
+			popd
+		done
 		popd
 	done
 	popd
-done
-popd
-./scripts/feeds update -i
-./scripts/feeds install -a
-
-# Uninstall broken pkgs
-./scripts/feeds uninstall \
-$([ \! -f ./disabled_packages.common ] || echo $(cut -d '#' -f1 ./disabled_packages.common)) \
-$([ \! -f ./disabled_packages.$TARGET_BOARD ] || echo $(cut -d '#' -f1 ./disabled_packages.$TARGET_BOARD))
-
-# Override packages release numbers
-scripts/override_release_numbers.sh
-EOF
+	./scripts/feeds update -i
+	./scripts/feeds install -a
+	
+	# Uninstall broken pkgs
+	./scripts/feeds uninstall \
+	$([ \! -f ./disabled_packages.common ] || echo $(cut -d '#' -f1 ./disabled_packages.common)) \
+	$([ \! -f ./disabled_packages.$TARGET_BOARD ] || echo $(cut -d '#' -f1 ./disabled_packages.$TARGET_BOARD))
+	
+	# Override packages release numbers
+	scripts/override_release_numbers.sh
+fi
 
 # Build NAND FW
 [ -z "$OPENWRT_BRANCH"  ] || PKG_BRANCH="-$OPENWRT_BRANCH"

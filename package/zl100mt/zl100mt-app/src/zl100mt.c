@@ -13,8 +13,16 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include <net/if.h>
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+
 #include "zl100mt.h"
 
+static int s    = -1;
 int g_cancelled = 0;
 
 BD_INFO g_bd_inf;
@@ -455,7 +463,79 @@ static void mainloop(BD_INFO *pinf)
         0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xA5, 0xA6, 0xA7,
     };
 
+    unsigned char buf_ip[1600];
+    struct iphdr* p_iphdr   = NULL;
+    struct tcphdr* p_tcphdr = NULL;
+    size_t iphdr_offset     = 0;
+    size_t tcphdr_offset    = 0;
+    size_t tcpdata_offset   = 0;
+    ssize_t recv_size       = -1;
+
+    int i = 0;
+
+    struct sockaddr_ll socket_address;
+
+    s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+
+    if (s == -1)
+    {
+        perror("Socket creation failed");
+        exit (0);
+    }
+
+    memset(&socket_address, 0, sizeof (socket_address));
+    socket_address.sll_family = PF_PACKET;
+    socket_address.sll_ifindex = if_nametoindex("lo");
+    socket_address.sll_protocol = htons(ETH_P_ALL);
+
+    i = bind(s, (struct sockaddr*)&socket_address, sizeof(socket_address));
+    if (i == -1)
+    {
+        perror("Bind");
+        exit (0);
+    }
+
     while (!g_cancelled) {
+        memset(&buf_ip, 0, sizeof(buf_ip));
+
+        recv_size = recv(s, &buf_ip, sizeof(buf_ip), 0);
+        if (recv_size == -1)
+        {
+            perror("Socket receive");
+            exit (0);
+        }
+
+        iphdr_offset = sizeof(struct ethhdr);
+        p_iphdr      = (struct iphdr*)(buf_ip + iphdr_offset);
+
+        /*
+         * only print the TCP packets which have 0xBDBD at first two payload bytes
+         */
+        if (p_iphdr->protocol == IPPROTO_TCP)
+        {
+            tcphdr_offset  = iphdr_offset + (p_iphdr->ihl * 4);
+            p_tcphdr       = (struct tcphdr*)(buf_ip + tcphdr_offset);
+            tcpdata_offset = tcphdr_offset + p_tcphdr->th_off * 4;
+
+            unsigned char* p_tcpdata = buf_ip + tcpdata_offset;
+
+            if (p_tcpdata[0] == 0xbd && p_tcpdata[1] == 0xbd)
+            {
+                printf("\n* %s -> %s (IP packet)", \
+                        inet_ntoa(*((struct in_addr *)&(p_iphdr->saddr))), \
+            		inet_ntoa(*((struct in_addr *)&(p_iphdr->daddr))));
+                for(i = 0; i < recv_size - iphdr_offset; i++)
+                {
+                    if (i%16 == 0)
+                    {
+                        printf("\n0x%04hhx: ", i);
+                    }
+                    printf("%02hhX ", buf_ip[i + iphdr_offset]);
+                }
+            }
+            printf("\n");
+        }
+
         compose_icjc(txbuf);
         write(pinf->ttyfd, txbuf, 12);
         rx_nbytes(pinf, rxbuf, 22);
@@ -471,8 +551,8 @@ static void mainloop(BD_INFO *pinf)
         rx_nbytes(pinf, rxbuf, 54);
         iot_logbuf("received: ", rxbuf, 54);
         break;
-        
     }
+    close(s);
 }
 
 int main (int argc, char *argv[])
