@@ -6,3 +6,7 @@ subversion-client
 seafile-server
 mariadb-server
 collectd
+foris
+foris-client
+foris-controller
+foris-schema

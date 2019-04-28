@@ -33,7 +33,7 @@ make_defconfig() {
 	fi
 }
 
-if [ -n "$BUILD_ALL" ]; then
+#if [ -n "$BUILD_ALL" ]; then
 	# Clean feeds
 	./scripts/feeds clean
 	./scripts/feeds update -a
@@ -59,7 +59,7 @@ if [ -n "$BUILD_ALL" ]; then
 	
 	# Override packages release numbers
 	scripts/override_release_numbers.sh
-fi
+#fi
 
 # Build NAND FW
 [ -z "$OPENWRT_BRANCH"  ] || PKG_BRANCH="-$OPENWRT_BRANCH"
