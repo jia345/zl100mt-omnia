@@ -1,0 +1,36 @@
+image: registry.labs.nic.cz/turris/foris-ci
+
+stages:
+  - test
+
+test:
+  stage: test
+
+  script:
+    - git clone https://gitlab.labs.nic.cz/turris/foris-schema.git
+    - cd foris-schema
+    - pip install .
+    - cd ..
+
+    - git clone https://gitlab.labs.nic.cz/turris/foris-controller.git
+    - cd foris-controller
+    - (git checkout refs/remotes/origin/${CI_COMMIT_REF_NAME} || true)
+    - pip install .
+    - cd ..
+
+    - git clone https://gitlab.labs.nic.cz/turris/foris-controller-testtools.git
+    - cd foris-controller-testtools
+    - pip install .
+    - cd ..
+
+    - pip install .
+
+    - git clone https://gitlab.labs.nic.cz/turris/foris-client.git
+    - cd foris-client
+    - pip install .
+    - cd ..
+
+    - rm -rf {foris-controller,foris-schema,foris-controller-testtools,foris-client}
+    - export LD_LIBRARY_PATH=:/usr/local/lib
+    - python setup.py test
+    - python setup.py test --addopts="--backend openwrt"

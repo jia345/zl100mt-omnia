@@ -1,0 +1,8 @@
+{
+    "definitions": {
+        "redefinition": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+        }
+    }
+}

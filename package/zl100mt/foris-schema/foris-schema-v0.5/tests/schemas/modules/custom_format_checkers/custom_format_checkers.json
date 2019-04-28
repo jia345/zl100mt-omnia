@@ -1,0 +1,76 @@
+{
+    "oneOf": [
+        {
+            "description": "Custom checkers ipv4netmask",
+            "properties": {
+                "module": {"enum": ["custom_format_checkers"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["ipv4netmask"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {"format": "ipv4netmask", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["item"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Custom checkers ipv4prefix (ipv4 with prefix)",
+            "properties": {
+                "module": {"enum": ["custom_format_checkers"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["ipv4prefix"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {"format": "ipv4prefix", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["item"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Custom checkers ipv6prefix (ipv6 with prefix)",
+            "properties": {
+                "module": {"enum": ["custom_format_checkers"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["ipv6prefix"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {"format": "ipv6prefix", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["item"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Custom checkers macaddress",
+            "properties": {
+                "module": {"enum": ["custom_format_checkers"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["macaddress"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {"format": "macaddress", "type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["item"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

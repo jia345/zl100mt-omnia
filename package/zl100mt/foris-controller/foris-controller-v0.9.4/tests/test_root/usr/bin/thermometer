@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "BOARD:	99"
+echo "CPU:	99"

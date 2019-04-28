@@ -1,0 +1,26 @@
+
+config anonymous
+
+config anonymous
+	option option1 'aeb bb'
+	option option2 'xxx'
+	list list1 'single item'
+	list list2 'item 1'
+	list list2 'item 2'
+	list list2 'item 3'
+	list list2 'item 4'
+	list list3 'itema'
+	list list3 'itemb'
+
+config named 'named1'
+
+config named 'named2'
+	option option1 'aeb bb'
+	option option2 'xxx'
+	list list1 'single item'
+	list list2 'item 1'
+	list list2 'item 2'
+	list list2 'item 3'
+	list list2 'item 4'
+	list list3 'itema'
+	list list3 'itemb'

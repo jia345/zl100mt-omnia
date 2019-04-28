@@ -1,0 +1,2 @@
+Note thanks to ubusd the file foris-controller.json needs to have root as owner and 0644 mode.
+And you might need to change the user to something more appropriate.

@@ -1,0 +1,19 @@
+{
+    "oneOf": [
+        {
+            "properties": {
+                "module": {"enum": ["mandatory"]},
+                "kind": {"enum": ["notification"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "event": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["event"]
+                }
+            },
+            "additionalProperties": false
+        }
+    ]
+}

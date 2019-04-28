@@ -1,0 +1,4 @@
+#!/bin/sh
+echo failed $1 > /tmp/test_init/$(basename $0)
+echo FAILED 1>&2
+exit 1

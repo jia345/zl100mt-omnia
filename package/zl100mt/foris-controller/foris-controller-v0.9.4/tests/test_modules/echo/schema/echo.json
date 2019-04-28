@@ -1,0 +1,62 @@
+{
+    "oneOf": [
+        {
+            "properties": {
+                "module": {"enum": ["echo"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["echo"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "request_msg": {"type": "object"}
+                    },
+                    "required": ["request_msg"],
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "properties": {
+                "module": {"enum": ["echo"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["echo"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "reply_msg": {"type": "object"}
+                    },
+                    "required": ["reply_msg"],
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "module": {"enum": ["echo"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["echo"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "module": {"enum": ["echo"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["echo2"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "msg": {"type": "string"}
+                    },
+                    "required": ["msg"],
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

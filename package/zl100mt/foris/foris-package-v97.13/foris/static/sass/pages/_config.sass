@@ -1,0 +1,225 @@
+/* -------------------------------------------------------------------------
+/* Config pages (i.e. most of the Foris)
+
+.config-description
+  margin-bottom: 2.5em
+
+.config-section-description
+  margin-bottom: 0.5em
+
+.config-form
+  position: relative
+
+  .button
+    font-size: 100%
+    height: 3em
+    line-height: 3em
+    margin-right: 0.5em
+
+/* -------------------------------------------------------------------------
+/* "About" page
+#page-about
+  p
+    margin-bottom: 1em
+
+  table
+    margin-bottom: 1em
+    width: 100%
+
+    th, td
+      padding: 0.2em 0
+
+    th
+      font-weight: bold
+
+  abbr
+    border-bottom: 1px dashed lighten($foreground-color, 50)
+    cursor: help
+
+  .sending-ok
+    background: inline-image('../.inline-assets/icon-success.png') no-repeat left 50%
+    padding-left: 26px
+
+  .sending-fail
+    background: inline-image('../.inline-assets/icon-fail.png') no-repeat left 50%
+    padding-left: 26px
+
+  .reload
+    background: inline-image('../.inline-assets/icon-refresh.png') no-repeat left 50%
+    padding-left: 26px
+    display: inline-block
+    min-height: 22px
+
+  #registration-code-update
+    vertical-align: middle
+
+  #registration-code-loader
+    vertical-align: middle
+
+  #registration-code-fail
+    @extend .message
+    @extend .message.error
+    display: none
+
+    p:last-child
+      margin-bottom: 0
+
+  #registration-code
+    font-size: 130%
+    font-weight: bold
+
+/* -------------------------------------------------------------------------
+/* "DNS" page
+#page-dns
+  form
+    margin-bottom: 1em
+
+#connection-test-fail
+  display: none
+
+#connection-test-loader
+  vertical-align: middle
+
+#test-results
+  margin-bottom: 1em
+
+  tr
+    td
+      padding: 0.3em 0
+
+    td:first-child
+      width: 16em
+
+  thead
+    th
+      font-weight: bold
+
+  .test-success, .test-fail, .test-loading
+    font-weight: bold
+    padding-left: 24px
+
+
+  .test-success
+    background: inline-image('../.inline-assets/icon-success.png') no-repeat left 50%
+    border-color: $info-color
+    color: $info-color
+
+  .test-fail
+    background: inline-image('../.inline-assets/icon-fail.png') no-repeat left 50%
+    border-color: $error-color
+    color: $error-color
+
+  .test-loading
+    background: inline-image('../.inline-assets/icon-refresh.png') no-repeat left 50%
+    border-color: $loading-color
+    color: $loading-color
+
+#connectivity-retest
+  @extend .button
+  margin: 0 0 2em
+/* -------------------------------------------------------------------------
+/* "Updater" page
+.eula-summary
+  font-weight: bold
+
+#updater-auto-updates-form
+  label
+    display: block
+    margin-left: 3em
+    max-width: 100%
+
+  .radio-inputs
+    width: 100%
+    margin-bottom: 0.5em
+
+  .hint-text
+    margin-left: 3em
+
+  #updater-approvals
+    margin-bottom: 0.5em
+
+    p
+      margin-bottom: 0.5em
+
+    label
+      display: inline-block
+
+    input[name="approval_timeout"]
+      width: 5em
+
+    #approval-timeout-line
+      margin-left: 2em
+
+#updater-toggle
+  margin-bottom: 1em
+  label
+    display: block
+    margin-left: 3em
+
+  .radio-inputs
+    width: 100%
+
+#updater-approvals
+  margin-bottom: 0.5em
+
+  p
+    margin-bottom: 0.5em
+
+  label
+    display: inline-block
+    margin-left: 3em
+
+  input[name="approval_timeout"]
+    width: 5em
+
+  #approval-timeout-line
+    margin-left: 2em
+
+
+#updater-approve-changes
+  overflow: hidden
+  margin-bottom: .5em
+  border: 1px solid #999
+  padding: 1em
+
+  li
+    +respond-to('not-mobile', $no-query: true)
+      float: left
+      display: inline
+      width: 50%
+
+#updater-reboot-text
+  margin-bottom: .5em
+
+#current-approval
+  .button-row
+    margin-bottom: .5em
+    button
+      height: 2em
+      line-height: 2em
+
+#updater-disabled-warning
+  margin-top: .5em
+
+#language-install
+  margin-top: 1ex
+  margin-bottom: 1ex
+
+  div.language-install-box
+    display: inline-block
+    margin-left: 1ex
+    text-transform: uppercase
+
+.wifi-separator hr
+  color: #ddd
+
+.config-form .label-button
+  line-height: 2em
+  height: 2em
+
+#ntp-loading
+  height: 2em
+  display: none
+
+#ntp-error
+  display: none

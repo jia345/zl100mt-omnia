@@ -1,0 +1,10 @@
+{
+    "user": "stepan",
+    "access": {
+        "foris-controller-web": {
+            "methods": [ "get_language", "set_language", "list_languages" ]
+        }
+    },
+    "publish": [ "foris-controller-web" ],
+    "subscribe": [ "foris-controller-web" ]
+}

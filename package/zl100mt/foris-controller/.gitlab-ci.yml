@@ -1,0 +1,38 @@
+before_script:
+  - pip install virtualenv
+  - virtualenv -p "$(which python)" /tmp/test
+
+stages:
+  - test
+
+.run_script: &run_script
+  script:
+    - source /tmp/test/bin/activate
+
+    - pip install .
+
+    # unit tests
+    - python setup.py test --addopts="--backend openwrt --message-bus ubus tests/unit/"
+
+    # blackbox production config
+    - python setup.py test --addopts="--backend openwrt --message-bus ubus tests/blackbox/"
+
+    # production bus + mock backend
+    - python setup.py test --addopts="--backend mock --message-bus ubus tests/blackbox/"
+
+    # production backend + mqtt bus
+    - python setup.py test --addopts="--backend openwrt --message-bus mqtt tests/blackbox/"
+
+    # production backend + unix-socket bus
+    - python setup.py test --addopts="--backend openwrt --message-bus unix-socket tests/blackbox/"
+
+    - cd doc/examples/sample_module/
+    - pip install .
+
+    # test both backends here
+    - python setup.py test --addopts="--backend openwrt --backend mock"
+
+test_python3:
+  image: registry.labs.nic.cz/turris/foris-ci/python3
+  stage: test
+  <<: *run_script

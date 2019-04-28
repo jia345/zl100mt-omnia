@@ -1,0 +1,136 @@
+#!/bin/sh
+
+
+# define mocked functions
+network_interface_wan_status() {
+	cat <<- EOM
+{
+        "up": true,
+        "pending": false,
+        "available": true,
+        "autostart": true,
+        "dynamic": false,
+        "uptime": 8,
+        "l3_device": "eth1",
+        "proto": "dhcp",
+        "device": "eth1",
+        "updated": [
+                "addresses",
+                "routes",
+                "data"
+        ],
+        "metric": 0,
+        "delegation": true,
+        "ipv4-address": [
+                {
+                        "address": "172.20.6.78",
+                        "mask": 24
+                }
+        ],
+        "ipv6-address": [
+                
+        ],
+        "ipv6-prefix": [
+                
+        ],
+        "ipv6-prefix-assignment": [
+                
+        ],
+        "route": [
+                {
+                        "target": "172.20.6.250",
+                        "mask": 32,
+                        "nexthop": "0.0.0.0",
+                        "source": "172.20.6.78\/32"
+                },
+                {
+                        "target": "0.0.0.0",
+                        "mask": 0,
+                        "nexthop": "172.20.6.250",
+                        "source": "172.20.6.78\/32"
+                }
+        ],
+        "dns-server": [
+                "172.20.20.53",
+                "172.20.20.56"
+        ],
+        "dns-search": [
+                
+        ],
+        "inactive": {
+                "ipv4-address": [
+                        
+                ],
+                "ipv6-address": [
+                        
+                ],
+                "route": [
+                        
+                ],
+                "dns-server": [
+                        
+                ],
+                "dns-search": [
+                        
+                ]
+        },
+        "data": {
+                "leasetime": 14510
+        }
+}
+EOM
+}
+
+
+cmd=""
+arg1=""
+arg2=""
+arg3=""
+
+while true ; do
+	case "$1" in
+		# skip non-positional
+		-s )
+			shift 2
+			;;
+		-t )
+			shift 2
+			;;
+		-S )
+			shift
+			;;
+		-m )
+			shift 2
+			;;
+		-M )
+			shift 2
+			;;
+		# store positionals
+		*)
+			[ -z "$1" ] && break
+			if [ -z "$cmd" ]; then
+				cmd="$1"
+			elif [ -z "$arg1" ]; then
+				arg1="$1"
+			elif [ -z "$arg2" ]; then
+				arg2="$1"
+			elif [ -z "$arg3" ]; then
+				arg3="$1"
+			else
+				  exit 1
+			fi
+			shift
+			;;
+	esac
+done
+
+case "$cmd" in
+	call)
+		# call functions which are defined here
+		# e.g. (`ubus call network.interface.wan status` will call network_interface_wan_status
+		$(echo $arg1 | sed -e 's/\./_/g')_$arg2 $arg3
+		exit $?
+		;;
+esac
+
+exit 1

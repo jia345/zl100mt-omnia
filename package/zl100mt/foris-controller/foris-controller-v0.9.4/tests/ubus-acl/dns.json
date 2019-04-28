@@ -1,0 +1,10 @@
+{
+    "user": "stepan",
+    "access": {
+        "foris-controller-dns": {
+            "methods": [ "get_settings", "update_settings" ]
+        }
+    },
+    "publish": [ "foris-controller-dns" ],
+    "subscribe": [ "foris-controller-dns" ]
+}

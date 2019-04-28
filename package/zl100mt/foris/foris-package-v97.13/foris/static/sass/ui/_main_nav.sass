@@ -1,0 +1,176 @@
+$nav-item-height: 3em
+$nav-item-border: 2px solid #ddd
+
+%nav-item-link
+  color: $sidebar-foreground-color
+  display: block
+  padding: 0.8em 1.5em
+
+%bottom-nav-border
+  &::after
+    display: block
+    content: " "
+    border-bottom: $nav-item-border
+    margin: 0 10px
+
+
+#menu
+  text-transform: uppercase
+
+  a
+    font-size: 80%
+    font-weight: bold
+    text-decoration: none
+
+    &:hover
+      text-decoration: underline
+
+  nav
+    ul
+      li
+        background: $sidebar-background-color
+
+        &::before
+          display: block
+          content: " "
+          border-top: $nav-item-border
+          margin: 0 0.7rem
+
+        a
+          @extend %nav-item-link
+
+        &:last-child
+          @extend %bottom-nav-border
+
+        &.active
+          background: $sidebar-active-tab-color
+          font-weight: bold
+
+          &::before, &::after
+            border-color: $sidebar-active-tab-color
+
+          & + li::before
+            border-color: $sidebar-background-color
+
+          a
+            color: #fff
+
+          span.menu-tag
+            color: $sidebar-active-tab-color
+            background-color: #fff
+
+        span.menu-tag
+          +border-radius(1em)
+          float: right
+          padding: 1px 7px 0px 7px
+          position: relative
+          top: -1px
+          color: $sidebar-background-color
+          background-color: #000
+          font-weight: bold
+
+#subnav
+  +pie-clearfix
+  font-weight: bold
+  color: #000
+  text-transform: uppercase
+  padding-bottom: 4em
+
+  a
+    @extend %nav-item-link
+    &:hover
+      text-decoration: underline
+
+  +respond-to('not-mobile', $no-query: true)
+    padding: 3em 0 7em
+
+    a
+      display: inline
+      height: inherit
+      line-height: inherit
+      padding: 0
+
+    &::after
+      display: none
+
+  // mimic same style as the main menu for mobile (underlining)
+  #logout, li
+    @extend %bottom-nav-border
+
+    // but hide on desktop
+    +respond-to('not-mobile', $no-query: true)
+      &::after
+        display: none
+
+#language-switch
+  +box-sizing('border-box')
+  text-align: left
+  display: inline
+  position: relative
+  color: #000
+  outline: none
+  cursor: pointer
+
+  span
+    display: none
+
+  > a
+    display: block
+    font-size: 80%
+    margin-left: 10px
+
+
+  +respond-to('not-mobile', $no-query: true)
+    float: left
+    width: 50%
+
+    span
+      display: block
+      font-size: 80%
+      margin-left: 10px
+
+      &::after
+        content: ""
+        width: 0
+        height: 0
+        position: absolute
+        right: 8px
+        top: 60%
+        margin-top: -5px
+        border-style: solid
+        border-width: 5px 5px 0 5px
+        border-color: #000 transparent
+
+      &:hover
+        text-decoration: underline
+
+    ul
+      position: absolute
+      top: 100%
+      left: 0
+      right: 0
+      background: #e4e4e4
+      font-weight: normal
+      pointer-events: none
+      opacity: 0
+
+      li a
+        display: block
+        padding: 8px 10px
+
+        &:hover
+          background: #fff
+          text-decoration: none
+
+    &.active
+      ul
+        opacity: 1
+        pointer-events: auto
+
+#logout a
+  +box-sizing('border-box')
+  +respond-to('not-mobile', $no-query: true)
+    padding-left: 1em
+    float: right
+    width: 50%
+    border-left: $nav-item-border

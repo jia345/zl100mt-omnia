@@ -1,0 +1,20 @@
+before_script:
+  - pip install virtualenv
+  - virtualenv -p "$(which python)" /tmp/test
+
+stages:
+  - test
+
+.run_script: &run_script
+  script:
+    - source /tmp/test/bin/activate
+
+    - pip install .
+    - pip install .[testsuite]
+
+    - python setup.py test
+
+test_python3:
+  image: registry.labs.nic.cz/turris/foris-ci/python3
+  stage: test
+  <<: *run_script

@@ -1,0 +1,12 @@
+{
+    "oneOf": [
+        {
+            "properties": {
+                "module": {"enum": ["other"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get"]}
+            },
+            "additionalProperties": false
+        }
+    ]
+}

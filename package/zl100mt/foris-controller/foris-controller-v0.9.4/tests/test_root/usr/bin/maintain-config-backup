@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+DIR=/tmp/backup-$$
+SRC=/etc/config
+mkdir -p "$DIR"/etc/config
+cd "$DIR"
+tar c . | bzip2 -9c | base64

@@ -1,0 +1,119 @@
+{
+    "oneOf": [
+        {
+            "description": "Request to get data which are necessary for the web gui",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_data"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to get data which are required for the web gui",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_data"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "language": { "$ref": "#/definitions/iso2country" },
+                        "reboot_required": {"type": "boolean"},
+                        "updater_running": {"type": "boolean"},
+                        "notification_count": {"type": "integer", "minimum": 0}
+                    },
+                    "additionalProperties": false,
+                    "required": ["language", "reboot_required", "notification_count", "updater_running"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Set language in the web gui",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_language"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "language": { "$ref": "#/definitions/iso2country" }
+                    },
+                    "additionalProperties": false,
+                    "required": ["language"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to set language",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_language"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "List languages",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["list_languages"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to list languages",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["list_languages"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "languages": {
+                            "type": "array",
+                            "items": { "$ref": "#/definitions/iso2country" },
+                            "minItems": 1
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["languages"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification to set language",
+            "properties": {
+                "module": {"enum": ["web"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["set_language"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "language": { "$ref": "#/definitions/iso2country" }
+                    },
+                    "additionalProperties": false,
+                    "required": ["language"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

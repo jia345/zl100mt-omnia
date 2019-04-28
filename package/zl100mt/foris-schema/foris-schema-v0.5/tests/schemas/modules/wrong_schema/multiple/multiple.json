@@ -1,0 +1,20 @@
+{
+    "oneOf": [
+        {
+            "properties": {
+                "module": {"enum": ["multiple"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "module": {"enum": ["multiple"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get"]}
+            },
+            "additionalProperties": false
+        }
+    ]
+}
