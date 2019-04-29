@@ -1,0 +1,145 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get dhcp settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "dhcp_cfg": {
+                            "type": "array",
+                            "items": {
+                            "allOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "ignore": {"type": "integer"},
+                                    "start": {"type": "integer"},
+                                    "limit": {"type": "integer"},
+                                    "leasetime": {"type": "string"},
+                                    "dhcp_option": {"type": "string"}
+                                }
+                            }
+                        ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to get dhcp settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "dhcp_cfg": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "ignore": {"type": "integer"},
+                                            "start": {"type": "integer"},
+                                            "limit": {"type": "integer"},
+                                            "leasetime": {"type": "string"},
+                                            "dhcp_option": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to update dhcp settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "dhcp_cfg": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "ignore": {"type": "integer"},
+                                            "start": {"type": "integer"},
+                                            "limit": {"type": "integer"},
+                                            "leasetime": {"type": "string"},
+                                            "dhcp_option": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update dhcp settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that dhcp settings were updated",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "dhcp_cfg": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "ignore": {"type": "integer"},
+                                            "start": {"type": "integer"},
+                                            "limit": {"type": "integer"},
+                                            "leasetime": {"type": "string"},
+                                            "dhcp_option": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    ]
+}

@@ -1,0 +1,137 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get ip mac bind settings",
+            "properties": {
+                "module": {"enum": ["ipmacbind"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "ipmac_binds": {
+                            "type": "array",
+                            "items": {
+                            "allOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "mac": {"type": "string"},
+                                    "ip": {"type": "string"}
+                                }
+                            }
+                        ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to get ip mac bind settings",
+            "properties": {
+                "module": {"enum": ["ipmacbind"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "ipmac_binds": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {"type": "string"},
+                                            "mac": {"type": "string"},
+                                            "ip": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to update ip mac bind settings",
+            "properties": {
+                "module": {"enum": ["ipmacbind"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "ipmac_binds": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {"type": "string"},
+                                            "mac": {"type": "string"},
+                                            "ip": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update ip mac bind settings",
+            "properties": {
+                "module": {"enum": ["ipmacbind"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that ip mac bind  settings were updated",
+            "properties": {
+                "module": {"enum": ["ipmacbind"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "ipmac_binds": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {"type": "string"},
+                                            "mac": {"type": "string"},
+                                            "ip": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    ]
+}

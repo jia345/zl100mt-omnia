@@ -236,6 +236,10 @@ def init_default_app(index, include_static=False):
     app.route("/js/<filename:re:.*>", name="render_js", callback=render_js)
     # route for testing whether the foris app is alive (used in js)
     app.route("/ping", name="ping", method=("GET", "OPTIONS"), callback=ping)
+
+    from foris.zl100mt import init_zl100mt
+    app = init_zl100mt(app)
+
     return app
 
 

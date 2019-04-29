@@ -17,6 +17,7 @@ PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)
+USE_SOURCE_DIR=src
 PKG_BUILD_DEPENDS:=ruby/host python-slimit/host
 
 include $(INCLUDE_DIR)/package.mk
@@ -45,10 +46,11 @@ ifeq ($(CONFIG_TARGET_mvebu_Turris-Omnia),y)
 BRAND:=omnia
 endif
 
+	#$(call Build/Prepare/Default)
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
-	$(call Build/Prepare/Default)
+	$(CP) ./src/* $(HOST_BUILD_DIR)/
 
 	$(SED) 's/^__version__ = ".*"/__version__ = "$(PKG_VERSION)"/g' $(PKG_BUILD_DIR)/foris/__init__.py
 	$(SED) 's/^DEVICE_CUSTOMIZATION = ".*"/DEVICE_CUSTOMIZATION = "$(BRAND)"/g' $(PKG_BUILD_DIR)/foris/__init__.py
@@ -123,7 +125,7 @@ endef
 define Package/foris
 	TITLE:=foris
 	DEPENDS:=\
-		+foris-config
+		+foris-wizard +foris-config
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
