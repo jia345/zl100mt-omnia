@@ -1,0 +1,91 @@
+
+<!-- 
+  System View的 html 定义
+-->
+
+<div id="ssvTab" class="tab">
+        <ul class="tab-header clearfix">
+            <li target="ssvTabLTE" class="tab-header-item tab-header-selected" id='ssvTabHeaderZ'>LTE-Z</li>
+            <li target="ssvTabLTE" class="tab-header-item" id='ssvTabHeader4G'>LTE-4G</li>
+            <li target="ssvTabGnss" class="tab-header-item" id='ssvTabHeaderGnss'>GNSS</li>
+            <li target="ssvTabLan" class="tab-header-item" id='ssvTabHeaderLan'>LAN</li>
+        </ul>
+        <div class="tab-content" >
+            <div id="ssvTabLTE" class="tab-content-view"> 
+                <table class="dataintable">
+                <tbody>
+                    <tr> <th colspan="2" id="ssvTitleIntCfgTxt">Internet配置状态</th>  <th colspan="2" id="ssvTitleNetStatTxt">网络状态</th> </tr>
+                    <tr>
+                        <td class="weight" style="width: 140px" id="ssvTypeTxt">联机型态</td> <td><a id="ssvTypeVal">TBD</a></td>
+                        <td class="weight" style="width: 140px" id="ssvConnectStatTxt">连接状态</td> <td><a id="ssvConnectStatVal">TBD</a></td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="weight" id="ssvWLanIP">广域网络IP地址</td> <td><a id="ssvWLanIPVal">TBD</a></td>
+                        <td class="weight" id="ssvUSim">USIM卡状态</td> <td><a id="ssvUSimVal">TBD</a></td>
+                    </tr>
+
+                    <tr>
+                        <td class="weight" id="ssvDefaultGW">默认网关</td> <td><a id="ssvDefaultGWVal">TBD</a></td>
+                        <td class="weight">IMSI</td> <td><a id="ssvIMSIVal">TBD</a></td>
+                    </tr>
+                    <tr>
+                        <td class="weight" id="ssvMDns">主DNS</td> <td><a id="ssvMDnsVal">TBD</a></td>
+                        <td class="weight">PLMN</td> <td><a id="ssvPlmnVal">TBD</a></td>
+                    </tr>
+                    <tr>
+                        <td class="weight" id="ssvSDns">次DNS</td> <td><a id="ssvSDnsVal">TBD</a></td>
+                        <td class="weight" id="ssvSignal">信号强度(dBm)</td> <td><a id="ssvSignalVal">TBD</a></td>
+                    </tr>
+                    <tr>
+                        <td class="weight" id="ssvMac">MAC地址</td> <td><a id="ssvMacVal">TBD</a></td>
+                        <td class="weight" id="ssvFrq">频点</td> <td><a id="ssvFrqVal">TBD</a></td>
+                    </tr>
+                    <tr>
+                        <td class="weight"></td> <td></td>
+                        <td class="weight" id="ssvRSRQ">Signal RSRQ</td> <td><a id="ssvRSRQVal">TBD</a></td>
+                    </tr>
+                    <tr>
+                        <td class="weight"></td> <td></td>
+                        <td class="weight" id="ssvSNR">信噪比(dB)</td> <td><a id="ssvSNRVal">TBD</a></td>
+                    </tr>
+                    <!-- <tr>
+                        <td class="weight"></td> <td></td>
+                        <td class="weight">单模/多模</td> <td><a id="">TBD</a></td>
+                    </tr> -->
+                </tbody>
+                </table>
+            </div>
+            <div id="ssvTabGnss" class="tab-content-view hide">
+                <table class="dataintable">
+                <tbody>
+                    <tr> <th colspan="2" id="ssvtgnssInforTitle">GNSS Information</th></tr>
+                    <tr> <td class="weight" style="width: 140px"><a id="ssvTabGnssSatNum">卫星数量</a></td> <td><a id="ssvTabGnssSatNumVal">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a id="ssvTabGnssSendNum">发送总条数</a></td> <td><a id="ssvTabGnssSendNumVal">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a id="ssvTabGnssSuccNum">发送成功次数</a></td> <td><a id="ssvTabGnssSuccNumVal">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a id="ssvTabGnssFailNum">发送失败数</a></td> <td><a id="ssvTabGnssFailNumVal">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a id="ssvTabGnssDstSim">目标SIM卡号</a></td> <td><a id="ssvTabGnssDstSimVal">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a id="ssvTabGnssLocSim">本机SIM卡号</a></td> <td><a id="ssvTabGnssLocSimVal">TBD</a></td> </tr>
+                </tbody>
+                </table>
+            </div>
+            <div id="ssvTabLan" class="tab-content-view hide">
+                <table class="dataintable">
+                <tbody>
+                    <tr> <th colspan="2" id="ssvtlanInforTitle">LAN 信息</th></tr>
+                    <tr> <td class="weight" style="width: 140px"><a>LAN1 IP</a></td> <td><a id="ssvTabLan1IP">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a>LAN2 IP</a></td> <td><a id="ssvTabLan2IP">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a>LAN3 IP</a></td> <td><a id="ssvTabLan3IP">TBD</a></td> </tr>
+                    <tr> <td class="weight"><a>DHCP</a></td> <td><a id="ssvTabDHCPStatus">DHCP/Statics</a></td> </tr>
+                </tbody>
+                </table>
+                <table class="dataintable">
+                <tbody id="ssvTabLanAccessListTbl">
+                    <tr> <th colspan="5" id="ssvTabLanDevLst">设备接入列表</th></tr>
+                    <tr> <th class="light" style="width: 50px">No.</th><th class="light" >Slot</th>  <th class="light" id="ssvTabLanDevMac">MAC</th> <th class="light" id="ssvTabLanDevIP">IP</th> <th class="light" id="ssvTabLanDevType">设备类型</th></tr>
+                    <tr> <td><a>1</a></td><td><a>LAN1</a></td> <td><a>01-02-01</a></td> <td><a>129.1.1.2</a></td> <td><a>mobile</a></td></tr>
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>

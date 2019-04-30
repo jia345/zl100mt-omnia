@@ -1,0 +1,476 @@
+/*
+|-------------------[body]--------------------------|
+|    _________________________________________      |
+|    |                                        |     |
+|    |--------[Titlenar]-navtitle-------------|     |
+|    |               |                        |     |
+|    |sidebarleft    |    mainContent         |     |
+|    |               |   —————————————————    |     |
+|    |               |      homeView          |     |
+|    |               |      adminView         |     |
+|    |               |       ....             |     |
+|    |_______________|________________________|     |
+|    |           loginView                    |     |
+|    |________________________________________|     |
+|    |                                        |     |
+|    |_________________footer_________________|     |
+|    |                                        |     |
+|    |________________________________________|     |
+|                                                   |
+|---------------------------------------------------|-
+*/
+
+
+body {
+	font-family: Verdana, Arial, '微软雅黑','宋体';
+	font-size:14px;
+}
+
+button:hover { background-color: #aaa;}
+
+div.maincontent button, div.maincontent input, div.maincontent select, div.maincontent textarea {
+    font-family:Consolas, "Courier New", Courier, monospace;
+    font-size:12px;
+}
+
+h1, h2, h3, h4, h5, h6, em { font-weight: bold; }
+h2 { font-size: 20px;}
+h3 { font-size: 16px;}
+h4 { font-size: 14px;}
+
+strong {
+    font-family:'微软雅黑';
+    font-size:18px;
+    color:#3f3f3f;
+    font-weight:800;
+}
+p {
+	font-size:16px;
+	margin-left:50px;
+}
+/* ----------------------------------- 表格 ----------------------------------- */
+
+table.dataintable {
+	margin-top:15px;
+	border-collapse:collapse;
+	border:1px solid #aaa;
+	width:100%;
+	}
+
+table.dataintable th {
+	vertical-align:baseline;
+	padding:5px 15px 5px 6px;
+	background-color:#3F3F3F;
+	border:1px solid #3F3F3F;
+	text-align:left;
+	color:#fff;
+}
+table.dataintable th.light { background-color:rgb(110, 107, 107);}
+table.dataintable td {
+	vertical-align:text-top;
+	padding:3px 6px 3px 6px;
+	border:1px solid #aaa;
+	text-align: left;
+}
+table.dataintable td.weight {
+	vertical-align:baseline;
+	padding:5px 6px 5px 6px;
+	background-color:rgb(212, 211, 211);
+	/* font-weight: bold; */
+	font-size: 14px;
+	min-width: 100px; max-width: 150px;
+}
+table.dataintable td select {margin:2px 0 2px 0; width: 130px; }
+table.dataintable td.memo {font-size:12px;}
+table.dataintable td input{margin:2px 0 2px 0; }
+table.dataintable td input[type=radio]{margin:2px 0 2px 0; vertical-align: middle;}
+table.dataintable td input[type=checkbox]{margin:2px 0 2px 0; vertical-align: middle;}
+table.dataintable td input[type=submit].incell, button.incell { height:25px; width:80px; }
+table.dataintable td input[type=submit].incell:hover, button.incell:hover{ border:1px .999 solid; background-color: rgb(238, 208, 208);}
+table.dataintable td input[type=submit].incellsmall, button.incellsmall { margin-left: 2px;margin-right: px; height:25px; width:50px; }
+table.dataintable td input[type=submit].incellsmall:hover, button.incellsmall:hover{ border:1px .999 solid; background-color: rgb(238, 208, 208);}
+
+table.dataintable tr:nth-child(odd) {
+	background-color:#F5F5F5;
+}
+
+table.dataintable tr:nth-child(even) {
+	background-color:#fff;
+}
+
+table.dataintable pre {
+	width:auto;
+	margin:0;
+	padding:0;
+	border:0;
+	background-color:transparent;
+	}
+
+table.dataintable p {margin:0 0 2px 0;}
+
+div.maincontent table.dataintable ul, div.maincontent table.dataintable li {
+	list-style-type:none;
+	margin:0;
+	padding:0;
+	}
+
+table.dataintable td em{
+	color:#0000ff;
+	font-weight:normal;
+}
+
+table.dataintable .table_value {color:#0F93D2;}
+
+.no_wrap {white-space:nowrap;}
+
+div.maincontent table.dataintable ul.listintable {
+	margin:20px;
+	padding:0;
+	}
+
+div.maincontent table.dataintable ul.listintable  li{
+	list-style-type:disc;
+	}
+
+tr.notsupported {
+color:#999999;
+}
+
+
+/* ----------------------------------- layout ----------------------------------- */
+
+/* for hidden*/
+.hidden { display: none !important;}
+html {overflow:hidden;}
+body { text-align: center; margin: 0; padding: 0; border: 0; background:#fdfcf8; }
+
+div.navtitle
+{
+	position: absolute;
+    margin: 0; padding: 0; border: 0;
+	top: 0px; height: 45px;width: 100%;
+	background: #E8E7E3;
+	font-family:'微软雅黑', Verdana, Arial, '宋体';
+}
+div.navtitle .p1 { font-size:20px; color:#777777; text-align:center;}
+div.navtitle .name { float: left; margin-left: 15px; margin-top: 10px; margin-bottom: 10px; color:#777777;}
+div.navtitle .version { float: left; margin-left: 10px; margin-top: 11px; margin-bottom: 10px; color:#777777;font-size:14px}
+div.navtitle .language { 
+	float: right; margin-right: 15px; 
+	margin-top: 10px; margin-bottom: 10px; 
+	width: 100px; height: 25px;
+	font-size:16px; color:#777777;
+}
+div.footer
+{
+	position: absolute;
+	margin: 0;padding: 0;
+	bottom: 0px;
+	width: 100%; height:35px;
+	border-top: 0px solid #fff;
+	background: #ececea;
+    font-family:'微软雅黑', Verdana, Arial, '宋体';
+}
+div.footer .p1{ font-size:12px; color:#777777; text-align:center;}
+div.sidebarleft
+{
+	position:absolute;
+	padding: 0; border: 0;
+	left: 0px;
+	top: 45px; /* TitleBar */
+	bottom: 35px; /* footer */
+	width: 20%; /*! fix left bar !*/
+	min-width: 150px;
+	padding-right: 1px;
+	text-align: left;
+    overflow-y:auto;overflow-x:hidden;
+	background: #f8f6f6;
+	/* background:#bfd690; */
+	border-left:1px #bebebe solid;
+	/* border-right:1px #bebebe solid; */
+}
+div.maincontent
+{
+	position: absolute;
+	float: right;
+	top: 45px;
+	left: 0px;
+	bottom: 35px;
+	width: 80%; margin-left: 20%;
+	background: #fdfcf8;
+	/* background:transparent; */
+	border-left:0.9px #bebebe solid;
+	min-height: 10px;
+	min-width: 10px;
+	/* overflow-y:auto;overflow-x:auto; */
+	overflow:auto;
+}
+div.sidebarright
+{
+	position:absolute;
+	padding: 0; border: 0;
+	right: 0px; top: 0px; bottom: 0px; 
+	width: 220px; /*! fix bar !*/
+	padding-right: 1px;
+	text-align: center;
+	/* background:  #3F3F3F; */
+	/* border-left:1px #3F3F3F solid; */
+	background: #f8f6f6;
+	border-left:1px #bebebe solid;
+	/* z-index: 91; */
+}
+/*------------------------ sidebar left ---------------*/
+
+div.sidebarleft div
+{
+	margin-left: 5px;
+	margin-right:5px;
+}
+div.sidebarleft h2	{
+	font-size: 14px;
+	margin:0;
+	padding:5px 0 5px 10px;
+	color:#000;
+	display:block;
+	border-bottom:0px solid #ddd;
+	font-family:'微软雅黑';
+	}
+
+
+div.sidebarleft ul{
+	margin: 0;
+	padding: 0;
+	padding:1px 0 5px 10px;
+	font-family:'微软雅黑';
+	}
+
+
+div.sidebarleft li	{
+	list-style: none;
+	/* margin-left: 5px; */
+	}
+
+div.sidebarleft a {
+	display:block;
+	padding:5px 0 5px 15px;
+	font-size:12px;
+	/* border-bottom: 1px solid #ff0000; */
+	border-bottom:1px solid #ddd;
+	text-decoration:none;
+	}
+
+div.sidebarleft ul a.active {
+	background: #f5f5f5;
+	color:#990000;
+	}
+
+
+div.sidebarleft a:link, div.sidebarleft a:visited	{
+	text-decoration : none;
+	color:#000000;
+	background : transparent;
+	}
+
+div.sidebarleft a:hover	{
+	text-decoration : none;
+	color:#fff;
+	background: #aaa;
+	}
+
+
+div.sidebarleft a:active	{
+	text-decoration : none;
+	color:#fff;
+	background: #BD2D30;
+	}
+
+
+/*-------------------- maincontent ---------------------*/
+
+div.maincontent	div{
+	margin-left: 20px;
+	margin-right:20px;
+	margin-top: 30px;
+	margin-bottom: 30px;
+}
+
+div.maincontent div img
+{
+	height:30px;
+	width:30px;
+	float: left;
+	margin:15px 0 15px 0;
+}
+
+div.maincontent	div.middlefrm{
+	margin-left: 100px;
+	margin-right:100px;
+	margin-top: 30px;
+	margin-bottom: 30px;
+}
+div.maincontent	div.fixfrm{
+	margin: 20px auto; /* 自动居中 */
+	width: 650px;  /* 固定宽度 */
+	height: 90%;
+}
+div.maincontent .linefrm { /*带原始margin+边线*/
+	height: 100%;
+	border: 1px solid #dddddd; /*#bebebe*/
+}
+div.maincontent .txtareafrm {
+	height: 100%; 
+	margin: 15px 0px;
+	/* margin-bottom: 10px; */
+	/* border: 1px solid #dddddd; #bebebe */
+}
+
+div.maincontent input
+{
+	border: 1px solid #bebebe;/* #aaa;*/
+	height:30px;
+	padding-left:10px;
+	margin:15px 0 15px 0;
+}
+/* div.maincontent input[type=text]
+{
+	border:1px #bebebe solid;
+	height:30px;
+	padding-left:10px;
+	margin:15px 0 0 0;
+}
+	*/
+div.maincontent input[type=submit], button
+{
+	border:1px #bebebe solid;
+	height:30px;
+	padding-left:5px;
+	padding-right:5px;
+	width:121px;
+}
+
+div.maincontent input[type=submit]:hover, button:hover
+{
+	border:1px .999 solid;
+	background-color: #aaa;
+}
+
+div.maincontent select
+{
+	border:1px #bebebe solid;
+	height:25px;
+	margin:15px 0 0 0;
+}
+
+/*----------------- for LOGIN VIEW ---------------------*/
+div.loginview{
+    margin: 0;
+    padding: 0;
+	border: 0;
+	text-align: center;
+/*background: #E8E7E3;*/
+}
+div.loginview div{
+	margin:0 auto;
+	margin-top: 100px;
+	/* padding: 0; */
+	height: 200px;
+	width:  300px; /*200px*/
+}
+
+div.loginview input
+{
+	border: 1px solid #bebebe;/* #eee;*/
+	height:30px;
+	width:153px;
+	/* padding-left:10px; */
+	margin:15px 0 0 0;
+}
+
+div.placeholder h2 {
+	margin-bottom: 0px;
+}
+
+div.loginview button
+{
+    border: 1px solid #bebebe;
+    height: 30px;
+    /* padding-left: 10px; */
+	margin:15px 0 0 0;
+	width:155px;
+	text-align: center;
+}
+
+/*----------------- playback/download VIEW ---------------------*/
+div.transmodalview{
+	position: absolute;
+    margin: 0;
+	/* margin-top: 100px; */
+	padding: 0;
+	height: 100%;
+	width:  100%;
+	border: 0;
+	text-align: center;
+	background: rgba(180, 180, 178, 0.6);
+	overflow: auto;
+}
+div.transmodalview .showarea{
+	position: relative;
+	margin-left:50px; margin-right:50px; margin-top: 45px; margin-bottom: 10px;
+	background: rgb(255, 255, 255);
+}
+div.transmodalview .btn-content{
+	float: left;
+	margin: 5px;
+	width: 65px; font-size: 12px; text-align: left;
+	/* background-color: #acacac; */
+}
+div.transmodalview a{font-size: 12px; vertical-align: 5px;}
+div.transmodalview input[type=range]{ width:200px;	}
+div.transmodalview button { width:85px; margin: 3px 1px 3px 1px; }
+
+.operationmodalview {
+	/* height: 100%; */
+	height: 90%;
+	border: 1px solid #dddddd;
+	background-color: #5e5252;
+}
+/* .operationmodalview .dataintable { text-align: center} */
+
+/* header标签部分 */
+.operationmodalview .view-header {
+	height: 25px;
+	text-align: center; vertical-align: middle;
+	/* background-color: #686161; */
+	background-color: #5e5252;
+}
+.operationmodalview .view-header a {
+	margin: 3px 0 3px 0;
+	font-size: 16px;
+	color: #dddddd;
+}
+.operationmodalview .view-header button.title {
+	float: left;
+	margin: 5px 0 5px 15px;
+	height: 20px;width: 60px;
+	-moz-border-radius: 7px;      /* Gecko browsers */
+	-webkit-border-radius: 7px;   /* Webkit browsers */
+	border-radius:7px;            /* W3C syntax */
+	/* background: #c9c4c4; */
+}/* 内容面板样式 */
+.operationmodalview .video-content {
+	/* overflow: auto; */
+	margin: auto; /* 自动居中 */
+	margin-top: 5px;
+	text-align: center;
+	/* padding: 10px 10px; */
+	border-bottom: 1px solid transparent;
+	background-color: #797474;
+}
+.operationmodalview .view-footer {
+	height: 10px;
+	text-align: center; vertical-align: middle;
+	/* background-color: #686161; */
+	background-color: #5e5252;
+}
+
+

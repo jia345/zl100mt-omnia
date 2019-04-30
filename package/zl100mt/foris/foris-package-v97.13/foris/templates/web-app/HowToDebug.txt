@@ -1,0 +1,10 @@
+﻿1. 版本和APP名称：定义在 version.js 中
+2. 调试开关：定义在 main.js 中
+    var gDebug = 1; //总体开关，设置为 0 表示为实际发布版本， 需要链接实际设备使用。
+    var gMock = 1;   // Mock单元测试开关，Mock测试数据定义在 mock.test.js 中
+    function getURL() // 最后一行为实际设备上的web server地址，实际调试时请修改为正确的链接
+3. 打开gDebug / gMock = 1 时可以本地允许调试，请单击“start.html”进行调试。
+4. RTMP测试需要实际web server服务器环境进行，请启动任意web server并配置好RTMP流源。
+5. 已知调试和运行限制
+    a. chrome不支持本地Mock调试，如要本地Mock需要打开本地文件读取参数才行（如何打开请度娘）；或者启动一个web server解决这个问题。
+    b. RTMP的播放需要 flash 插件，请先下载按照浏览器 flash 插件，并在浏览器中打开权限。

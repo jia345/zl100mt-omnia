@@ -1,0 +1,74 @@
+﻿/**
+ * 本框架主要的思路和规则是：
+ *  1. html保持完整，不被侵入和分割。以此方式为调试布局和理解整体视图提供方便。
+ *  2. 每个视图的操作js文件，按照view的粒度进行分割为独立组件（文件）。
+ *  3. 每个view组件按照class的方式组织。
+ *  4. 主控js（main.js）中维护一个gMainView全局量包含了所有view的实例化对象，提供各个组件view访问其他view的能力。
+ *  5. 主控js（main.js）引入组件view的方法: tools.includeScript('js/views/CDashboardView.js');
+ * --------------------------
+ * How to use:
+ * 1. HTML中：左侧栏(sidebarleft)中定义出需要的入口DOM对应的id(systemViewEntry)
+ * 2. HTML中：主功能区(maincontent)中定义出与“左边栏”中入口对应的View
+ * 3. HTML中：为每一个View中定义为 class="hidden"//初始化时函数会统一做
+ * 4. HTML中：为每一个需要控制的DOM定义唯一的ID,如(<div id="systemView" class="hidden">)
+ * 5. 在main.js中：
+ * 5.1. 全局view对象数组gMainView保存了所有的需要进行vision和hide操作的view的实例化对象(多数在maincontent中)。
+ * 5.2. Init()挂接在<body class="homefirst" onload="Init()">：new所有的Vie对象；并将其存入gMainView。
+ * 5.3. class CLeftSideBar注册了侧边栏各个入口的onclick处理函数，这些处理函数会调用各个View的激活函数，如：gMainView.oSystemView.activeMyView();
+ * 5.4. 各个View的类定义中构造函数，完成内部变量初始化 + 控件回调函数注册
+ * 6. 类定义规则：
+      function CSystemView(){
+        // 构造函数
+        var _this = this;
+        //1.内部变量+内部函数
+        var privateParameter;//private
+        //2.注册控件回调函数
+        //3.初始化对象和成员函数
+        _this.node  =  document.getElementById( 'systemView' );
+      }
+      // 以下为public成员
+      CSystemView.prototype.node;
+      CSystemView.prototype.activeMyView = function(){
+          tools.ActivateViewByNodeInContainer(gMainView, this.node);
+      }
+      CSystemView.prototype.deactiveMyView = function(){
+          tools.viewShow(this.node, false);
+      }
+ * --------------------------
+ * 多语言支撑
+ * 1. 在html文件中为每一个需要多语言支持的txt定义唯一id如：<label id="txtDashboardEntry"></label>
+ * 2. tools-lan.map.js 文件中定义出html和js中需要使用的资源文本的json格式map表。
+    var enHtmlMap = {
+     txtDashboardEntry: "Dashboard",
+     txtSysStatusViewEntry: "System Status"
+   };
+   //var cnHtmlMap = { }; var enJsMap = {}; var cnJsMap = {};
+ * 3. 在main.js中用include引入该资源文件。
+ * 4. tools.js中定义tools.language = 'cn';来控制使用哪个资源
+ * 5. 在main.js中初始化时进行html资源转化: tools.htmlSwitchLang();
+ * 6. 在js中需要时调用：tools.jsSwitchLang(aItem) 对js处理的动态txt进行资源转化。
+ */
+
+ layout:
+
+/* 
+|-------------------[body]--------------------------|
+|    __________________wrapper________________      |
+|    |                                        |     |
+|    |--------[Titlenar]-navtitle-------------|     |
+|    |               |                        |     |
+|    |sidebarleft    |    mainContent         |     |
+|    |               |   —————————————————    |     |
+|    |               |      homeView          |     |
+|    |               |      adminView         |     |
+|    |               |       ....             |     |
+|    |_______________|________________________|     |
+|    |           loginView                    |     |
+|    |________________________________________|     |
+|    |                                        |     |
+|    |_________________footer_________________|     |
+|    |                                        |     |
+|    |____________end_of_wrapper______________|     |
+|                                                   |
+|---------------------------------------------------|- 
+*/
