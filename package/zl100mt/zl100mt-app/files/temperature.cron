@@ -1,0 +1,2 @@
+*/1	*	*	*	*	root	/usr/bin/temperature.sh
+*/1	*	*	*	*	root	sleep 30; /usr/bin/temperature.sh

@@ -13,10 +13,12 @@ STOP=90
 
 start() {
         if [ -e ${DEVICE} ]; then
-                echo -ne "AT^NDISDUP=1,0\r\n" > ${DEVICE}
-                sleep 3
-                echo -ne "AT^NDISDUP=1,1,\"${APN}\"\r\n" > ${DEVICE}
-                sleep 3
+                echo -ne "AT+CGDCONT=1,\"IP\"\r\n" > ${DEVICE}
+                sleep 1
+                echo -ne "AT+CGACT=1,1\r\n" > ${DEVICE}
+                sleep 2
+                echo -ne "AT+DHCPCTRL=1\r\n" > ${DEVICE}
+                sleep 2
                 ifup $IFNAME
         else
                 echo "No such device ${DEVICE}" | logger -t "LTE_Z[$$]" -p info
@@ -26,9 +28,10 @@ start() {
 stop() {
         if [ -e ${DEVICE} ]; then
                 ifdown $IFNAME
-                sleep 3
-                echo -ne "AT^NDISDUP=1,0\r\n" > ${DEVICE}
+                sleep 2
+                echo -ne "AT+CGACT=0,1\r\n" > ${DEVICE}
         else
                 echo "No such device ${DEVICE}" | logger -t "LTE_Z[$$]" -p info
         fi
 }
+

@@ -10,13 +10,13 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=foris
 PKG_VERSION:=97.13
 PKG_RELEASE:=1
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)
+#PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 #PKG_SOURCE_PROTO:=git
 #PKG_SOURCE_URL:=https://gitlab.labs.nic.cz/turris/foris.git
 #PKG_SOURCE_VERSION:=package-v$(PKG_VERSION)
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_VERSION).tar.gz
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
-HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)
+#PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+#HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)
 PKG_BUILD_DEPENDS:=ruby/host python-slimit/host
 
 include $(INCLUDE_DIR)/package.mk
@@ -45,11 +45,14 @@ ifeq ($(CONFIG_TARGET_mvebu_Turris-Omnia),y)
 BRAND:=omnia
 endif
 
-	#$(call Build/Prepare/Default)
+define Host/Prepare
+	mkdir -p $(HOST_BUILD_DIR)
+	$(CP) ./src/* $(HOST_BUILD_DIR)/
+endef
+
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
-	$(CP) ./src/* $(HOST_BUILD_DIR)/
 
 	$(SED) 's/^__version__ = ".*"/__version__ = "$(PKG_VERSION)"/g' $(PKG_BUILD_DIR)/foris/__init__.py
 	$(SED) 's/^DEVICE_CUSTOMIZATION = ".*"/DEVICE_CUSTOMIZATION = "$(BRAND)"/g' $(PKG_BUILD_DIR)/foris/__init__.py
