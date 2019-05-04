@@ -22,7 +22,7 @@ from foris.zl100mt.testAjax import run_ajax_test
 from foris.zl100mt.Lan import cmdLanCfg
 from foris.zl100mt.dhcp import cmdDhcpCfg
 from foris.zl100mt.portmapping import setportmapping,channelmapping
-
+from foris.zl100mt.firewall import cmdSetFirewall, cmdSetIpFilter, cmdSetMacFilter
 
 CONFIG_COMMANDS = {
     'login': cmdLogin,
@@ -38,6 +38,9 @@ CONFIG_COMMANDS = {
     'setPortMapping': setportmapping,
     'setSlotChannelMapping': channelmapping,
     'syncDatetime': cmdTime,
+    'setFirewall': cmdSetFirewall,
+    'setIPFilterTable': cmdSetIpFilter,
+    'setMacFilterTable': cmdSetMacFilter
 }
 
 
