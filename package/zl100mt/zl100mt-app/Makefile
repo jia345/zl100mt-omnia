@@ -50,6 +50,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
+
+	$(INSTALL_DIR) $(1)/etc/cron.d
+	$(INSTALL_DATA) ./files/temperature.cron $(1)/etc/cron.d/temperature
+	$(INSTALL_BIN) ./files/temperature.sh $(1)/usr/bin/temperature.sh
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
