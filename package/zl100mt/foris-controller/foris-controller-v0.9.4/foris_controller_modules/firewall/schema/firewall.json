@@ -1,38 +1,18 @@
 {
     "oneOf": [
         {
-            "description": "request to get ip mac bind settings",
+            "description": "request to get firewall settings",
             "properties": {
-                "module": {"enum": ["ipmacbind"]},
+                "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["request"]},
-                "action": {"enum": ["get_settings"]},
-                "data":{
-                    "type": "object",
-                    "properties": {
-                        "ipmac_binds": {
-                            "type": "array",
-                            "items": {
-                            "allOf": [
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "name": {"type": "string"},
-                                    "mac": {"type": "string"},
-                                    "ip": {"type": "string"}
-                                }
-                            }
-                        ]
-                            }
-                        }
-                    }
-                }
+                "action": {"enum": ["get_settings"]}
             },
             "additionalProperties": false
         },
         {
-            "description": "request to get ip mac bind settings",
+            "description": "reply to get firewall settings",
             "properties": {
-                "module": {"enum": ["ipmacbind"]},
+                "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["reply"]},
                 "action": {"enum": ["get_settings"]},
                 "data":{
@@ -59,11 +39,11 @@
             "additionalProperties": false
         },
         {
-            "description": "request to update ip mac bind settings",
+            "description": "request to update firewall settings",
             "properties": {
-                "module": {"enum": ["ipmacbind"]},
+                "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["request"]},
-                "action": {"enum": ["update_settings"]},
+                "action": {"enum": ["set_firewall"]},
                 "data": {
                     "type": "object",
                     "properties": {
@@ -89,11 +69,11 @@
             "required": ["data"]
         },
         {
-            "description": "request to update ip mac bind settings",
+            "description": "reply to update firewall settings",
             "properties": {
-                "module": {"enum": ["ipmacbind"]},
+                "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["reply"]},
-                "action": {"enum": ["update_settings"]},
+                "action": {"enum": ["set_firewall"]},
                 "data":{
                     "type": "object",
                     "properties": {
@@ -105,11 +85,11 @@
             "required": ["data"]
         },
         {
-            "description": "notification that ip mac bind  settings were updated",
+            "description": "request to update ip filter table settings",
             "properties": {
-                "module": {"enum": ["ipmacbind"]},
-                "kind": {"enum": ["notification"]},
-                "action": {"enum": ["update_settings"]},
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_firewall"]},
                 "data": {
                     "type": "object",
                     "properties": {
@@ -131,7 +111,70 @@
                     }
                 }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update ip filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_firewall"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update mac filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_firewall"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "ipmac_binds": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {"type": "string"},
+                                            "mac": {"type": "string"},
+                                            "ip": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update mac filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_firewall"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
         }
     ]
 }

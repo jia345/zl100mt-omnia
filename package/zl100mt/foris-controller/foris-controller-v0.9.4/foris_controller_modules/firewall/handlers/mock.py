@@ -26,47 +26,43 @@ from .. import Handler
 
 logger = logging.getLogger(__name__)
 
-
 class MockFirewallHandler(Handler, BaseMockHandler):
-    forwarding_enabled = True
-    dnssec_enabled = True
-    dns_from_dhcp_enabled = False
-    dns_from_dhcp_domain = None
+    ip_filter_enabled = False
+    mac_filter_enabled = False
+    dmz_enabled = False
+    dmz_ip = None
+    ip_filter_table = {}
+    mac_filter_table = {}
 
     @logger_wrapper(logger)
     def get_settings(self):
-        """ Mocks get dns settings
-
-        :returns: current dns settiongs
-        :rtype: str
-        """
         result = {
-            "forwarding_enabled": MockIpmacbindHandler.forwarding_enabled,
-            "dnssec_enabled": MockIpmacbindHandler.dnssec_enabled,
-            "dns_from_dhcp_enabled": MockIpmacbindHandler.dns_from_dhcp_enabled,
+            "ip_filter_enabled": MockFirewallHandler.ip_filter_enabled,
+            "mac_filter_enabled": MockFirewallHandler.mac_filter_enabled,
+            "dmz_enabled": MockFirewallHandler.dmz_enabled,
+            "dmz_ip": MockFirewallHandler.dmz_ip,
+            "ip_filter_table": MockFirewallHandler.ip_filter_table,
+            "mac_filter_table": MockFirewallHandler.mac_filter_table,
         }
-        if MockIpmacbindHandler.dns_from_dhcp_domain:
-            result["dns_from_dhcp_domain"] = MockIpmacbindHandler.dns_from_dhcp_domain
+        if MockFirewallHandler.dns_from_dhcp_domain:
+            result["dns_from_dhcp_domain"] = MockFirewallHandler.dns_from_dhcp_domain
         return result
 
     @logger_wrapper(logger)
-    def update_settings(
-            self, ipmac_binds):
-        """ Mocks updates current dns settings
-
-        :param forwarding_enabled: set whether the forwarding is enabled
-        :type forwarding_enabled: bool
-        :param dnssec_enabled: set whether dnssec is enabled
-        :type dnssec_enabled: bool
-        :param dns_from_dhcp_enabled: set whether dns from dhcp is enabled
-        :type dns_from_dhcp_enabled: bool
-        :param dns_from_dhcp_domain: set whether dns from dhcp is enabled
-        :type dns_from_dhcp_domain: str
-        :returns: True if update passes
-        :rtype: bool
-        """
-        MockIpmacbindHandler.forwarding_enabled = forwarding_enabled
-        MockIpmacbindHandler.dnssec_enabled = dnssec_enabled
-        MockIpmacbindHandler.dns_from_dhcp_enabled = dns_from_dhcp_enabled
-
+    def set_firewall(self, data):
+        MockFirewallHandler.ip_filter_enabled = data.ip_filter_enabled
+        MockFirewallHandler.mac_filter_enabled = data.mac_filter_enabled
+        MockFirewallHandler.dmz_enabled = data.dmz_enabled
+        MockFirewallHandler.dmz_ip = data.dmz_ip
         return True
+
+    @logger_wrapper(logger)
+    def set_ip_filter(self, data):
+        MockFirewallHandler.ip_filter_table = data.ip_filter_table
+        return True
+
+    @logger_wrapper(logger)
+    def set_mac_filter(self, data):
+        MockFirewallHandler.mac_filter_table = data.mac_filter_table
+        return True
+

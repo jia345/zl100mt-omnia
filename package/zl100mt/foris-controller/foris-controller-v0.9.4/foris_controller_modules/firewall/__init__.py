@@ -21,36 +21,43 @@ import logging
 
 from foris_controller.module_base import BaseModule
 from foris_controller.handler_base import wrap_required_functions
-
+from foris_controller.utils import logger_wrapper
 
 class FirewallModule(BaseModule):
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
 
+    @logger_wrapper(logger)
     def action_get_settings(self, data):
-        """ Get current lan settings
-        :param data: supposed to be {}
-        :type data: dict
-        :returns: current lan settings
-        :rtype: dict
-        """
         return self.handler.get_settings()
 
-    def action_update_settings(self, data):
-        """ Updates lan settings
-        :param data: new lan settings
-        :type data: dict
-        :returns: result of the update {'result': True/False}
-        :rtype: dict
-        """
-        res = self.handler.update_settings(data)
+    @logger_wrapper(logger)
+    def action_set_firewall(self, data):
+        res = self.handler.set_firewall(data)
         if res:
-            self.notify("update_settings", data)
+            self.notify("set_firewall", data)
         return {"result": res}
 
+    @logger_wrapper(logger)
+    def action_set_ip_filter(self, data):
+        res = self.handler.set_ip_filter(data)
+        if res:
+            self.notify("set_ip_filter", data)
+        return {"result": res}
+
+    @logger_wrapper(logger)
+    def action_set_mac_filter(self, data):
+        res = self.handler.set_mac_filter(data)
+        if res:
+            self.notify("set_mac_filter", data)
+        return {"result": res}
 
 @wrap_required_functions([
-    'get_settings',
-    'update_settings',
+    'action_get_settings',
+    'action_set_firewall',
+    'action_set_ip_filter',
+    'action_set_mac_filter',
 ])
+
 class Handler(object):
     pass

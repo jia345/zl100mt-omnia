@@ -21,37 +21,29 @@ import logging
 
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
-from foris_controller_backends.ipmacbind import FirewallUciCommands
+from foris_controller_backends.firewall import FirewallUciCommands
 
 from .. import Handler
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.DEBUG)
 
 class OpenwrtFirewallHandler(Handler, BaseOpenwrtHandler):
-    uci_ipmac_cmds = FirewallUciCommands()
+    uci_firewall_cmds = FirewallUciCommands()
 
     @logger_wrapper(logger)
     def get_settings(self):
-        """ get dns settings
-
-        :returns: current dns settings
-        :rtype: dict
-        """
-        return OpenwrtFirewallHandler.uci_ipmac_cmds.get_settings()
+        return OpenwrtFirewallHandler.uci_firewall_cmds.get_settings()
 
     @logger_wrapper(logger)
-    def update_settings(self, ipmac_binds):
-        """ updates current dns settings
+    def set_firewall(self, data):
+        return OpenwrtFirewallHandler.uci_firewall_cmds.set_firewall(data)
 
-        :param forwarding_enabled: set whether the forwarding is enabled
-        :type forwarding_enabled: bool
-        :param dnssec_enabled: set whether dnssec is enabled
-        :type dnssec_enabled: bool
-        :param dns_from_dhcp_enabled: set whether dns from dhcp is enabled
-        :type dns_from_dhcp_enabled: bool
-        :param dns_from_dhcp_domain: set whether dns from dhcp is enabled
-        :type dns_from_dhcp_domain: str
-        :rtype: str
-        """
-        return OpenwrtFirewallHandler.uci_ipmac_cmds.update_settings(ipmac_binds)
+    @logger_wrapper(logger)
+    def set_ip_filter(self, data):
+        return OpenwrtFirewallHandler.uci_firewall_cmds.set_ip_filter(data)
+
+    @logger_wrapper(logger)
+    def set_mac_filter(self, data):
+        return OpenwrtFirewallHandler.uci_firewall_cmds.set_mac_filter(data)
+
