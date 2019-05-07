@@ -38,7 +38,7 @@ class DhcpUciCommands(object):
         print dhcp_lan
         dhcpCfg = []
         dhcpCfg.append( {
-            'ignore': int(dhcp_lan['data']['ignore']),
+            "ignore": int(dhcp_lan['data']['ignore']),
             "start": int(dhcp_lan['data']['start']),
             "limit": int(dhcp_lan['data']['limit']),
             "leasetime": dhcp_lan['data']['leasetime'],
