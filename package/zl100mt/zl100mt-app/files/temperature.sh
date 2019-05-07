@@ -21,5 +21,5 @@ get_temp() {
 
 temp=$(get_temp)
 
-logger -t TEMPRETURE "current tempreture is: $temp degrees Celsius\r\n"
+logger -t tmp112 -p info "current TEMPERATURE is: $temp degrees Celsius"
 

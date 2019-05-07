@@ -18,6 +18,7 @@ define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Base system
   TITLE:=daemon application for zl100mt, including relay BeiDou data, etc.
+  DEPENDS:=+libftdi
 endef
 
 define Package/$(PKG_NAME)/description
@@ -34,7 +35,7 @@ endef
 
 define Build/Compile
 	@echo Compiling zl100mt-app......
-	$(MAKE) $(PKG_NAME) -C $(PKG_BUILD_DIR) \
+	$(MAKE) all -C $(PKG_BUILD_DIR) \
 		CC="$(TARGET_CC)" \
 		CFLAGS="$(TARGET_CFLAGS)" \
 		LDFLAGS="$(TARGET_LDFLAGS)"
@@ -50,9 +51,15 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ft4232_bitbang $(1)/usr/sbin/
 
 	$(INSTALL_DIR) $(1)/etc/cron.d
-	$(INSTALL_DATA) ./files/temperature.cron $(1)/etc/cron.d/temperature
+	$(INSTALL_DATA) ./files/cron.conf $(1)/etc/cron.d/zl100mt
+	$(INSTALL_DIR) $(1)/etc/syslog-ng.d
+	$(INSTALL_DATA) ./files/syslog-ng.conf $(1)/etc/syslog-ng.d/zl100mt
+	$(INSTALL_DIR) $(1)/etc/logrotate.d
+	$(INSTALL_DATA) ./files/logrotate.conf $(1)/etc/logrotate.d/zl100mt
+	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/temperature.sh $(1)/usr/bin/temperature.sh
 endef
 

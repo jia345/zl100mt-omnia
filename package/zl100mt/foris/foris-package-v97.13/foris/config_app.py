@@ -28,7 +28,7 @@ from foris.config import init_app as init_app_config, top_index
 from foris.common import render_js_md5
 from foris.common_app import prepare_common_app
 from foris.utils import contract_valid
-
+from foris.zl100mt import zl100mt_top_index
 
 logger = logging.getLogger("foris.config")
 
@@ -47,4 +47,4 @@ def prepare_config_app(args):
     :param args: arguments received from ArgumentParser.parse_args().
     :return: bottle.app() for Foris
     """
-    return prepare_common_app(args, "config", init_app_config, top_index, logger)
+    return prepare_common_app(args, "config", init_app_config, zl100mt_top_index, logger)

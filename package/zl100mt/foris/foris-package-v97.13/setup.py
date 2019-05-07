@@ -64,6 +64,7 @@ setup(
         "foris.ubus",
         "foris.middleware",
         "foris.wizard",
+        "foris.zl100mt",
     ],
     package_data={
         '': [

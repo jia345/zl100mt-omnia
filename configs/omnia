@@ -230,3 +230,15 @@ CONFIG_PACKAGE_ppp-mod-pptp=y
 CONFIG_PACKAGE_libreadline=y
 CONFIG_PACKAGE_bc=y
 
+CONFIG_PACKAGE_confuse=y
+CONFIG_PACKAGE_libftdi=y
+CONFIG_PACKAGE_libftdi1=y
+CONFIG_PACKAGE_libkmod=y
+CONFIG_PACKAGE_libusb-compat=y
+
+CONFIG_PACKAGE_lua-rs232=y
+CONFIG_PACKAGE_luai2c=y
+CONFIG_PACKAGE_ftdi_eeprom=y
+CONFIG_PACKAGE_pciutils=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_logger=y
