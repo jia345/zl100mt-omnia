@@ -18,19 +18,38 @@
                 "data":{
                     "type": "object",
                     "properties": {
-                        "ipmac_binds": {
+                        "ip_filter_enabled": { "type": "boolean" },
+                        "mac_filter_enabled": { "type": "boolean" },
+                        "dmz_enabled": { "type": "boolean" },
+                        "dmz_ip": { "format": "ipv4" },
+                        "ip_list": {
                             "type": "array",
                             "items": {
-                                "allOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                            "mac": {"type": "string"},
-                                            "ip": {"type": "string"}
-                                        }
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "timeout": {"type": "string"},
+                                        "lan_ip": {"format": "ipv4"},
+                                        "lan_port": {"type": "integer"},
+                                        "wan_ip": {"format": "ipv4"},
+                                        "wan_port": {"type": "integer"},
+                                        "protocol": {"type": "string"},
+                                        "enabled": {"type": "boolean"}
                                     }
-                                ]
+                                }]
+                            }
+                        },
+                        "mac_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "mac": {"format": "macaddress"},
+                                        "enabled": {"type": "boolean"},
+                                        "desc": {"type": "string"}
+                                    }
+                                }]
                             }
                         }
                     }
@@ -47,21 +66,10 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "ipmac_binds": {
-                            "type": "array",
-                            "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                            "mac": {"type": "string"},
-                                            "ip": {"type": "string"}
-                                        }
-                                    }
-                                ]
-                            }
-                        }
+                        "ip_filter_enabled": {"type": "boolean"},
+                        "mac_filter_enabled": {"type": "boolean"},
+                        "dmz_enabled": {"type": "boolean"},
+                        "dmz_ip": {"format": "ipv4"}
                     }
                 }
             },
@@ -89,23 +97,25 @@
             "properties": {
                 "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["request"]},
-                "action": {"enum": ["set_firewall"]},
-                "data": {
+                "action": {"enum": ["set_ip_filter"]},
+                "data":{
                     "type": "object",
                     "properties": {
-                        "ipmac_binds": {
+                        "ip_list": {
                             "type": "array",
                             "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                            "mac": {"type": "string"},
-                                            "ip": {"type": "string"}
-                                        }
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "timeout": {"type": "string"},
+                                        "lan_ip": {"format": "ipv4"},
+                                        "lan_port": {"type": "integer"},
+                                        "wan_ip": {"format": "ipv4"},
+                                        "wan_port": {"type": "integer"},
+                                        "protocol": {"type": "string"},
+                                        "enabled": {"type": "boolean"}
                                     }
-                                ]
+                                }]
                             }
                         }
                     }
@@ -119,7 +129,7 @@
             "properties": {
                 "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["reply"]},
-                "action": {"enum": ["set_firewall"]},
+                "action": {"enum": ["set_ip_filter"]},
                 "data":{
                     "type": "object",
                     "properties": {
@@ -135,23 +145,21 @@
             "properties": {
                 "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["request"]},
-                "action": {"enum": ["set_firewall"]},
+                "action": {"enum": ["set_mac_filter"]},
                 "data": {
                     "type": "object",
                     "properties": {
-                        "ipmac_binds": {
+                        "mac_list": {
                             "type": "array",
                             "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                            "mac": {"type": "string"},
-                                            "ip": {"type": "string"}
-                                        }
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "mac": {"format": "macaddress"},
+                                        "enabled": {"type": "boolean"},
+                                        "desc": {"type": "string"}
                                     }
-                                ]
+                                }]
                             }
                         }
                     }
@@ -165,7 +173,7 @@
             "properties": {
                 "module": {"enum": ["firewall"]},
                 "kind": {"enum": ["reply"]},
-                "action": {"enum": ["set_firewall"]},
+                "action": {"enum": ["set_mac_filter"]},
                 "data":{
                     "type": "object",
                     "properties": {

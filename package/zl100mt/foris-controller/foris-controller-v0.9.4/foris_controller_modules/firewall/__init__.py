@@ -53,10 +53,10 @@ class FirewallModule(BaseModule):
         return {"result": res}
 
 @wrap_required_functions([
-    'action_get_settings',
-    'action_set_firewall',
-    'action_set_ip_filter',
-    'action_set_mac_filter',
+    'get_settings',
+    'set_firewall',
+    'set_ip_filter',
+    'set_mac_filter',
 ])
 
 class Handler(object):
