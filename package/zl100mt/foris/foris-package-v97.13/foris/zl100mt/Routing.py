@@ -1,7 +1,7 @@
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.portmapping import channelmapping,setportmapping
 from foris.zl100mt.dhcp import cmdDhcpCfg
-from foris.zl100mt.fireall import cmdGetFirewall
+from foris.zl100mt.firewall import cmdGetFirewall
 
 from foris.state import current_state
 

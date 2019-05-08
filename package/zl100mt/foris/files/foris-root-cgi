@@ -3,7 +3,7 @@
 . /lib/functions.sh
 
 config_load foris
-config_get_bool WIZARD_FINISHED wizard finished "0"
+config_get_bool WIZARD_FINISHED wizard finished "1"
 config_get SCRIPTNAME server scriptname "/foris"
 
 SCRIPTNAME=$(echo "$SCRIPTNAME" | sed -e 's;\\;\\\\;g' | sed -e 's;/*$;;g' | sed -e 's;^/*;;g' | sed -e 's;/+;/;g')

@@ -97,7 +97,7 @@ setup(
         'foris_controller_modules.storage',
         'foris_controller_modules.storage.handlers',
         'foris_controller_modules.firewall',
-        'foris_controller_modules.firewall.handlers',
+        'foris_controller_modules.firewall.handlers'
     ],
     package_data={
         'foris_controller': [
@@ -122,7 +122,7 @@ setup(
         'foris_controller_modules.network': ['schema', 'schema/*.json'],
         'foris_controller_modules.redirect': ['schema', 'schema/*.json'],
         'foris_controller_modules.storage': ['schema', 'schema/*.json'],
-        'foris_controller_modules.firewall': ['schema', 'schema/*.json'],
+        'foris_controller_modules.firewall': ['schema', 'schema/*.json']
     },
     scripts=['bin/foris-controller', "bin/foris-notify"],
     url='https://gitlab.labs.nic.cz/turris/foris-controller',
