@@ -22,24 +22,24 @@
                         "mac_filter_enabled": { "type": "boolean" },
                         "dmz_enabled": { "type": "boolean" },
                         "dmz_ip": { "format": "ipv4" },
-                        "ip_list": {
+                        "ip_filter_table": {
                             "type": "array",
                             "items": {
                                 "allOf": [{
                                     "type": "object",
                                     "properties": {
-                                        "timeout": {"type": "string"},
-                                        "lan_ip": {"format": "ipv4"},
-                                        "lan_port": {"type": "integer"},
-                                        "wan_ip": {"format": "ipv4"},
-                                        "wan_port": {"type": "integer"},
-                                        "protocol": {"type": "string"},
+                                        "timeout": {"type": "integer"},
+                                        "lan_ips": {"format": "ipv4"},
+                                        "lan_ports": {"type": "integer"},
+                                        "wan_ips": {"format": "ipv4"},
+                                        "wan_ports": {"type": "integer"},
+                                        "proto": {"type": "string"},
                                         "enabled": {"type": "boolean"}
                                     }
                                 }]
                             }
                         },
-                        "mac_list": {
+                        "mac_filter_table": {
                             "type": "array",
                             "items": {
                                 "allOf": [{
@@ -101,18 +101,18 @@
                 "data":{
                     "type": "object",
                     "properties": {
-                        "ip_list": {
+                        "ip_filter_table": {
                             "type": "array",
                             "items": {
                                 "allOf": [{
                                     "type": "object",
                                     "properties": {
                                         "timeout": {"type": "string"},
-                                        "lan_ip": {"format": "ipv4"},
-                                        "lan_port": {"type": "integer"},
-                                        "wan_ip": {"format": "ipv4"},
-                                        "wan_port": {"type": "integer"},
-                                        "protocol": {"type": "string"},
+                                        "lan_ips": {"format": "ipv4"},
+                                        "lan_ports": {"type": "integer"},
+                                        "wan_ips": {"format": "ipv4"},
+                                        "wan_ports": {"type": "integer"},
+                                        "proto": {"type": "string"},
                                         "enabled": {"type": "boolean"}
                                     }
                                 }]
@@ -149,7 +149,7 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "mac_list": {
+                        "mac_filter_table": {
                             "type": "array",
                             "items": {
                                 "allOf": [{

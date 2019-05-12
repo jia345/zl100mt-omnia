@@ -12,12 +12,14 @@ class DhcpCmd():
         dhcp_data = data['dat']['DHCP']
         startIp = dhcp_data['startIP'].split('.')
         endIp = dhcp_data['endIP'].split('.')
-        dhcpOption = "1," + dhcp_data['subMask']
-        dhcpOption += " 3," + dhcp_data['defaultGwIP']
-        if dhcp_data['DNS1']:
-            dhcpOption += " 6," + dhcp_data['DNS1']
-        if dhcp_data['DNS2']:
-            dhcpOption += "," + dhcp_data['DNS2']
+        dhcpOption = []
+        dhcpOption.append("1," + dhcp_data['subMask'])
+        dhcpOption.append("3," + dhcp_data['defaultGwIP'])
+        dns1 = dhcp_data['DNS1'] if dhcp_data['DNS1'] else ''
+        dns2 = (',%s' % dhcp_data['DNS2']) if dhcp_data['DNS2'] else ''
+        dhcpOption.append("6," + dns1 + dns2)
+        #if dhcp_data['DNS2']:
+        #    dhcpOption.append("6," + dhcp_data['DNS2']
 
         dhcpCfg = []
         dhcpCfg.append({
@@ -36,9 +38,8 @@ class DhcpCmd():
     def get_dhcp(self):
         data = current_state.backend.perform("dhcp", "get_settings", {})
 
-        dhcp_data= data['dhcp_cfg'][0]
-        option_arr = dhcp_data['dhcp_option'].split(' ')
-        for option in option_arr:
+        dhcp_data = data['dhcp_cfg']
+        for option in dhcp_data['dhcp_option']:
             arr = option.split(',')
             if int(arr[0]) == 1:
                 submask = arr[1]
@@ -55,7 +56,7 @@ class DhcpCmd():
         endIP = '.'.join(ipArr)
 
         dhcp = {}
-        dhcp['dhcpStatus'] = u'Statics' if dhcp_data['ignore'] else u'DHCP'
+        dhcp['dhcpStatus'] = 'Statics' if dhcp_data['ignore'] else 'DHCP'
         dhcp['startIP'] = startIP
         dhcp['endIP'] = endIP
         dhcp['leaseTerm'] = dhcp_data['leasetime'].replace('m', '')

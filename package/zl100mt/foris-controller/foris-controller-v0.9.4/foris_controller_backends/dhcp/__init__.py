@@ -27,7 +27,6 @@ from foris_controller.exceptions import UciRecordNotFound
 
 logger = logging.getLogger(__name__)
 
-
 class DhcpUciCommands(object):
 
     def get_settings(self):
@@ -36,9 +35,10 @@ class DhcpUciCommands(object):
             dhcp_lan = get_section(dhcp_data, "dhcp", "lan")
         print "dhcp get setting!!"
         print dhcp_lan
+        logger.debug(dhcp_lan['data']['dhcp_option'])
         dhcpCfg = []
         dhcpCfg.append( {
-            "ignore": int(dhcp_lan['data']['ignore']),
+            "ignore": dhcp_lan['data'].get('ignore', 0),
             "start": int(dhcp_lan['data']['start']),
             "limit": int(dhcp_lan['data']['limit']),
             "leasetime": dhcp_lan['data']['leasetime'],

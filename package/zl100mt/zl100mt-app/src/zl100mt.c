@@ -344,6 +344,7 @@ static int init_bdinf(BD_INFO *pinf)
     pinf->ttypath     =          iot_cfg_get_str(pinf->pcfg, IOT_BD_SEC_GENERAL, IOT_BD_KEY_TTY,    NULL);
     pinf->ttybaudrate = (int32_t)iot_cfg_get_int(pinf->pcfg, IOT_BD_SEC_GENERAL, IOT_BD_KEY_BDRATE, 0);
     pinf->remoteno    = (int32_t)iot_cfg_get_int(pinf->pcfg, IOT_BD_SEC_REMOTE,  IOT_BD_KEY_NUMBER, 0);
+    pinf->is_dryrun   = (int32_t)iot_cfg_get_int(pinf->pcfg, IOT_BD_SEC_DEBUG,   IOT_BD_KEY_DRYRUN, 0);
 
     if (    (NULL == pinf->ttypath)
          || (   0 == pinf->remoteno)
@@ -472,10 +473,17 @@ static void mainloop(BD_INFO *pinf)
     ssize_t recv_size       = -1;
 
     int i = 0;
+    int fd_max;
 
     struct sockaddr_ll socket_address;
 
     s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(pinf->ttyfd, &fds);
+    FD_SET(s, &fds);
+    fd_max = (s > pinf->ttyfd) ? s : pinf->ttyfd;
 
     if (s == -1)
     {
@@ -558,6 +566,7 @@ static void mainloop(BD_INFO *pinf)
 int main (int argc, char *argv[])
 {
     int pid_fd = -1;
+    int ret = 0;
     BD_INFO *pinf = &g_bd_inf;
 
 #if !(BD_DBG)

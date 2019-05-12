@@ -73,6 +73,7 @@ setup(
             "templates/**",
             "templates/web-app/*",
             "templates/web-app/**/*",
+            "templates/web-app/debug/mock/*",
             "static/css/*.css",
             "static/fonts/*",
             "static/img/*",

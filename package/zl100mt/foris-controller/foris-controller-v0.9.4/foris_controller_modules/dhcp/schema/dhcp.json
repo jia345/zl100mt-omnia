@@ -20,7 +20,10 @@
                                     "start": {"type": "integer"},
                                     "limit": {"type": "integer"},
                                     "leasetime": {"type": "string"},
-                                    "dhcp_option": {"type": "string"}
+                                    "dhcp_option": {
+                                        "type": "array",
+                                        "items": {"type": "string"}
+                                    }
                                 }
                             }
                         ]
@@ -51,7 +54,10 @@
                                             "start": {"type": "integer"},
                                             "limit": {"type": "integer"},
                                             "leasetime": {"type": "string"},
-                                            "dhcp_option": {"type": "string"}
+                                            "dhcp_option": {
+                                                "type": "array",
+                                                "items": {"type": "string"}
+                                            }
                                         }
                                     }
                                 ]
@@ -82,7 +88,10 @@
                                             "start": {"type": "integer"},
                                             "limit": {"type": "integer"},
                                             "leasetime": {"type": "string"},
-                                            "dhcp_option": {"type": "string"}
+                                            "dhcp_option": {
+                                                "type": "array",
+                                                "items": {"type": "string"}
+                                            }
                                         }
                                     }
                                 ]
@@ -130,7 +139,10 @@
                                             "start": {"type": "integer"},
                                             "limit": {"type": "integer"},
                                             "leasetime": {"type": "string"},
-                                            "dhcp_option": {"type": "string"}
+                                            "dhcp_option": {
+                                                "type": "array",
+                                                "items": {"type": "string"}
+                                            }
                                         }
                                     }
                                 ]

@@ -8,16 +8,16 @@
 #include <termios.h>
 #include "config.h"
 
-//#define BD_DBG 0
-#define BD_DBG 1
 #define IOT_BD_PID_PATH "/run/bdrelay.pid"
 
 #define IOT_BD_CONF        "/etc/zl100mt-app/zl100mt-app.conf"
 #define IOT_BD_SEC_GENERAL "GENERAL"
+#define IOT_BD_SEC_DEBUG   "DEBUG"
 #define IOT_BD_SEC_REMOTE  "REMOTE"
 #define IOT_BD_KEY_TTY     "ttypath"
 #define IOT_BD_KEY_BDRATE  "baudrate"
 #define IOT_BD_KEY_NUMBER  "number"
+#define IOT_BD_KEY_DRYRUN  "dryrun"
 
 #define IOT_MAX_BD_NUMBER 0x1FFFFF
 
@@ -35,6 +35,7 @@ typedef struct _bd_info {
     int32_t     ttybaudrate;
     int32_t     myno;
     int32_t     remoteno;
+    int32_t     is_dryrun;
 } BD_INFO;
 
 #endif
