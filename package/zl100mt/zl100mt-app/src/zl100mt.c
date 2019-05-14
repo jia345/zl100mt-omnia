@@ -22,8 +22,10 @@
 
 #include "zl100mt.h"
 
-static int s    = -1;
+int s = -1;
 int g_cancelled = 0;
+
+int magic_key = 0xBD;
 
 BD_INFO g_bd_inf;
 
@@ -243,6 +245,22 @@ void iot_logbuf(char *label, unsigned char *buf, int len)
     }
 }
 
+#if 0
+static void encrypt(unsigned char* buf, int len) {
+    int i = 0;
+    for (i = 0; i < len; i++) {
+        buf[i] ^= magic_key;
+    }
+}
+
+static void decrypt(unsigned char* buf, int len) {
+    int i = 0;
+    for (i = 0; i < len; i++) {
+        buf[i] ^= magic_key;
+    }
+}
+#endif
+
 /*
  * close application upon (SIGINT / SIGTERM / SIGHUP)
  */
@@ -453,9 +471,27 @@ static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
 
 static void mainloop(BD_INFO *pinf)
 {
-    unsigned char txbuf[100];
-    unsigned char rxbuf[100];
+    unsigned char txbuf[256];
+    unsigned char rxbuf[256];
     uint16_t txlen;
+#if 1
+    uint8_t content[] = {
+        /* section ID */
+        0xBD, 0xBD,
+        /* local SIM no */
+        0x00, 0x00, 0x00, 0x00,
+        /* last minutes data */
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        /* this minutes data */
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0
+    };
+#else
     uint8_t content[] = {
         0xBD, 0xBD,
         0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC,
@@ -463,6 +499,7 @@ static void mainloop(BD_INFO *pinf)
         0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xA5, 0xA6,
         0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xA5, 0xA6, 0xA7,
     };
+#endif
 
     unsigned char buf_ip[1600];
     struct iphdr* p_iphdr   = NULL;
@@ -503,62 +540,108 @@ static void mainloop(BD_INFO *pinf)
         exit (0);
     }
 
+    // read local address at first, if beidou is not ready, retry after 10s
+    size_t msg_len = 0;
+    while (!g_cancelled) {
+        // rx_nbytes(pinf, rxbuf, TXXX_MAX_SIZE); // clear the possible rx data
+        // iot_dbg("clear rx buffer...\r\n");
+        memset(rxbuf, 0, sizeof(rxbuf));
+        compose_icjc(txbuf);
+        write(pinf->ttyfd, txbuf, 12);
+        if (10 == rx_nbytes(pinf, rxbuf, 10)) {
+            msg_len = (rxbuf[5] << 8) & rxbuf[6];
+            rx_nbytes(pinf, rxbuf, msg_len);
+            if (0 == memcmp(rxbuf, "$ICXX", 5)) {
+                memcpy(content + 2, &(rxbuf[7]), 3);
+                pinf->myno = (rxbuf[7] << 16) & (rxbuf[8] << 8) & rxbuf[9] & 0x1FFFFF;
+                break;
+            }
+        }
+        if (22 == rx_nbytes(pinf, rxbuf, 22)) {
+            iot_logbuf("received: ", rxbuf, 22);
+            //parse_icxx("received: ", rxbuf, 22);
+            break;
+        }
+    }
+
     while (!g_cancelled) {
         memset(&buf_ip, 0, sizeof(buf_ip));
 
-        recv_size = recv(s, &buf_ip, sizeof(buf_ip), 0);
-        if (recv_size == -1)
-        {
-            perror("Socket receive");
-            exit (0);
-        }
+        int ret = select(fd_max + 1, &fds, NULL, NULL, NULL);
+        if (ret < 0) {
+            iot_dbg("%s: select error, ret %d, errno %d !!\r\n", __FILE__, ret, errno);
+        } else {
+	    recv_size = recv(s, &buf_ip, sizeof(buf_ip), 0);
+	    if (recv_size == -1)
+	    {
+	        iot_dbg("%s: recv error, errno %d !!\r\n", __FILE__, errno);
+	    }
 
-        iphdr_offset = sizeof(struct ethhdr);
-        p_iphdr      = (struct iphdr*)(buf_ip + iphdr_offset);
+	    iphdr_offset = sizeof(struct ethhdr);
+	    p_iphdr      = (struct iphdr*)(buf_ip + iphdr_offset);
 
-        /*
-         * only print the TCP packets which have 0xBDBD at first two payload bytes
-         */
-        if (p_iphdr->protocol == IPPROTO_TCP)
-        {
-            tcphdr_offset  = iphdr_offset + (p_iphdr->ihl * 4);
-            p_tcphdr       = (struct tcphdr*)(buf_ip + tcphdr_offset);
-            tcpdata_offset = tcphdr_offset + p_tcphdr->th_off * 4;
+	    /*
+	     * only print the TCP packets which have 0xBDBD at first two payload bytes
+	     */
+	    if (p_iphdr->protocol == IPPROTO_TCP)
+	    {
+	        tcphdr_offset   = iphdr_offset + (p_iphdr->ihl * 4);
+	        p_tcphdr        = (struct tcphdr*)(buf_ip + tcphdr_offset);
+	        tcpdata_offset = tcphdr_offset + p_tcphdr->th_off * 4;
 
-            unsigned char* p_tcpdata = buf_ip + tcpdata_offset;
+	        uint8_t * p_tcpdata = buf_ip + tcpdata_offset;
 
-            if (p_tcpdata[0] == 0xbd && p_tcpdata[1] == 0xbd)
-            {
-                printf("\n* %s -> %s (IP packet)", \
-                        inet_ntoa(*((struct in_addr *)&(p_iphdr->saddr))), \
-            		inet_ntoa(*((struct in_addr *)&(p_iphdr->daddr))));
-                for(i = 0; i < recv_size - iphdr_offset; i++)
-                {
-                    if (i%16 == 0)
-                    {
-                        printf("\n0x%04hhx: ", i);
+	        if (p_tcpdata[0] == 0xbd && p_tcpdata[1] == 0xbd)
+	        {
+	    	    iot_dbg("\n* %s -> %s (IP packet)", \
+	    	    	inet_ntoa(*((struct in_addr *)&(p_iphdr->saddr))), \
+	    	    	inet_ntoa(*((struct in_addr *)&(p_iphdr->daddr))));
+	    	    for(i = 0; i < recv_size - iphdr_offset; i++)
+	    	    {
+	    	        if (i%16 == 0)
+	    	        {
+	    	    	    iot_dbg("\n0x%04hhx: ", i);
+	    	        }
+	    	        iot_dbg("%02hhX ", buf_ip[i + iphdr_offset]);
+	    	    }
+	            iot_dbg("\n");
+	    	    /* NOTICE: relay to beidou. Assuming no sticky package and only relay 32 bytes */
+                if (recv_size - tcpdata_offset >= 32) {
+                    memcpy(content + 6, content + 6 + 32, 32);
+                    memcpy(content + 6 + 32, &(p_tcpdata[2]), 32);
+                    txlen = compose_txsq(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
+                    iot_logbuf("sending data: ", txbuf, txlen);
+                    write(pinf->ttyfd, txbuf, txlen);
+
+                    rx_nbytes(pinf, rxbuf, 10);
+                    msg_len = (rxbuf[5] << 8) & rxbuf[6];
+                    rx_nbytes(pinf, rxbuf + 10, msg_len - 10);
+                    if (0 == memcmp(rxbuf, "$FKXX", 5)) {
+                        if (rxbuf[10]) { // check the feedback flag
+                            iot_logbuf("sending data fails: ", rxbuf, msg_len);
+                        }
                     }
-                    printf("%02hhX ", buf_ip[i + iphdr_offset]);
                 }
+	        }
+	    }
+#if 0
+            if (ret == pinf->ttyfd) {
+                rx_nbytes(pinf, rxbuf, 22);
+                iot_logbuf("received: ", rxbuf, 22);
+
+                sleep(1);
+                tcflush(pinf->ttyfd, TCIOFLUSH);
+
+                txlen = compose_txsq(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
+                write(pinf->ttyfd, txbuf, txlen);
+                rx_nbytes(pinf, rxbuf, 16);
+                iot_logbuf("received: ", rxbuf, 16);
+                rx_nbytes(pinf, rxbuf, 54);
+                iot_logbuf("received: ", rxbuf, 54);
+            } else if (ret == s) {
             }
-            printf("\n");
+#endif
         }
-
-        compose_icjc(txbuf);
-        write(pinf->ttyfd, txbuf, 12);
-        rx_nbytes(pinf, rxbuf, 22);
-        iot_logbuf("received: ", rxbuf, 22);
-
-        sleep(1);
-        tcflush(pinf->ttyfd, TCIOFLUSH);
-
-        txlen = compose_txsq(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
-        write(pinf->ttyfd, txbuf, txlen);
-        rx_nbytes(pinf, rxbuf, 16);
-        iot_logbuf("received: ", rxbuf, 16);
-        rx_nbytes(pinf, rxbuf, 54);
-        iot_logbuf("received: ", rxbuf, 54);
-        break;
     }
     close(s);
 }
@@ -583,7 +666,7 @@ int main (int argc, char *argv[])
     /* close all inheritated fd, excluding pid file */
     close_allfd(pid_fd);
 #endif
-    iot_inf("Starting bdrelay...");
+    iot_inf("Starting zl100mt-app ...");
 
     set_sighandler();
 

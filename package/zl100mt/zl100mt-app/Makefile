@@ -61,6 +61,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/logrotate.conf $(1)/etc/logrotate.d/zl100mt
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/temperature.sh $(1)/usr/bin/temperature.sh
+	$(INSTALL_DIR) $(1)/root
+	$(INSTALL_DATA) ./files/.vimrc $(1)/root
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
