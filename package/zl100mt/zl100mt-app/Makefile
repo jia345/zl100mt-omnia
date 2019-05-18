@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=zl100mt-app
-PKG_RELEASE:=1
+PKG_RELEASE:=1.0
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
@@ -48,6 +48,7 @@ endef
 define Package/$(PKG_NAME)/install
 	@echo Installing zl100mt-app......
 	$(INSTALL_DIR) $(1)/etc/zl100mt-app
+	echo $(PKG_RELEASE) > $(1)/etc/zl100mt-version
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/

@@ -1,0 +1,90 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get gnss settings",
+            "properties": {
+                "module": {"enum": ["gnss"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]},
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get gnss settings",
+            "properties": {
+                "module": {"enum": ["gnss"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "gnss_cfg": {
+                            "type": "object",
+                            "properties": {
+                                "remote_sim_no": {"type": "integer"},
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to update gnss settings",
+            "properties": {
+                "module": {"enum": ["gnss"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "gnss_cfg": {
+                            "type": "object",
+                            "properties": {
+                                "remote_sim_no": {"type": "integer"},
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update gnss settings",
+            "properties": {
+                "module": {"enum": ["gnss"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that gnss settings were updated",
+            "properties": {
+                "module": {"enum": ["gnss"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "gnss_cfg": {
+                            "type": "object",
+                            "properties": {
+                                "remote_sim_no": {"type": "integer"},
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    ]
+}

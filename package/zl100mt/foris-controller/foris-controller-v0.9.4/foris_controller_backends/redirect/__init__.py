@@ -45,7 +45,8 @@ class RedirectUciCommands(object):
         print redirects
         rules = []
         for redirect in redirects:
-            rules.append(redirect['data'])
+            if redirect['name'] != 'dmz_host':
+                rules.append(redirect['data'])
         print rules
         res["redirects"] = rules
 

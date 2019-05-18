@@ -13,24 +13,24 @@ class RoutingInforCmd() :
     def implement(self, data, session):
         print 'RoutingInforCmd: {}'.format(data)
         routes = []
+        route = data["dat"]["routingData"]
+        print 'routingData : {}'.format(route)
+        routes.append({
+            "interface": route["ifName"],
+            "target": route["dstNet"],
+            "netmask": route["subMask"],
+            "gateway": route["gwIP"],
+            "metric": int(route["Metric"])
+        })
         if data['dat']['operation'] == "add" :
-            route = data["dat"]["routingData"]
-            print 'routingData : {}'.format(route)
             action = "route_add"
-            if data["dat"]["operation"] == 'del':
-                action = "route_del"
-            else :
-                action = "route_add"
-            routes.append({
-                "interface": route["ifName"],
-                "target": route["dstNet"],
-                "netmask": route["subMask"],
-                "gateway": route["gwIP"],
-                "metric": int(route["Metric"])
-            })
+        elif data['dat']['operation'] == "del":
+            action = "route_del"
+        else:
+            return {"rc": 1, "errCode": "fail", "dat": 'Unsupported operation'}
 
         print routes
-        rc = current_state.backend.perform("network", "update_settings", {"action": "route_add", "routes":routes})
+        rc = current_state.backend.perform("network", "update_settings", {"action": action, "routes":routes})
         print rc
         res = {"rc": 0, "errCode": "success", "dat": None}
         return res
@@ -61,7 +61,7 @@ class GetRoutingInforCmd() :
             "network", "get_settings",
             {
                 "action":"route",
-                "data":{"interface": data['dat']['modulType']}
+                "data":{"interface": data['dat']['modulType'].lower()}
             })
         print 'GetRoutingInforCmd : \n'
         routes = []
@@ -131,9 +131,11 @@ class GetSysInforCmd() :
                 "targetSim":"01897", "localSim":"02654"
                 },
             "DHCP":cmdDhcpCfg.get_dhcp(),
+            "LAN": cmdDhcpCfg.get_lan_cfg(),
+            '''
             "LAN":{
-		"LAN":[
-			{"port":"LAN1", "MAC":"01-21-09", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
+		        "LAN":[
+			        {"port":"LAN1", "MAC":"01-21-09", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
                 	{"port":"LAN2", "MAC":"01-21-19", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
                         {"port":"LAN3", "MAC":"01-21-29", "IP":"10.1.1.13", "subMask":"255.255.255.0"}
                      ],
@@ -143,6 +145,7 @@ class GetSysInforCmd() :
                         {"port":"LAN2","MAC":"01-29-05", "IP":"128.0.1.12", "type":"pc"}
                      ]
                 },
+            '''
             "RTMP":{
                 "ServerIP":"10.1.1.12",
                 "channelList":[
@@ -157,7 +160,7 @@ class GetSysInforCmd() :
                 "vpnKey":"34sd4",
                 "vpnStatus":"on"
                 }, # on/off
-            "FireWall": cmdGetFirewall.implement(),
+            "FireWall": cmdGetFirewall.implement(session),
             '''
             "FireWall":{
                 "ipFilter":"off",

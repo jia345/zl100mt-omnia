@@ -21,24 +21,20 @@ import logging
 
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
-from foris_controller_backends.dhcp import DhcpUciCommands
+from foris_controller_backends.gnss import GnssUciCommands
 
 from .. import Handler
 
 logger = logging.getLogger(__name__)
 
 
-class OpenwrtDhcpHandler(Handler, BaseOpenwrtHandler):
-    uci_dhcp_cmds = DhcpUciCommands()
+class OpenwrtGnssHandler(Handler, BaseOpenwrtHandler):
+    uci_gnss_cmds = GnssUciCommands()
 
     @logger_wrapper(logger)
     def get_settings(self):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.get_settings()
+        return OpenwrtGnssHandler.uci_gnss_cmds.get_settings()
 
     @logger_wrapper(logger)
-    def get_lan_cfg(self):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.get_lan_cfg()
-
-    @logger_wrapper(logger)
-    def update_settings(self, dhcp_cfg):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.update_settings(dhcp_cfg)
+    def update_settings(self, gnss_cfg):
+        return OpenwrtGnssHandler.uci_gnss_cmds.update_settings(gnss_cfg)

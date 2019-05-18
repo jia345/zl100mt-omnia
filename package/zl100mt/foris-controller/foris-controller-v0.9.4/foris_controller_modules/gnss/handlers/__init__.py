@@ -17,28 +17,10 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import logging
+from .mock import MockDhcpHandler
+from .openwrt import OpenwrtDhcpHandler
 
-from foris_controller.handler_base import BaseOpenwrtHandler
-from foris_controller.utils import logger_wrapper
-from foris_controller_backends.dhcp import DhcpUciCommands
-
-from .. import Handler
-
-logger = logging.getLogger(__name__)
-
-
-class OpenwrtDhcpHandler(Handler, BaseOpenwrtHandler):
-    uci_dhcp_cmds = DhcpUciCommands()
-
-    @logger_wrapper(logger)
-    def get_settings(self):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.get_settings()
-
-    @logger_wrapper(logger)
-    def get_lan_cfg(self):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.get_lan_cfg()
-
-    @logger_wrapper(logger)
-    def update_settings(self, dhcp_cfg):
-        return OpenwrtDhcpHandler.uci_dhcp_cmds.update_settings(dhcp_cfg)
+__all__ = [
+    'MockDhcpHandler',
+    'OpenwrtDhcpHandler',
+]

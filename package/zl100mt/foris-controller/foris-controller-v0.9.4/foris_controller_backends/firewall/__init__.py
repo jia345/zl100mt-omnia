@@ -27,9 +27,6 @@ class FirewallUciCommands(object):
         ip_filter_table = [dict(d) for d in ip_filter_data]
         mac_filter_table = [dict(d) for d in mac_filter_data]
 
-        logger.debug('xijia tables %s \n mac_tables %s' % (ip_filter_table, mac_filter_table))
-        logger.debug('xijia rules %s' % rules)
-
         res= {
             'ip_filter_enabled': ip_filter_enabled,
             'mac_filter_enabled': mac_filter_enabled,
@@ -68,8 +65,6 @@ class FirewallUciCommands(object):
             cfg = backend.read('firewall')
             rules = get_sections_by_type(cfg, 'firewall', 'rule')
             ipsets = get_sections_by_type(cfg, 'firewall', 'ipset')
-            logger.debug('xijia data %s' % data)
-            logger.debug('xijia rules %s' % rules)
 
             for e in rules:
                 if e['name'].startswith('ip_filter_'):
@@ -125,8 +120,6 @@ class FirewallUciCommands(object):
         with UciBackend() as backend:
             cfg = backend.read('firewall')
             rules = get_sections_by_type(cfg, 'firewall', 'rule')
-            logger.debug('xijia data %s' % data)
-            logger.debug('xijia rules %s' % rules)
 
             for e in rules:
                 if e['name'].startswith('mac_filter_'):

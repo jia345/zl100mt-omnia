@@ -27,21 +27,12 @@ class DhcpModule(BaseModule):
     logger = logging.getLogger(__name__)
 
     def action_get_settings(self, data):
-        """ Get current lan settings
-        :param data: supposed to be {}
-        :type data: dict
-        :returns: current lan settings
-        :rtype: dict
-        """
         return self.handler.get_settings()
 
+    def action_get_lan_cfg(self, data):
+        return self.handler.get_lan_cfg()
+
     def action_update_settings(self, data):
-        """ Updates lan settings
-        :param data: new lan settings
-        :type data: dict
-        :returns: result of the update {'result': True/False}
-        :rtype: dict
-        """
         res = self.handler.update_settings(data)
         if res:
             self.notify("update_settings", data)
@@ -51,6 +42,7 @@ class DhcpModule(BaseModule):
 @wrap_required_functions([
     'get_settings',
     'update_settings',
+    'get_lan_cfg'
 ])
 class Handler(object):
     pass

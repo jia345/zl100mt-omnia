@@ -51,7 +51,11 @@ class NtpSyncDatetime():
 
         return res
 
+class GetLogLinkCmd():
+    def implement(self, data, session=None):
+        res = current_state.backend.perform("maintain", "get_log_links", msg)
+        return res
 
 cmdReboot = SysReboot()
 cmdTime = NtpSyncDatetime()
-
+cmdGetLogLink = GetLogLinkCmd()

@@ -423,7 +423,7 @@ dhcp_add() {
 	config_get options "$cfg" options
 	config_get_bool dynamicdhcp "$cfg" dynamicdhcp 1
 
-	leasetime="${leasetime:-12h}"
+	leasetime="${leasetime:-120m}"
 	start="$(dhcp_calc "${start:-100}")"
 	limit="${limit:-150}"
 	[ "$limit" -gt 0 ] && limit=$((limit-1))

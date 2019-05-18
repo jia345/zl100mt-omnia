@@ -17,47 +17,33 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import logging
+import logging, os
 
 from foris_controller_backends.uci import (
-    UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type
+    UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type, get_section
 )
 from foris_controller_backends.services import OpenwrtServices
 from foris_controller.exceptions import UciRecordNotFound
 
 logger = logging.getLogger(__name__)
 
-
-class IpmacbindUciCommands(object):
+class GnssUciCommands(object):
 
     def get_settings(self):
-
         with UciBackend() as backend:
             dhcp_data = backend.read("dhcp")
-            hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
-        ipmacbinds = []
-        for host in hosts:
-            if 'mac' in host and 'ip' in host:
-                ipmacbinds.append(host['data'])
+            dhcp_lan = get_section(dhcp_data, "dhcp", "lan")
+            network_data = backend.read("network")
+            network_lan = get_section(network_data, "network", "lan")
 
-        res = {
-            "ipmac_binds": ipmacbinds
+        cmd = "sed -n 's/number=\(.*\)/\1/p' /etc/zl100mt-app/zl100mt-app.conf"
+        remote_sim_no = os.popen(cmd)
+        return {
+            "gnss_cfg": { 'remote_sim_no': remote_sim_no }
         }
 
-        return res
-
     def update_settings(self, data):
-        print 'IPMAC bind update_settings :'
-        with UciBackend() as backend:
-            dhcp_data = backend.read("dhcp")
-            hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
-            for i in range(0, len(hosts)):
-                backend.del_section('dhcp', '@host[%d]'%i)
-
-            for host in data['ipmac_binds']:
-                backend.add_section('dhcp','host')
-                backend.set_option('dhcp','@host[-1]','ip',host['ip'])
-                backend.set_option('dhcp', '@host[-1]', 'mac', host['mac'])
-                backend.set_option('dhcp', '@host[-1]', 'name', host['name'])
-
+        cmd = "sed -i 's/number=\(.*\)/number=%s/' /etc/zl100mt-app/zl100mt-app.conf" % data['gnss_cfg']['remote_sim_no']
+        os.popen(cmd)
         return True
+

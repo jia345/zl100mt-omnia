@@ -1,71 +1,94 @@
 
 from foris.state import current_state
 
+def validate_ip(s):
+    a = s.split('.')
+    if len(a) != 4:
+        return False
+    for x in a:
+        if not x.isdigit():
+            return False
+        i = int(x)
+        if i < 0 or i > 255:
+            return False
+    return True
+
 class DhcpCmd():
-    def __init__(self):
-        self.action = 'setMacIPMapping'
-        self.default_data = {}
-
     def implement(self, data, session):
-        print "DhcpCmd-implement"
-
         dhcp_data = data['dat']['DHCP']
-        startIp = dhcp_data['startIP'].split('.')
-        endIp = dhcp_data['endIP'].split('.')
-        dhcpOption = []
-        dhcpOption.append("1," + dhcp_data['subMask'])
-        dhcpOption.append("3," + dhcp_data['defaultGwIP'])
-        dns1 = dhcp_data['DNS1'] if dhcp_data['DNS1'] else ''
-        dns2 = (',%s' % dhcp_data['DNS2']) if dhcp_data['DNS2'] else ''
-        dhcpOption.append("6," + dns1 + dns2)
-        #if dhcp_data['DNS2']:
-        #    dhcpOption.append("6," + dhcp_data['DNS2']
+        is_good_gw = validate_ip(dhcp_data['defaultGwIP']) or (dhcp_data['defaultGwIP'] == '')
+        is_good_netmask = validate_ip(dhcp_data['subMask'])
+        is_good_start_ip = validate_ip(dhcp_data['startIP'])
+        is_good_end_ip = validate_ip(dhcp_data['endIP'])
+        is_good_dns1_ip = validate_ip(dhcp_data['DNS1']) or (dhcp_data['DNS1'] == '')
+        is_good_dns2_ip = validate_ip(dhcp_data['DNS2']) or (dhcp_data['DNS2'] == '')
+        is_good_ip = (is_good_gw and is_good_netmask and is_good_start_ip
+                        and is_good_end_ip and is_good_dns1_ip and is_good_dns2_ip)
+        is_good_leasetime = dhcp_data['leaseTerm'].isdigit()
 
-        dhcpCfg = []
-        dhcpCfg.append({
-            'ignore': 0 if dhcp_data['dhcpStatus']=="DHCP" else 1,
-            "start": int(startIp[-1]),
-            "limit": int(endIp[-1]) - int(startIp[-1]) + 1,
-            "leasetime": dhcp_data['leaseTerm'] + 'm',
-            "dhcp_option": dhcpOption
-        })
+        if not is_good_ip:
+            return {'rc': 1, 'errCode': 'fail', 'dat': 'Wrong IP format'}
+        if not is_good_leasetime:
+            return {'rc': 2, 'errCode': 'fail', 'dat': 'Wrong lease time'}
 
-        rc = current_state.backend.perform("dhcp", "update_settings", {"dhcp_cfg": dhcpCfg})
-        print rc
-        res = {"rc": 0, "errCode": "success", "dat": None}
+        dhcpCfg = {
+            'ignore': 0 if dhcp_data['dhcpStatus']=='DHCP' else 1,
+            'start_ip': dhcp_data['startIP'],
+            'end_ip': dhcp_data['endIP'],
+            'netmask': dhcp_data['subMask'],
+            'leasetime_m': int(dhcp_data['leaseTerm']),
+            'gw_ip': dhcp_data['defaultGwIP'],
+            'dns1': dhcp_data['DNS1'],
+            'dns2': dhcp_data['DNS2']
+        }
+
+        rc = current_state.backend.perform('dhcp', 'update_settings', {'dhcp_cfg': dhcpCfg})
+        res = {'rc': 0, 'errCode': 'success', 'dat': None} if rc['result'] else {'rc': 1, 'errCode': 'fail', 'dat': 'Wrong parameters'}
         return res
 
     def get_dhcp(self):
-        data = current_state.backend.perform("dhcp", "get_settings", {})
-
+        data = current_state.backend.perform('dhcp', 'get_settings', {})
         dhcp_data = data['dhcp_cfg']
-        for option in dhcp_data['dhcp_option']:
-            arr = option.split(',')
-            if int(arr[0]) == 1:
-                submask = arr[1]
-            if int(arr[0]) == 3:
-                gwIp = arr[1]
-            if int(arr[0]) == 6:
-                dns1 = arr[1]
-                dns2 = arr[2]
 
-        ipArr = gwIp.split('.')
-        ipArr[3] = str(dhcp_data['start'])
-        startIP = '.'.join(ipArr)
-        ipArr[3] = str(dhcp_data['start'] + dhcp_data['limit']-1)
-        endIP = '.'.join(ipArr)
+        dhcp = {
+            'dhcpStatus': 'Statics' if dhcp_data['ignore'] else 'DHCP',
+            'startIP': dhcp_data['start_ip'],
+            'endIP': dhcp_data['end_ip'],
+            'leaseTerm': dhcp_data['leasetime_m'],
+            'subMask': dhcp_data['netmask'],
+            'defaultGwIP': dhcp_data['gw_ip'],
+            'DNS1': dhcp_data['dns1'],
+            'DNS2': dhcp_data['dns2']
+        }
 
-        dhcp = {}
-        dhcp['dhcpStatus'] = 'Statics' if dhcp_data['ignore'] else 'DHCP'
-        dhcp['startIP'] = startIP
-        dhcp['endIP'] = endIP
-        dhcp['leaseTerm'] = dhcp_data['leasetime'].replace('m', '')
-        dhcp['subMask'] = submask
-        dhcp['defaultGwIP'] = gwIp
-        dhcp['DNS1'] = dns1
-        dhcp['DNS2'] = dns2
-
-        print dhcp
         return dhcp
+
+    def get_lan_cfg(self):
+        data        = current_state.backend.perform('dhcp', 'get_lan_cfg', {})
+        lan_info    = []
+        access_info = []
+
+        for e in data['lan_cfg']:
+            lan_info.append({
+                'port': e['port'],
+                'MAC': e['mac'],
+                'IP': e['ip'],
+                'subMask': e['netmask']
+            })
+
+        for e in data['access_list']:
+            lan_info.append({
+                'port': e['port'],
+                'MAC': e['mac'],
+                'IP': e['ip'],
+                'type': e['type']
+            })
+
+        res = {
+            'LAN': lan_info,
+            'accessList': access_info
+        }
+
+        return res
 
 cmdDhcpCfg = DhcpCmd()

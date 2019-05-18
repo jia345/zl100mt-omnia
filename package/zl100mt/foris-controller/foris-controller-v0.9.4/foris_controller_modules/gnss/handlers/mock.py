@@ -50,10 +50,6 @@ class MockDhcpHandler(Handler, BaseMockHandler):
         return result
 
     @logger_wrapper(logger)
-    def get_lan_cfg(self):
-        return []
-
-    @logger_wrapper(logger)
     def update_settings(
             self, dhcp_cfg):
         """ Mocks updates current dns settings

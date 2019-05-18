@@ -5,37 +5,12 @@
             "properties": {
                 "module": {"enum": ["dhcp"]},
                 "kind": {"enum": ["request"]},
-                "action": {"enum": ["get_settings"]},
-                "data":{
-                    "type": "object",
-                    "properties": {
-                        "dhcp_cfg": {
-                            "type": "array",
-                            "items": {
-                            "allOf": [
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "ignore": {"type": "integer"},
-                                    "start": {"type": "integer"},
-                                    "limit": {"type": "integer"},
-                                    "leasetime": {"type": "string"},
-                                    "dhcp_option": {
-                                        "type": "array",
-                                        "items": {"type": "string"}
-                                    }
-                                }
-                            }
-                        ]
-                            }
-                        }
-                    }
-                }
+                "action": {"enum": ["get_settings"]}
             },
             "additionalProperties": false
         },
         {
-            "description": "request to get dhcp settings",
+            "description": "reply to get dhcp settings",
             "properties": {
                 "module": {"enum": ["dhcp"]},
                 "kind": {"enum": ["reply"]},
@@ -44,23 +19,16 @@
                     "type": "object",
                     "properties": {
                         "dhcp_cfg": {
-                            "type": "array",
-                            "items": {
-                                "allOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "ignore": {"type": "integer"},
-                                            "start": {"type": "integer"},
-                                            "limit": {"type": "integer"},
-                                            "leasetime": {"type": "string"},
-                                            "dhcp_option": {
-                                                "type": "array",
-                                                "items": {"type": "string"}
-                                            }
-                                        }
-                                    }
-                                ]
+                            "type": "object",
+                            "properties": {
+                                "ignore": {"type": "integer"},
+                                "start_ip": {"format": "ipv4"},
+                                "end_ip": {"format": "ipv4"},
+                                "leasetime_m": {"type": "integer"},
+                                "netmask": {"type": "string"},
+                                "gw_ip": {"type": "string"},
+                                "dns1": {"type": "string"},
+                                "dns2": {"type": "string"}
                             }
                         }
                     }
@@ -74,27 +42,20 @@
                 "module": {"enum": ["dhcp"]},
                 "kind": {"enum": ["request"]},
                 "action": {"enum": ["update_settings"]},
-                "data": {
+                "data":{
                     "type": "object",
                     "properties": {
                         "dhcp_cfg": {
-                            "type": "array",
-                            "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "ignore": {"type": "integer"},
-                                            "start": {"type": "integer"},
-                                            "limit": {"type": "integer"},
-                                            "leasetime": {"type": "string"},
-                                            "dhcp_option": {
-                                                "type": "array",
-                                                "items": {"type": "string"}
-                                            }
-                                        }
-                                    }
-                                ]
+                            "type": "object",
+                            "properties": {
+                                "ignore": {"type": "integer"},
+                                "start_ip": {"format": "ipv4"},
+                                "end_ip": {"format": "ipv4"},
+                                "leasetime_m": {"type": "integer"},
+                                "netmask": {"type": "string"},
+                                "gw_ip": {"type": "string"},
+                                "dns1": {"type": "string"},
+                                "dns2": {"type": "string"}
                             }
                         }
                     }
@@ -104,7 +65,7 @@
             "required": ["data"]
         },
         {
-            "description": "request to update dhcp settings",
+            "description": "reply to update dhcp settings",
             "properties": {
                 "module": {"enum": ["dhcp"]},
                 "kind": {"enum": ["reply"]},
@@ -125,27 +86,71 @@
                 "module": {"enum": ["dhcp"]},
                 "kind": {"enum": ["notification"]},
                 "action": {"enum": ["update_settings"]},
-                "data": {
+                "data":{
                     "type": "object",
                     "properties": {
                         "dhcp_cfg": {
+                            "type": "object",
+                            "properties": {
+                                "ignore": {"type": "integer"},
+                                "start_ip": {"format": "ipv4"},
+                                "end_ip": {"format": "ipv4"},
+                                "leasetime_m": {"type": "integer"},
+                                "netmask": {"type": "string"},
+                                "gw_ip": {"type": "string"},
+                                "dns1": {"type": "string"},
+                                "dns2": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to get lan settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_lan_cfg"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get lan settings",
+            "properties": {
+                "module": {"enum": ["dhcp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_lan_cfg"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "lan_cfg": {
                             "type": "array",
                             "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "ignore": {"type": "integer"},
-                                            "start": {"type": "integer"},
-                                            "limit": {"type": "integer"},
-                                            "leasetime": {"type": "string"},
-                                            "dhcp_option": {
-                                                "type": "array",
-                                                "items": {"type": "string"}
-                                            }
-                                        }
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "port": {"type": "string"},
+                                        "mac": {"format": "macaddress"},
+                                        "ip": {"format": "ipv4"},
+                                        "netmask": {"format": "ipv4"}
                                     }
-                                ]
+                                }]
+                            }
+                        },
+                        "access_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "port": {"type": "string"},
+                                        "mac": {"format": "macaddress"},
+                                        "ip": {"format": "ipv4"},
+                                        "type": {"type": "string"}
+                                    }
+                                }]
                             }
                         }
                     }

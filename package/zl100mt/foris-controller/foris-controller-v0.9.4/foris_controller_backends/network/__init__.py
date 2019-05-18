@@ -17,7 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import logging
+import logging, hashlib
 
 from foris_controller_backends.uci import (
     UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type
@@ -40,7 +40,13 @@ class NetworkUciCommands(object):
             print "NetworkUciCommands : action = %s" % data["action"]
             if data['action'] == 'route' :
                 print "route info get setting!!"
-                routes = get_sections_by_type(network_data, "network", "route")
+                try:
+                    routes = get_sections_by_type(network_data, "network", "route")
+                    routes = [
+                        e for e in routes if e['data']['interface'] == data['data']['interface']
+                    ]
+                except:
+                    routes = []
 
                 routesInfo = []
                 for route in routes:
@@ -66,17 +72,19 @@ class NetworkUciCommands(object):
                 for route in data['routes']:
                     print route
                     route['section'] = "%s_%s" % (route["interface"], route['target'].replace('.',''))
-                    backend.add_section('network','route',route['section'])
-                    # backend.set_option('network',route['section'],'interface', route['interface'])
-                    backend.set_option('network', route['section'], 'interface', 'wan')
-                    backend.set_option('network',route['section'], 'target', route['target'])
-                    backend.set_option('network',route['section'], 'netmask', route['netmask'])
-                    backend.set_option('network',route['section'], 'gateway', route['gateway'])
-                    backend.set_option('network', route['section'], 'metric', route['metric'])
+                    content = '%s_%s_%s_%s_%s' % (route['interface'], route['target'], route['netmask'], route['gateway'], route['metric'])
+                    section_name = 'route_%s' % hashlib.md5(content).hexdigest()
+                    backend.add_section('network','route', section_name)
+                    backend.set_option('network', section_name, 'interface', route['interface'])
+                    backend.set_option('network', section_name, 'target', route['target'])
+                    backend.set_option('network', section_name, 'netmask', route['netmask'])
+                    backend.set_option('network', section_name, 'gateway', route['gateway'])
+                    backend.set_option('network', section_name, 'metric', route['metric'])
             elif data['action'] == "route_del":
-                # routes = get_sections_by_type(network_data, "network", "route")
                 for route in data['routes']:
-                    section_name = "%s_%s" % (route["interface"], route['target'].replace('.',''))
+                    content = '%s_%s_%s_%s_%s' % (route['interface'], route['target'], route['netmask'], route['gateway'], route['metric'])
+                    section_name = 'route_%s' % hashlib.md5(content).hexdigest()
+                    #section_name = "%s_%s" % (route["interface"], route['target'].replace('.',''))
                     backend.del_section("network",section_name)
 
             elif data['action'] == "interface_add":

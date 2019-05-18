@@ -13,34 +13,43 @@ from foris import BASE_DIR
 from foris.utils import login_required, messages, is_safe_redirect
 from foris.middleware.bottle_csrf import get_csrf_token
 
-from foris.zl100mt.Login import cmdLogin,cmdGetUserInfo,cmdSetPwd
-from foris.zl100mt.Routing import cmdSysInfor,cmdRoutingInfor,cmdGetRoutingInfo
-from foris.zl100mt.System import cmdReboot
-from foris.zl100mt.System import cmdTime
+from foris.zl100mt.Login import cmdLogin, cmdGetUserInfo, cmdSetPwd, cmdResetPwd
+from foris.zl100mt.Routing import cmdSysInfor, cmdRoutingInfor, cmdGetRoutingInfo
+from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.testAjax import run_ajax_test
+from foris.zl100mt.wan import cmdSetWanOnOff
+from foris.zl100mt.gnss import cmdGnssSetRemoteCfg
 from foris.zl100mt.Lan import cmdLanCfg
 from foris.zl100mt.dhcp import cmdDhcpCfg
-from foris.zl100mt.portmapping import setportmapping,channelmapping
+from foris.zl100mt.portmapping import setportmapping, channelmapping
 from foris.zl100mt.firewall import cmdSetFirewall, cmdSetIpFilter, cmdSetMacFilter
 
 CONFIG_COMMANDS = {
     'login': cmdLogin,
     'getUserInfor': cmdGetUserInfo,
     'setPWD': cmdSetPwd,
+    'resetDefaultPwd': cmdResetPwd,
+    #'resetToDefault': cmdResetToFactoryDefault,
+    'reBoot': cmdReboot,
+    'getLogLink': cmdGetLogLink,
     'getSysInfor': cmdSysInfor,
     'setRouting': cmdRoutingInfor,
     'getRoutingInfor': cmdGetRoutingInfo,
-    'reBoot': cmdReboot,
-    'setMacIPMapping': cmdIpmacbind,
+    'operateModul': cmdSetWanOnOff,
     'setLanCfg': cmdLanCfg,
     'setDhcpCfg': cmdDhcpCfg,
-    'setPortMapping': setportmapping,
-    'setSlotChannelMapping': channelmapping,
+    #'connectVPN': cmdDhcpCfg,
     'syncDatetime': cmdTime,
     'setFirewall': cmdSetFirewall,
     'setIPFilterTable': cmdSetIpFilter,
-    'setMacFilterTable': cmdSetMacFilter
+    'setMacFilterTable': cmdSetMacFilter,
+    'setPortMapping': setportmapping,
+    'setSlotChannelMapping': channelmapping,
+    'setMacIPMapping': cmdIpmacbind,
+    #'setRtmpChannel': cmdIpmacbind,
+    #'setRtmpServerIP': cmdIpmacbind,
+    'setGnssTargetSim': cmdGnssSetRemoteCfg
 }
 
 
