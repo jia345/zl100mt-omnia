@@ -50,6 +50,10 @@ class MockRedirectHandler(Handler, BaseMockHandler):
         return result
 
     @logger_wrapper(logger)
+    def get_port_mapping(self):
+        return {}
+
+    @logger_wrapper(logger)
     def update_settings(
             self, ipmac_binds):
         """ Mocks updates current dns settings

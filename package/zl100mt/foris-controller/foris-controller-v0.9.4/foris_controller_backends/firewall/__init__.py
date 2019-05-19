@@ -1,4 +1,4 @@
-import logging
+import os, logging, hashlib
 
 from foris_controller_backends.uci import (
     UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type
@@ -18,14 +18,37 @@ class FirewallUciCommands(object):
         ip_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'ip_filter_enabled'))
         mac_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'mac_filter_enabled'))
         dmz_enabled = parse_bool(get_option_named(cfg, 'firewall', 'dmz_host', 'enabled'))
-        dmz_ip = get_option_named(cfg, 'firewall', 'dmz_host', 'dest_ips')
+        dmz_ip = get_option_named(cfg, 'firewall', 'dmz_host', 'dest_ip')
 
-        rules = get_sections_by_type(cfg, 'firewall', 'rule')
+        try:
+            rules = get_sections_by_type(cfg, 'firewall', 'rule')
+        except:
+            rules = []
         ip_filter_data = [e['data'] for e in rules if e['name'].startswith('ip_filter_')]
         mac_filter_data = [e['data'] for e in rules if e['name'].startswith('mac_filter_')]
 
-        ip_filter_table = [dict(d) for d in ip_filter_data]
-        mac_filter_table = [dict(d) for d in mac_filter_data]
+        ip_filter_table = []
+        for e in [dict(d) for d in ip_filter_data]:
+            ip_filter_table.append({
+                'enabled': parse_bool(e['enabled']),
+                'timeout': int(e['timeout']),
+                'lan_ips': e['src_ip'],
+                'lan_ports': e['src_port'],
+                'wan_ips': e['dest_ip'],
+                'wan_ports': e['dest_port'],
+                'proto': e['proto'],
+            })
+
+        mac_filter_table = []
+        for e in [dict(d) for d in mac_filter_data]:
+            mac_filter_table.append({
+                'enabled': parse_bool(e['enabled']),
+                'mac': e['src_mac'],
+                'desc': e['name'],
+            })
+
+        logger.debug('xijia tables %s \n mac_tables %s' % (ip_filter_table, mac_filter_table))
+        logger.debug('xijia rules %s' % rules)
 
         res= {
             'ip_filter_enabled': ip_filter_enabled,
@@ -45,14 +68,14 @@ class FirewallUciCommands(object):
 
             for e in rules:
                 if e['name'].startswith('ip_filter_'):
-                    backend.set_option('firewall', e['name'], 'enabled', data['ip_filter_enabled'])
+                    backend.set_option('firewall', e['name'], 'enabled', store_bool(data['ip_filter_enabled']))
                 if e['name'].startswith('mac_filter_'):
-                    backend.set_option('firewall', e['name'], 'enabled', data['mac_filter_enabled'])
+                    backend.set_option('firewall', e['name'], 'enabled', store_bool(data['mac_filter_enabled']))
 
-            backend.set_option('firewall', 'global', 'ip_filter_enabled', data['ip_filter_enabled'])
-            backend.set_option('firewall', 'global', 'mac_filter_enabled', data['mac_filter_enabled'])
-            backend.set_option('firewall', 'dmz_host', 'dmz_enabled', data['enabled'])
-            backend.set_option('firewall', 'dmz_host', 'dmz_ip', data['dest_ips'])
+            backend.set_option('firewall', 'global', 'ip_filter_enabled', store_bool(data['ip_filter_enabled']))
+            backend.set_option('firewall', 'global', 'mac_filter_enabled', store_bool(data['mac_filter_enabled']))
+            backend.set_option('firewall', 'dmz_host', 'enabled', store_bool(data['dmz_enabled']))
+            backend.set_option('firewall', 'dmz_host', 'dest_ip', data['dmz_ip'])
 
         with OpenwrtServices() as services:
             services.restart("network", delay=2)
@@ -63,55 +86,77 @@ class FirewallUciCommands(object):
     def set_ip_filter(self, data):
         with UciBackend() as backend:
             cfg = backend.read('firewall')
-            rules = get_sections_by_type(cfg, 'firewall', 'rule')
-            ipsets = get_sections_by_type(cfg, 'firewall', 'ipset')
+
+            try:
+                rules = get_sections_by_type(cfg, 'firewall', 'rule')
+            except:
+                rules = []
+
+            '''
+            try:
+                ipsets = get_sections_by_type(cfg, 'firewall', 'ipset')
+            except:
+                ipsets = []
+            '''
+
+            logger.debug('xijia data %s' % data)
+            logger.debug('xijia rules %s' % rules)
 
             for e in rules:
                 if e['name'].startswith('ip_filter_'):
                     backend.del_section('firewall', e['name'])
 
+            '''
             for e in ipsets:
                 if e['name'].startswith('ip_filter_ipset_'):
                     backend.del_section('firewall', e['name'])
+            '''
 
-            for e in data:
-                for i in range(2):
-                    lan_iprange, lan_portrange, wan_iprange, wan_portsrange, proto = e['lan_ips'], e['lan_ports'], e['wan_ips'], e['wan_ports'], e['proto']
-                    content = '%s %s %s %s %s' % (lan_iprange, lan_portrange, wan_iprange, wan_portsrange, proto)
-                    rule_section_name = 'ip_filter_%s' % hashlib.md5(content).hexdigest()
-                    ipset_section_name = 'ip_filter_ipset_%s' % hashlib.md5(content).hexdigest()
-                    backend.add_section('firewall', 'ipset', ipset_section_name)
-                    backend.set_option('firewall', ipset_section_name, 'name', ipset_section_name)
-                    backend.set_option('firewall', ipset_section_name, 'match', 'src_net')
-                    backend.set_option('firewall', ipset_section_name, 'storage', 'hash')
-                    backend.set_option('firewall', ipset_section_name, 'timeout', e['timeout'])
-                    backend.add_to_list('firewall', ipset_section_name, 'iprange', '%s %s' % (lan_iprange, wan_iprange))
-                    backend.add_to_list('firewall', ipset_section_name, 'portrange', '%s %s' % (lan_portrange, wan_portrange))
+            for e in data['ip_filter_table']:
+                lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto = e['lan_ips'], e['lan_ports'], e['wan_ips'], e['wan_ports'], e['proto']
+                content = '%s %s %s %s %s' % (lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto)
 
-                    backend.add_section('firewall', 'rule', rule_section_name)
-                    backend.set_option('firewall', rule_section_name, 'target', 'REJECT')
-                    backend.set_option('firewall', rule_section_name, 'enabled', e['enabled'])
-                    backend.set_option('firewall', rule_section_name, 'ipset', '%s src' % ipset_section_name)
-                    backend.set_option('firewall', rule_section_name, 'ipset', '%s dest' % ipset_section_name)
-                    backend.set_option('firewall', rule_section_name, 'proto', proto)
-                    '''
-                    if i == 0:
-                        src_ips, src_portrange, dest_ips, dest_port, proto = e['lan_ip'], e['lan_port'], e['wan_ip'], e['wan_ports'], e['proto']
-                    else:
-                        src_ips, src_portrange, dest_ips, dest_port, proto = e['wan_ip'], e['wan_ports'], e['lan_ip'], e['lan_port'], e['proto']
-                    content = '%s %s %s %s %s' % (src_ips, src_portrange, dest_ips, dest_port, proto)
-                    section_name = 'ip_filter_%s' % hashlib.md5(content).hexdigest()
-                    backend.add_section('firewall', 'rule', section_name)
-                    backend.set_option('firewall', section_name, 'target', 'REJECT')
-                    backend.set_option('firewall', section_name, 'enabled', e['enabled'])
-                    backend.set_option('firewall', section_name, 'src_ips', src_ips)
-                    backend.set_option('firewall', section_name, 'src_portrange', src_portrange)
-                    backend.set_option('firewall', section_name, 'dest_ips', dest_ips)
-                    backend.set_option('firewall', section_name, 'dest_port', dest_port)
-                    backend.set_option('firewall', section_name, 'proto', proto)
-                    '''
+                '''
+                ipset_lan_section_name = 'ip_filter_ipset_lan_%s' % hashlib.md5(content).hexdigest()
+                backend.add_section('firewall', 'ipset', ipset_lan_section_name)
+                backend.set_option('firewall', ipset_lan_section_name, 'match', 'src_net')
+                backend.set_option('firewall', ipset_lan_section_name, 'storage', 'hash')
+                backend.set_option('firewall', ipset_lan_section_name, 'timeout', e['timeout'])
+                backend.add_to_list('firewall', ipset_lan_section_name, 'entry', lan_iprange)
+
+                ipset_wan_section_name = 'ip_filter_ipset_wan_%s' % hashlib.md5(content).hexdigest()
+                backend.add_section('firewall', 'ipset', ipset_wan_section_name)
+                backend.set_option('firewall', ipset_wan_section_name, 'match', 'src_net')
+                backend.set_option('firewall', ipset_wan_section_name, 'storage', 'hash')
+                backend.set_option('firewall', ipset_wan_section_name, 'timeout', e['timeout'])
+                backend.add_to_list('firewall', ipset_wan_section_name, 'entry', wan_iprange)
+
+                rule_section_name = 'ip_filter_%s' % hashlib.md5(content).hexdigest()
+                backend.add_section('firewall', 'rule', rule_section_name)
+                backend.set_option('firewall', rule_section_name, 'target', 'DROP')
+                backend.set_option('firewall', rule_section_name, 'enabled', store_bool(e['enabled']))
+                backend.set_option('firewall', rule_section_name, 'ipset', '%s src' % ipset_lan_section_name)
+                backend.set_option('firewall', rule_section_name, 'src_port', lan_portrange)
+                backend.set_option('firewall', rule_section_name, 'ipset', '%s dest' % ipset_wan_section_name)
+                backend.set_option('firewall', rule_section_name, 'dest_port', wan_portrange)
+                backend.set_option('firewall', rule_section_name, 'proto', proto)
+                '''
+
+                rule_section_name = 'ip_filter_%s' % hashlib.md5(content).hexdigest()
+                backend.add_section('firewall', 'rule', rule_section_name)
+                backend.set_option('firewall', rule_section_name, 'target', 'DROP')
+                backend.set_option('firewall', rule_section_name, 'enabled', store_bool(e['enabled']))
+                backend.set_option('firewall', rule_section_name, 'src', 'lan')
+                backend.set_option('firewall', rule_section_name, 'src_ip', lan_iprange)
+                backend.set_option('firewall', rule_section_name, 'src_port', lan_portrange)
+                backend.set_option('firewall', rule_section_name, 'dest', 'wan')
+                backend.set_option('firewall', rule_section_name, 'dest_ip', wan_iprange)
+                backend.set_option('firewall', rule_section_name, 'dest_port', wan_portrange)
+                backend.set_option('firewall', rule_section_name, 'proto', proto)
+                backend.set_option('firewall', rule_section_name, 'timeout', e['timeout'])
+
         with OpenwrtServices() as services:
-            services.restart("network", delay=2)
+            services.restart("firewall", delay=2)
 
         return True
 
@@ -120,23 +165,24 @@ class FirewallUciCommands(object):
         with UciBackend() as backend:
             cfg = backend.read('firewall')
             rules = get_sections_by_type(cfg, 'firewall', 'rule')
+            logger.debug('xijia data %s' % data)
+            logger.debug('xijia rules %s' % rules)
 
             for e in rules:
                 if e['name'].startswith('mac_filter_'):
                     backend.del_section('firewall', e['name'])
 
-            for e in data:
-                for i in range(2):
-                    zone = 'lan' if i == 0 else 'wan'
-                    content = '%s %s' % (zone, e['mac'])
-                    section_name = 'mac_filter_%s' % hashlib.md5(content).hexdigest()
-                    backend.add_section('firewall', 'rule', section_name)
-                    backend.set_option('firewall', section_name, 'target', 'REJECT')
-                    backend.set_option('firewall', section_name, 'proto', 'all')
-                    backend.set_option('firewall', section_name, 'enabled', e['enabled'])
-                    backend.set_option('firewall', section_name, 'src', zone)
-                    backend.set_option('firewall', section_name, 'src_mac', e['mac'])
-                    backend.set_option('firewall', section_name, 'name', e['desc'])
+            for e in data['mac_filter_table']:
+                zone = 'lan'
+                content = '%s_%s' % (zone, e['mac'])
+                section_name = 'mac_filter_%s' % hashlib.md5(content).hexdigest()
+                backend.add_section('firewall', 'rule', section_name)
+                backend.set_option('firewall', section_name, 'target', 'REJECT')
+                backend.set_option('firewall', section_name, 'proto', 'all')
+                backend.set_option('firewall', section_name, 'enabled', store_bool(e['enabled']))
+                backend.set_option('firewall', section_name, 'src', zone)
+                backend.set_option('firewall', section_name, 'src_mac', e['mac'])
+                backend.set_option('firewall', section_name, 'name', e['desc'])
 
         with OpenwrtServices() as services:
             services.restart("network", delay=2)

@@ -1,6 +1,7 @@
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.portmapping import channelmapping,setportmapping
 from foris.zl100mt.dhcp import cmdDhcpCfg
+from foris.zl100mt.rtmp import cmdGetRtmpInfo
 from foris.zl100mt.firewall import cmdGetFirewall
 
 from foris.state import current_state
@@ -132,28 +133,7 @@ class GetSysInforCmd() :
                 },
             "DHCP":cmdDhcpCfg.get_dhcp(),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
-            '''
-            "LAN":{
-		        "LAN":[
-			        {"port":"LAN1", "MAC":"01-21-09", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
-                	{"port":"LAN2", "MAC":"01-21-19", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
-                        {"port":"LAN3", "MAC":"01-21-29", "IP":"10.1.1.13", "subMask":"255.255.255.0"}
-                     ],
-                "accessList":[
-                        {"port":"LAN3","MAC":"01-29-03", "IP":"128.0.1.2", "type":"xiaomi"},
-                        {"port":"LAN1","MAC":"01-29-04", "IP":"128.0.1.22", "type":"ibm"},
-                        {"port":"LAN2","MAC":"01-29-05", "IP":"128.0.1.12", "type":"pc"}
-                     ]
-                },
-            '''
-            "RTMP":{
-                "ServerIP":"10.1.1.12",
-                "channelList":[
-                        {"Name":"Cam01", "Code":"left-1"},
-                        {"Name":"Cam02", "Code":"right-1"},
-                        {"Name":"Cam03", "Code":"top-2"}
-                     ]
-                },
+            "RTMP": cmdGetRtmpInfo.implement(session),
             "VPN":{
                 "vpnAddress":"124.1.2.1/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd",
                 "vpnProtocol":"L2TP", # PPTP or L2TP/IPSec
@@ -161,35 +141,6 @@ class GetSysInforCmd() :
                 "vpnStatus":"on"
                 }, # on/off
             "FireWall": cmdGetFirewall.implement(session),
-            '''
-            "FireWall":{
-                "ipFilter":"off",
-                "macFilter":"on",
-                "DMZ":{"IP":"123.3.3.1", "Status":"on"},
-                "ipList":[
-                    {
-                        "Validation":"11",
-                        "LanIPs":"127.1.1.2 - 127.1.1.20",
-                        "LanPort":"3122",
-                        "WLanIPs":"10.1.1.2", "WLanPort":"213", "Protocol":"SNMP", "Status":"disable"
-                    },
-                    {
-                        "Validation":"12",
-                        "LanIPs":"127.1.1.3 - 127.1.1.30", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Protocol":"UDP",
-                        "Status":"enable"
-                    }
-                    ],
-                "macList":[
-                    {
-                        "MAC":"01-29-03", "Status":"enable", # status value: enable or disable
-                        "Desc":"mock-xx-Max40"
-                    },
-                    {
-                        "MAC":"01-29-04", "Status":"disable","Desc":"mock-xx-Max40"
-                    }
-                    ]
-                },
-            '''
             "Mapping":{
                  "slotLTEZ":channelmapping.get_slotLTEZ(), # LAN value: on or off
                  "slotLTE4G":channelmapping.get_slotLTE4G(),

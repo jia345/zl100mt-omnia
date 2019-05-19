@@ -44,6 +44,49 @@
             "additionalProperties": false
         },
         {
+            "description": "request to port mapping settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_port_mapping"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to port mapping settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_port_mapping"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "redirects": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "target" : {"type": "string"},
+                                            "proto" : {"type": "string"},
+                                            "src" : {"type": "string"},
+                                            "src_dport": {"type": "string"},
+                                            "dest": {"type": "string"},
+                                            "dest_port": {"type": "string"},
+                                            "dest_ip"  : {"type": "string"},
+                                            "name": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
             "description": "request to redirect settings",
             "properties": {
                 "module": {"enum": ["redirect"]},

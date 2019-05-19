@@ -35,6 +35,7 @@ class IpmacbindUciCommands(object):
         with UciBackend() as backend:
             dhcp_data = backend.read("dhcp")
             hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+        print 'xijia %s' % hosts
         ipmacbinds = []
         for host in hosts:
             if 'mac' in host and 'ip' in host:

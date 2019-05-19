@@ -35,6 +35,9 @@ class RedirectModule(BaseModule):
         """
         return self.handler.get_settings()
 
+    def action_get_port_mapping(self, data):
+        return self.handler.get_port_mapping()
+
     def action_update_settings(self, data):
         """ Updates lan settings
         :param data: new lan settings
@@ -50,6 +53,7 @@ class RedirectModule(BaseModule):
 
 @wrap_required_functions([
     'get_settings',
+    'get_port_mapping',
     'update_settings',
 ])
 class Handler(object):

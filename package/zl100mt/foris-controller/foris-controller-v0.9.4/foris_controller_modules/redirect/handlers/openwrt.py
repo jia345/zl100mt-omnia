@@ -41,6 +41,10 @@ class OpenwrtRedirectHandler(Handler, BaseOpenwrtHandler):
         return OpenwrtRedirectHandler.uci_redirect_cmds.get_settings()
 
     @logger_wrapper(logger)
+    def get_port_mapping(self):
+        return OpenwrtRedirectHandler.uci_redirect_cmds.get_port_mapping()
+
+    @logger_wrapper(logger)
     def update_settings(self, data):
         """ updates current dns settings
 

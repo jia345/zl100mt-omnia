@@ -29,10 +29,10 @@
                                     "type": "object",
                                     "properties": {
                                         "timeout": {"type": "integer"},
-                                        "lan_ips": {"format": "ipv4"},
-                                        "lan_ports": {"type": "integer"},
-                                        "wan_ips": {"format": "ipv4"},
-                                        "wan_ports": {"type": "integer"},
+                                        "lan_ips": {"type": "string"},
+                                        "lan_ports": {"type": "string"},
+                                        "wan_ips": {"type": "string"},
+                                        "wan_ports": {"type": "string"},
                                         "proto": {"type": "string"},
                                         "enabled": {"type": "boolean"}
                                     }
@@ -107,11 +107,11 @@
                                 "allOf": [{
                                     "type": "object",
                                     "properties": {
-                                        "timeout": {"type": "string"},
-                                        "lan_ips": {"format": "ipv4"},
-                                        "lan_ports": {"type": "integer"},
-                                        "wan_ips": {"format": "ipv4"},
-                                        "wan_ports": {"type": "integer"},
+                                        "timeout": {"type": "integer"},
+                                        "lan_ips": {"type": "string"},
+                                        "lan_ports": {"type": "string"},
+                                        "wan_ips": {"type": "string"},
+                                        "wan_ports": {"type": "string"},
                                         "proto": {"type": "string"},
                                         "enabled": {"type": "boolean"}
                                     }

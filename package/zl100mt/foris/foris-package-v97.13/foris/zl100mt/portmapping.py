@@ -14,7 +14,7 @@ class SetPortMappingCmd():
             redirects.append({
                 "target": "DNAT",
                 "proto": "tcp udp",
-                "src_zone": "wan",  # redirect["WLanSlot"],
+                "src_zone": redirect["WLanSlot"].replace('-','_').lower(),
                 "src_ip": '',
                 "src_dport": redirect["WLanPort"],
                 "dest_zone": "lan",
@@ -23,7 +23,7 @@ class SetPortMappingCmd():
                 "name": redirect["Desc"]
             })
 
-        rc = current_state.backend.perform("redirect", "update_settings", {"action": "add", "redirects": redirects})
+        rc = current_state.backend.perform("redirect", "update_settings", {"action": "set_port_mapping", "redirects": redirects})
         res = {"rc": rc, "errCode": "success", "dat": None}
         return res
 
@@ -31,11 +31,13 @@ class SetPortMappingCmd():
         rc = current_state.backend.perform("redirect", "get_settings", {})
 
         portmaps = []
+        port = 0
         for redirect in rc["redirects"]:
+            port += 1
             portmaps.append({
-                "WLanSlot": "LTE-Z",  # redirect["WLanSlot"]
+                "WLanSlot": redirect["src"].replace('_','-').upper(),
                 "WLanPort": redirect["src_dport"],
-                "LanSlot": "LAN1",  # LanSlot value: LAN1 to LAN3
+                "LanSlot": "LAN%s" % port,  # LanSlot value: LAN1 to LAN3
                 "LanIP": redirect["dest_ip"],
                 "LanPort": redirect["dest_port"],
                 "Desc": redirect["name"]

@@ -10,8 +10,8 @@ class GetSettingsCmd():
                 'Validation': e['timeout'],
                 'LanIPs': e['lan_ips'],
                 'LanPort': e['lan_ports'],
-                'WanIPs': e['wan_ips'],
-                'WanPort': e['wan_ports'],
+                'WLanIPs': e['wan_ips'],
+                'WLanPort': e['wan_ports'],
                 'Protocol': e['proto'],
                 'Status': 'enabled' if e['enabled'] else 'disabled',
             }
@@ -44,9 +44,10 @@ class SetFirewallCmd():
                 'ip_filter_enabled': True if data['dat']['FireWall']['ipFilter'] == 'on' else False,
                 'mac_filter_enabled': True if data['dat']['FireWall']['macFilter'] == 'on' else False,
                 'dmz_enabled': True if data['dat']['FireWall']['DMZ']['Status'] == 'on' else False,
-                'dmz_ip': data['dat']['FireWall']['DMZ']['IP']
+                'dmz_ip': data['dat']['FireWall']['DMZ']['IP'] if data['dat']['FireWall']['DMZ']['IP'] else '10.10.10.11'
         }
-        res = current_state.backend.perform('firewall', 'set_firewall', msg)
+        rc = current_state.backend.perform('firewall', 'set_firewall', msg)['result']
+        res = {'rc': 0, 'errCode': 'success', 'dat': None} if rc else {'rc': 1, 'errCode': 'Wrong parameter, please check your input', 'dat': 'Wrong parameters'}
         return res
 
 class SetIpFilterCmd():
@@ -54,17 +55,18 @@ class SetIpFilterCmd():
         ip_filter_table = []
         for ip in data['dat']['FireWall']['ipList']:
             item = {
-                    'timeout': ip['Validation'],
-                    'lan_ip': ip['LanIPs'],
-                    'lan_port': ip['LanPort'],
-                    'wan_ip': ip['WLanIPs'],
-                    'wan_port': ip['WLanPort'],
+                    'timeout': int(ip['Validation']),
+                    'lan_ips': ip['LanIPs'],
+                    'lan_ports': ip['LanPort'],
+                    'wan_ips': ip['WLanIPs'],
+                    'wan_ports': ip['WLanPort'],
                     'proto': ip['Protocol'],
                     'enabled': True if ip['Status'] == 'Enable' else False
             }
             ip_filter_table.append(item)
         msg = { 'ip_filter_table': ip_filter_table }
-        res = current_state.backend.perform('firewall', 'set_ip_filter', msg)
+        rc = current_state.backend.perform('firewall', 'set_ip_filter', msg)['result']
+        res = {'rc': 0, 'errCode': 'success', 'dat': None} if rc else {'rc': 1, 'errCode': 'fail', 'dat': 'Wrong parameters'}
         return res
 
 class SetMacFilterCmd():
@@ -72,13 +74,14 @@ class SetMacFilterCmd():
         mac_filter_table = []
         for mac in data['dat']['FireWall']['macList']:
             item = {
-                    "mac": mac['MAC'],
+                    'mac': mac['MAC'],
                     'enabled': True if mac['Status'] == 'Enable' else False,
-                    "desc": mac['Desc']
+                    'desc': mac['Desc']
             }
             mac_filter_table.append(item)
         msg = { 'mac_filter_table': mac_filter_table }
-        res = current_state.backend.perform('firewall', 'set_mac_filter', msg)
+        rc = current_state.backend.perform('firewall', 'set_mac_filter', msg)['result']
+        res = {'rc': 0, 'errCode': 'success', 'dat': None} if rc else {'rc': 1, 'errCode': 'fail', 'dat': 'Wrong parameters'}
         return res
 
 cmdGetFirewall = GetSettingsCmd()

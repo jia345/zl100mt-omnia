@@ -25,6 +25,8 @@ class LoginCmd():
             update_csrf_token(save_session=False)
             session.save()
             res = {'rc': 0,'errCode': 'success','dat': None}
+        else:
+            res = {'rc': 1,'errCode': 'wrong password','dat': 'Wrong password'}
 
         return res
 

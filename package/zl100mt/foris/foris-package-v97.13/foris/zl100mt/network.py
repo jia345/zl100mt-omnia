@@ -13,7 +13,7 @@ def validate_ip(s):
             return False
     return True
 
-class DhcpCmd():
+class NetworkCmd():
     def implement(self, data, session):
         dhcp_data = data['dat']['DHCP']
         is_good_gw = validate_ip(dhcp_data['defaultGwIP']) or (dhcp_data['defaultGwIP'] == '')
@@ -91,4 +91,4 @@ class DhcpCmd():
 
         return res
 
-cmdDhcpCfg = DhcpCmd()
+cmdNetworkCfg = NetworkCmd()

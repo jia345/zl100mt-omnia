@@ -17,7 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import logging
+import logging, os, hashlib
 
 from foris_controller_backends.uci import (
     UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type
@@ -52,19 +52,41 @@ class RedirectUciCommands(object):
 
         return res
 
+    def get_port_mapping(self):
+        with UciBackend() as backend:
+            try:
+                firewall_data = backend.read("firewall")
+                redirects = get_sections_by_type(firewall_data, "firewall", "redirect")
+            except:
+                redirects = []
+
+        port_mapping_data = [e['data'] for e in redirects if e['name'].startswith('port_mapping_')]
+        print 'xijia port %s' % port_mapping_data
+
+        return { 'redirects': port_mapping_data }
+
     def update_settings(self, data):
         print 'redirect update_settings :'
         with UciBackend() as backend:
             # firewall_data = backend.read("firewall")
             # redirects = get_sections_by_type(firewall_data, "firewall", "redirect")
-            if data["action"] == "add":
+            if data["action"] == "set_port_mapping":
+                try:
+                    redirects = get_sections_by_type(firewall_data, "firewall", "redirect")
+                    port_mapping_data = [e['data'] for e in redirects if e['name'].startswith('port_mapping_')]
+                except:
+                    port_mapping_data = []
+
+                for e in port_mapping_data:
+                    backend.del_section('firewall', e['name'])
+
                 for redirect in data["redirects"]:
-                    section_name = '%s_%s_%s%s' %(redirect["target"],redirect["src_zone"],redirect["src_ip"].replace('.',''),redirect["src_dport"])
+                    content = '%s_%s_%s%s' %(redirect["target"],redirect["src_zone"],redirect["src_ip"].replace('.',''),redirect["src_dport"])
+                    section_name = 'port_mapping_%s' % hashlib.md5(content).hexdigest()
                     backend.add_section('firewall', 'redirect', section_name)
                     backend.set_option('firewall', section_name, 'proto', redirect['proto'])
                     backend.set_option('firewall', section_name, 'src', redirect['src_zone'])
-                    if redirect["target"] != "DNAT":
-                        backend.set_option('firewall', section_name, 'src_ip', redirect['src_ip'])
+                    backend.set_option('firewall', section_name, 'target', 'DNAT')
                     backend.set_option('firewall', section_name, 'src_dport', redirect['src_dport'])
                     backend.set_option('firewall', section_name, 'dest', redirect['dest_zone'])
                     backend.set_option('firewall', section_name, 'dest_ip', redirect['dest_ip'])

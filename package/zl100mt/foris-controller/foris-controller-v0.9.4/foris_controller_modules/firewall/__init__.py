@@ -34,22 +34,16 @@ class FirewallModule(BaseModule):
     @logger_wrapper(logger)
     def action_set_firewall(self, data):
         res = self.handler.set_firewall(data)
-        if res:
-            self.notify("set_firewall", data)
         return {"result": res}
 
     @logger_wrapper(logger)
     def action_set_ip_filter(self, data):
         res = self.handler.set_ip_filter(data)
-        if res:
-            self.notify("set_ip_filter", data)
         return {"result": res}
 
     @logger_wrapper(logger)
     def action_set_mac_filter(self, data):
         res = self.handler.set_mac_filter(data)
-        if res:
-            self.notify("set_mac_filter", data)
         return {"result": res}
 
 @wrap_required_functions([
