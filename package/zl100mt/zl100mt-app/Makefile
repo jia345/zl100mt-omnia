@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=zl100mt-app
-PKG_RELEASE:=1.0
+PKG_RELEASE:=1.0.0
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
@@ -18,7 +18,7 @@ define Package/$(PKG_NAME)
   SECTION:=utils
   CATEGORY:=Base system
   TITLE:=daemon application for zl100mt, including relay BeiDou data, etc.
-  DEPENDS:=+libftdi
+  DEPENDS:=+libftdi +libblobmsg-json +libubox +libjson-c +libubus
 endef
 
 define Package/$(PKG_NAME)/description
@@ -50,7 +50,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/zl100mt-app
 	echo $(PKG_RELEASE) > $(1)/etc/zl100mt-version
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
-	$(INSTALL_DATA) ./files/etc/zl100mt-app/rtmp.conf $(1)/etc/config/
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_DATA) ./files/etc/zl100mt-app/rtmp.conf $(1)/etc/config/rtmp
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ft4232_bitbang $(1)/usr/sbin/
@@ -63,6 +64,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/logrotate.conf $(1)/etc/logrotate.d/zl100mt
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/temperature.sh $(1)/usr/bin/temperature.sh
+	$(INSTALL_DIR) $(1)/usr/libexec/rpcd
+	$(INSTALL_BIN) ./files/wan.rpcd $(1)/usr/libexec/rpcd/wan
 	$(INSTALL_DIR) $(1)/root
 	$(INSTALL_DATA) ./files/.vimrc $(1)/root
 endef

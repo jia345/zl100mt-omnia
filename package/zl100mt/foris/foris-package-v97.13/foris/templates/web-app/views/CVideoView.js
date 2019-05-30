@@ -35,8 +35,8 @@ CVideoView.prototype.activeMyView = function(){
     else{
         // 初始化rtmp链接
         $("#vvRtmpUrlSelector").empty();
-        oStore.RTMP.channelList.forEach(function(value,index){
-            let rtmpUrl = "rtmp://" + oStore.RTMP.ServerIP + ":1935/live/" + value.Code;
+        oStore.store.RTMP.channelList.forEach(function(value,index){
+            let rtmpUrl = "rtmp://" + oStore.store.RTMP.ServerIP + ":1935/live/" + value.Code;
             let tr = "<option id='vvRtmpUrlSelector" + index +"'" + " value=" + rtmpUrl + ">" + rtmpUrl + "</option>";
             $("#vvRtmpUrlSelector").append(tr);
         });

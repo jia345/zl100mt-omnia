@@ -21,17 +21,17 @@ CDashboardView.prototype.deactiveMyView = function(){
     tools.viewShow(this.node, false);
 }
 CDashboardView.prototype.render = function(){
-    $('#dsvLocTimeVal').text(tools.getDateByYMD(oStore.system.localDatetime)); 
-    $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.system.currDuration));
-    $('#dsvIMEIVal').text(oStore.system.hwIMEI);
-    $('#dsvFWVerVal').text(oStore.system.swVersion);
+    $('#dsvLocTimeVal').text(tools.getDateByYMD(oStore.store.system.localDatetime)); 
+    $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.store.system.currDuration));
+    $('#dsvIMEIVal').text(oStore.store.system.hwIMEI);
+    $('#dsvFWVerVal').text(oStore.store.system.swVersion);
     //
-    $('#dsvModTblZConnectVal').text(oStore.LTEZ.connection);
-    $('#dsvLteZSignalVal').text(oStore.LTEZ.signal);
-    $('#dsvModTbl4GConnectVal').text(oStore.LTE4G.connection);
-    $('#dsvLte4GSignalVal').text(oStore.LTE4G.signal);
-    $('#dsvModTblGnssConnectVal').text(oStore.GNSS.connection);
-    $('#dsvGnssSignalVal').text(oStore.GNSS.signal);
+    $('#dsvModTblZConnectVal').text(oStore.store.LTEZ.connection);
+    $('#dsvLteZSignalVal').text(oStore.store.LTEZ.signal);
+    $('#dsvModTbl4GConnectVal').text(oStore.store.LTE4G.connection);
+    $('#dsvLte4GSignalVal').text(oStore.store.LTE4G.signal);
+    $('#dsvModTblGnssConnectVal').text(oStore.store.GNSS.connection);
+    $('#dsvGnssSignalVal').text(oStore.store.GNSS.signal);
 }
 CDashboardView.prototype.loadHtml = function(){
     // 1.加载本view的html 2.注册控件回调函数 3.多语言实现

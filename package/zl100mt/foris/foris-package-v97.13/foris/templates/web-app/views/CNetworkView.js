@@ -163,7 +163,7 @@ CNetworkView.prototype.render = function(){
                 let tr = "<tr> <td><input type='checkbox' /></td> <td><input class='nvtpfValiVal'  style='width:35px' value=" + value.Validation + "></td>" +
                         "<td><input class='nvtpfLanIPVal' style='width:100px' value=" + value.LanIPs +"></td> <td><input  style='width:100px' class='nvtpfLanPortVal' value=" + value.LanPort +"></td>" +
                         "<td><input class='nvtpfWLanIPVal' style='width:100px' value="+ value.WLanIPs+"></td> <td><input style='width:100px' class='nvtpfWLanPortVal' value="+value.WLanPort +"></td>" +
-                        "<td><input class='nvtpfProtocolVal' style='width:50px' value=" + value.Protocol + "></td><td><select style='width:100px' id='nvtpfProtocolValSelector"+index+ "'"+"><option value='enable'>Enable</option><option value='disbale'>Disbale</option></select></td></tr>";
+                        "<td><input class='nvtpfProtocolVal' style='width:50px' value=" + value.Protocol + "></td><td><select style='width:100px' id='nvtpfProtocolValSelector"+index+ "'"+"><option value='enable'>Enable</option><option value='disbale'>Disable</option></select></td></tr>";
                 $("#firewallIPFilterTbl").append(tr);
                 $("#"+"nvtpfProtocolValSelector"+ index).find("option:contains('" + value.Status + "')").attr("selected",true);
             })
@@ -1040,7 +1040,7 @@ CNetworkView.prototype.loadHtml = function(){
             let tr = "<tr> <td><input type='checkbox' /></td> <td><input class='nvtpfValiVal'  style='width:35px' value=''></td>" +
                 "<td><input class='nvtpfLanIPVal' style='width:100px' value=''></td> <td><input  style='width:100px' class='nvtpfLanPortVal' value=''></td>" +
                 "<td><input class='nvtpfWLanIPVal' style='width:100px' value=''></td> <td><input style='width:100px' class='nvtpfWLanPortVal' value=''></td>" +
-                "<td><input class='nvtpfProtocolVal' style='width:50px' value=''></td><td><select style='width:100px'><option value='enable'>Enable</option><option selected value='disbale'>Disbale</option></select></td></tr>";
+                "<td><input class='nvtpfProtocolVal' style='width:50px' value=''></td><td><select style='width:100px'><option value='enable'>Enable</option><option selected value='disbale'>Disable</option></select></td></tr>";
             $("#firewallIPFilterTbl").append(tr);
         });
         // nvTPFWIPFilterDelBtn

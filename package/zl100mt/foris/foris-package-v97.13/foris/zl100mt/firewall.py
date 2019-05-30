@@ -13,7 +13,7 @@ class GetSettingsCmd():
                 'WLanIPs': e['wan_ips'],
                 'WLanPort': e['wan_ports'],
                 'Protocol': e['proto'],
-                'Status': 'enabled' if e['enabled'] else 'disabled',
+                'Status': 'Enable' if e['enabled'] else 'Disable',
             }
             ipList.append(item)
 
@@ -22,7 +22,7 @@ class GetSettingsCmd():
             item = {
                 'Desc': e['desc'],
                 'MAC': e['mac'],
-                'Status': 'enabled' if e['enabled'] else 'disabled',
+                'Status': 'Enable' if e['enabled'] else 'Disable',
             }
             macList.append(item)
 

@@ -34,49 +34,49 @@ CSysStatusView.prototype.render = function(){
     switch(tabID)
     {
     case 'ssvTabHeaderZ':
-        $('#ssvTypeVal').text(oStore.LTEZ.type);
-        $('#ssvConnectStatVal').text(oStore.LTEZ.connection);
-        $('#ssvWLanIPVal').text(oStore.LTEZ.wlanIP);
-        $('#ssvUSimVal').text(oStore.LTEZ.usim);
-        $('#ssvDefaultGWVal').text(oStore.LTEZ.defaultGwIP);
-        $('#ssvIMSIVal').text(oStore.LTEZ.IMSI);
-        $('#ssvMDnsVal').text(oStore.LTEZ.mDnsIP);
-        $('#ssvPlmnVal').text(oStore.LTEZ.PLMN);
-        $('#ssvSDnsVal').text(oStore.LTEZ.sDnsIP);
-        $('#ssvSignalVal').text(oStore.LTEZ.signal);
-        $('#ssvMacVal').text(oStore.LTEZ.MAC);
-        $('#ssvFrqVal').text(oStore.LTEZ.frq);
-        $('#ssvRSRQVal').text(oStore.LTEZ.RSRQ);
-        $('#ssvSNRVal').text(oStore.LTEZ.SNR);
+        $('#ssvTypeVal').text(oStore.store.LTEZ.type);
+        $('#ssvConnectStatVal').text(oStore.store.LTEZ.connection);
+        $('#ssvWLanIPVal').text(oStore.store.LTEZ.wlanIP);
+        $('#ssvUSimVal').text(oStore.store.LTEZ.usim);
+        $('#ssvDefaultGWVal').text(oStore.store.LTEZ.defaultGwIP);
+        $('#ssvIMSIVal').text(oStore.store.LTEZ.IMSI);
+        $('#ssvMDnsVal').text(oStore.store.LTEZ.mDnsIP);
+        $('#ssvPlmnVal').text(oStore.store.LTEZ.PLMN);
+        $('#ssvSDnsVal').text(oStore.store.LTEZ.sDnsIP);
+        $('#ssvSignalVal').text(oStore.store.LTEZ.signal);
+        $('#ssvMacVal').text(oStore.store.LTEZ.MAC);
+        $('#ssvFrqVal').text(oStore.store.LTEZ.frq);
+        $('#ssvRSRQVal').text(oStore.store.LTEZ.RSRQ);
+        $('#ssvSNRVal').text(oStore.store.LTEZ.SNR);
     break;
     case 'ssvTabHeader4G':
-        $('#ssvTypeVal').text(oStore.LTE4G.type);
-        $('#ssvConnectStatVal').text(oStore.LTE4G.connection);
-        $('#ssvWLanIPVal').text(oStore.LTE4G.wlanIP);
-        $('#ssvUSimVal').text(oStore.LTE4G.usim);
-        $('#ssvDefaultGWVal').text(oStore.LTE4G.defaultGwIP);
-        $('#ssvIMSIVal').text(oStore.LTE4G.IMSI);
-        $('#ssvMDnsVal').text(oStore.LTE4G.mDnsIP);
-        $('#ssvPlmnVal').text(oStore.LTE4G.PLMN);
-        $('#ssvSDnsVal').text(oStore.LTE4G.sDnsIP);
-        $('#ssvSignalVal').text(oStore.LTE4G.signal);
-        $('#ssvMacVal').text(oStore.LTE4G.MAC);
-        $('#ssvFrqVal').text(oStore.LTE4G.frq);
-        $('#ssvRSRQVal').text(oStore.LTE4G.RSRQ);
-        $('#ssvSNRVal').text(oStore.LTE4G.SNR);
+        $('#ssvTypeVal').text(oStore.store.LTE4G.type);
+        $('#ssvConnectStatVal').text(oStore.store.LTE4G.connection);
+        $('#ssvWLanIPVal').text(oStore.store.LTE4G.wlanIP);
+        $('#ssvUSimVal').text(oStore.store.LTE4G.usim);
+        $('#ssvDefaultGWVal').text(oStore.store.LTE4G.defaultGwIP);
+        $('#ssvIMSIVal').text(oStore.store.LTE4G.IMSI);
+        $('#ssvMDnsVal').text(oStore.store.LTE4G.mDnsIP);
+        $('#ssvPlmnVal').text(oStore.store.LTE4G.PLMN);
+        $('#ssvSDnsVal').text(oStore.store.LTE4G.sDnsIP);
+        $('#ssvSignalVal').text(oStore.store.LTE4G.signal);
+        $('#ssvMacVal').text(oStore.store.LTE4G.MAC);
+        $('#ssvFrqVal').text(oStore.store.LTE4G.frq);
+        $('#ssvRSRQVal').text(oStore.store.LTE4G.RSRQ);
+        $('#ssvSNRVal').text(oStore.store.LTE4G.SNR);
 break;
     case 'ssvTabHeaderGnss':
-        $('#ssvTabGnssSatNumVal').text(oStore.GNSS.satelliteNum);
-        $('#ssvTabGnssSendNumVal').text(oStore.GNSS.totalMsg);
-        $('#ssvTabGnssSuccNumVal').text(oStore.GNSS.succMsg);
-        $('#ssvTabGnssFailNumVal').text(oStore.GNSS.failMsg);
-        $('#ssvTabGnssDstSimVal').text(oStore.GNSS.targetSim);
-        $('#ssvTabGnssLocSimVal').text(oStore.GNSS.localSim);
+        $('#ssvTabGnssSatNumVal').text(oStore.store.GNSS.satelliteNum);
+        $('#ssvTabGnssSendNumVal').text(oStore.store.GNSS.totalMsg);
+        $('#ssvTabGnssSuccNumVal').text(oStore.store.GNSS.succMsg);
+        $('#ssvTabGnssFailNumVal').text(oStore.store.GNSS.failMsg);
+        $('#ssvTabGnssDstSimVal').text(oStore.store.GNSS.targetSim);
+        $('#ssvTabGnssLocSimVal').text(oStore.store.GNSS.localSim);
     break;
     case 'ssvTabHeaderLan':
-        $('#ssvTabDHCPStatus').text(oStore.DHCP.dhcpStatus);
+        $('#ssvTabDHCPStatus').text(oStore.store.DHCP.dhcpStatus);
         // fill LAN
-        oStore.LAN.LAN.forEach(function(value,index){
+        oStore.store.LAN.LAN.forEach(function(value,index){
             if(('lan1' == value.port)||('LAN1' == value.port)){
                 $('#ssvTabLan1IP').text(value.IP);
             }
@@ -96,7 +96,7 @@ break;
         ** html 格式
             <tr> <td><a>1</a></td><td><a>LAN1</a></td><td><a>01-02-01</a></td> <td><a>129.1.1.2</a></td> <td><a>mobile</a></td></tr>
         ***/
-        oStore.LAN.accessList.forEach(function(value,index){
+        oStore.store.LAN.accessList.forEach(function(value,index){
             let number = index + 1;
             let tr = "<tr>"+
                     " <td><a>" + number + "</a></td> <td><a>"+value.port+"</a></td> <td><a>"+ value.MAC + "</a></td> <td><a>" + value.IP + "</a></td> <td><a>" + value.type + "</a></td></tr>";

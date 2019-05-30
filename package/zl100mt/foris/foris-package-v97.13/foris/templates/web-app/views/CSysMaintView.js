@@ -26,15 +26,15 @@ CSysMaintView.prototype.deactiveMyView = function(){
     tools.viewShow(this.node, false);
 }
 CSysMaintView.prototype.render = function(){
-    $('#smvTimeVal').text(tools.getDateByYMD(oStore.system.localDatetime));
-    $('#smvHWIpVal').text(oStore.LAN.LAN[0].IP);
-    $('#smvHWIMEIVal').text(oStore.system.hwIMEI);
-    $('#smvFWVerVal').text(oStore.system.swVersion);
-    if('' == oStore.NTP.serverIP){
+    $('#smvTimeVal').text(tools.getDateByYMD(oStore.store.system.localDatetime));
+    $('#smvHWIpVal').text(oStore.store.LAN.LAN[0].IP);
+    $('#smvHWIMEIVal').text(oStore.store.system.hwIMEI);
+    $('#smvFWVerVal').text(oStore.store.system.swVersion);
+    if('' == oStore.store.NTP.serverIP){
         $('#smvNTPServerIP').val('210.72.145.44');
     }
     else{
-        $('#smvNTPServerIP').val(oStore.NTP.serverIP);
+        $('#smvNTPServerIP').val(oStore.store.NTP.serverIP);
     }
 }
 CSysMaintView.prototype.loadHtml = function(){
@@ -86,9 +86,9 @@ CSysMaintView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         console.log(data.dat);
-                        oStore.system.localDatetime = data.dat.localDatetime;
-                        oStore.NTP = selectedData;
-                        $('#smvTimeVal').text(tools.getDateByYMD(oStore.system.localDatetime));
+                        oStore.store.system.localDatetime = data.dat.localDatetime;
+                        oStore.store.NTP = selectedData;
+                        $('#smvTimeVal').text(tools.getDateByYMD(oStore.store.system.localDatetime));
                         gAllView.oDashboardView.render();
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'dsvOptSucc') + " code: " + data.errCode);
                     }

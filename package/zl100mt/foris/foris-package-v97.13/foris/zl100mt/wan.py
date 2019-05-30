@@ -1,20 +1,45 @@
 from foris.state import current_state
+import ubus
 
-class GetSettingsCmd():
+class GetLteZCmd():
     def implement(self, session):
-        res = current_state.backend.perform('network', 'get_settings', {})
-
-        settings = {
-            'ipFilter': 'on' if res['ip_filter_enabled'] else 'off',
-            'macFilter': 'on' if res['mac_filter_enabled'] else 'off',
-            'DMZ': {
-                'IP': res['dmz_ip'],
-                'Status': 'on' if res['dmz_enabled'] else 'off'
-            },
-            'ipList': ipList,
-            'macList': macList 
+        rc = ubus.call('wan', 'get_lte_z', {})[0]
+        return {
+            'type': 'LTE-Z',
+            'connection': rc['connection_status'],
+            'signal': rc['signal_strength'],
+            'wlanIP': rc['ipaddr'],
+            'defaultGwIP': rc['gw'],
+            'mDnsIP': rc['dns1'],
+            'sDnsIP': rc['dns2'],
+            'MAC': 'N/A',
+            'usim': rc['sim_status'],
+            'IMSI': rc['imsi'],
+            'PLMN': rc['plmn'],
+            'frq': rc['band'],
+            'RSRQ': rc['rsrq'],
+            'SNR': rc['snr']
         }
-        return settings
+
+class GetLte4GCmd():
+    def implement(self, session):
+        rc = ubus.call('wan', 'get_lte_4g', {})[0]
+        return {
+            'type': 'LTE-4G',
+            'connection': rc['connection_status'],
+            'signal': rc['signal_strength'],
+            'wlanIP': rc['ipaddr'],
+            'defaultGwIP': rc['gw'],
+            'mDnsIP': rc['dns1'],
+            'sDnsIP': rc['dns2'],
+            'MAC': 'N/A',
+            'usim': rc['sim_status'],
+            'IMSI': rc['imsi'],
+            'PLMN': rc['plmn'],
+            'frq': rc['band'],
+            'RSRQ': rc['rsrq'],
+            'SNR': rc['snr']
+        }
 
 class SetWanCmd():
     def implement(self, data, session):
@@ -27,6 +52,7 @@ class SetWanCmd():
         res = current_state.backend.perform('firewall', 'set_firewall', msg)
         return res
 
-cmdGetWan = GetSettingsCmd()
+cmdGetLteZ = GetLteZCmd()
+cmdGetLte4G = GetLte4GCmd()
 cmdSetWanOnOff = SetWanCmd()
 

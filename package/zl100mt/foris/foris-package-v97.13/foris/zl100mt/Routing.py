@@ -3,6 +3,9 @@ from foris.zl100mt.portmapping import channelmapping,setportmapping
 from foris.zl100mt.dhcp import cmdDhcpCfg
 from foris.zl100mt.rtmp import cmdGetRtmpInfo
 from foris.zl100mt.firewall import cmdGetFirewall
+from foris.zl100mt.System import cmdGetSysInfo, cmdGetNtpServerIp
+from foris.zl100mt.gnss import cmdGetGnssInfo
+from foris.zl100mt.wan import cmdGetLteZ, cmdGetLte4G
 
 from foris.state import current_state
 
@@ -86,68 +89,30 @@ class GetSysInforCmd() :
 
     def implement(self, handle,session):
         data = {
-            "system": {
-                "localDatetime":"1531817800000", # ms
-                "currDuration":"17800000",
-                "hwIMEI": "1.0.1",
-                "swVersion":"1.1.0"
-                },
-            "LTEZ":{
-                "type":"LTE-Z",
-                "connection":"on",
-                "signal":"1.2",
-                "wlanIP":"10.1.1.100",
-                "defaultGwIP":"10.2.1.1",
-                "mDnsIP":"10.2.1.1",
-                "sDnsIP":"10.2.1.2",
-                "MAC":"12-43-54",
-                "usim":"Ready", # Ready or Invalid
-                "IMSI":"08509123",
-                "PLMN":"18509123",
-                "frq":"23.7",
-                "RSRQ":"3.2",
-                "SNR":"1.03"
-                },
-            "LTE4G":{
-                "type":"LTE-4G",
-                "connection":"on",
-                "signal":"1.2",
-                "wlanIP":"10.1.1.109",
-                "defaultGwIP":"10.2.1.1",
-                "mDnsIP":"10.2.1.1",
-                "sDnsIP":"10.2.1.2",
-                "MAC":"32-43-54",
-                "usim":"Invalid",
-                "IMSI":"08509123",
-                "PLMN":"9854509123",
-                "frq":"73.32",
-                "RSRQ":"33.2",
-                "SNR":"2.03"
-                },
-            "GNSS":{
-                "connection":"on",
-                "signal":"1.01",
-                "satelliteNum":"9", "totalMsg":"4531",
-                "succMsg":"4500", "failMsg":"31",
-                "targetSim":"01897", "localSim":"02654"
-                },
-            "DHCP":cmdDhcpCfg.get_dhcp(),
+            "system": cmdGetSysInfo.implement(session),
+            "LTEZ": cmdGetLteZ.implement(session),
+            "LTE4G": cmdGetLte4G.implement(session),
+            "GNSS": cmdGetGnssInfo.implement(session),
+            "DHCP": cmdDhcpCfg.get_dhcp(),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
             "RTMP": cmdGetRtmpInfo.implement(session),
             "VPN":{
-                "vpnAddress":"124.1.2.1/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd",
+                "vpnAddress":"124.1.2.1/vpn/",
+                "vpnUser":"zhang",
+                "vpnPwd":"zhangpwd",
                 "vpnProtocol":"L2TP", # PPTP or L2TP/IPSec
                 "vpnKey":"34sd4",
                 "vpnStatus":"on"
-                }, # on/off
+            }, # on/off
             "FireWall": cmdGetFirewall.implement(session),
-            "Mapping":{
-                 "slotLTEZ":channelmapping.get_slotLTEZ(), # LAN value: on or off
-                 "slotLTE4G":channelmapping.get_slotLTE4G(),
-                 "mac2ip": cmdIpmacbind.get_ip2mac(),
-                  "portMapping":setportmapping.get_portmapping(),
-                  },
-              }
+                "Mapping":{
+                    "slotLTEZ":channelmapping.get_slotLTEZ(), # LAN value: on or off
+                    "slotLTE4G":channelmapping.get_slotLTE4G(),
+                    "mac2ip": cmdIpmacbind.get_ip2mac(),
+                    "portMapping":setportmapping.get_portmapping(),
+            },
+            "NTP": cmdGetNtpServerIp.implement(session)
+        }
 
         res = {
                 "rc": 0,

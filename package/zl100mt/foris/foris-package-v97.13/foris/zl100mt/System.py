@@ -1,5 +1,5 @@
 
-import bottle
+import bottle, os, ubus
 from foris.state import current_state
 
 class SysReboot():
@@ -20,8 +20,6 @@ class SysReboot():
         else:
             bottle.redirect(reverse("/"))
         return res
-
-
 
 class NtpSyncDatetime():
     def __init__(self):
@@ -56,6 +54,32 @@ class GetLogLinkCmd():
         res = current_state.backend.perform("maintain", "get_log_links", msg)
         return res
 
+class GetSysInfoCmd():
+    def implement(self, session=None):
+        system = ubus.call('system', 'info', {})[0]
+        print 'xijia sys %s' % system
+        version = os.popen('cat /etc/zl100mt-version').read().splitlines()[0]
+        return {
+            'localDatetime': system['localtime'] * 1000,
+            'currDuration': system['uptime'] * 1000,
+            'hwIMEI': '---todo---',
+            'swVersion': version
+        }
+
+class GetNtpServerIpCmd():
+    def implement(self, session=None):
+        system = ubus.call('system', 'info', {})[0]
+        print 'xijia sys %s' % system
+        version = os.popen('cat /etc/zl100mt-version').read().splitlines()[0]
+        return {
+            'localDatetime': system['localtime'] * 1000,
+            'currDuration': system['uptime'] * 1000,
+            'hwIMEI': '---todo---',
+            'swVersion': version
+        }
+
 cmdReboot = SysReboot()
 cmdTime = NtpSyncDatetime()
 cmdGetLogLink = GetLogLinkCmd()
+cmdGetSysInfo = GetSysInfoCmd()
+cmdGetNtpServerIp = GetNtpServerIpCmd()

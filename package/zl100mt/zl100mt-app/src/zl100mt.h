@@ -10,14 +10,21 @@
 
 #define IOT_BD_PID_PATH "/run/zl100mt-app.pid"
 
+#define BD_DBG 1
+
 #define IOT_BD_CONF        "/etc/zl100mt-app/zl100mt-app.conf"
 #define IOT_BD_SEC_GENERAL "GENERAL"
 #define IOT_BD_SEC_DEBUG   "DEBUG"
 #define IOT_BD_SEC_REMOTE  "REMOTE"
+#define IOT_BD_SEC_PM      "PM"
 #define IOT_BD_KEY_TTY     "ttypath"
 #define IOT_BD_KEY_BDRATE  "baudrate"
 #define IOT_BD_KEY_NUMBER  "number"
 #define IOT_BD_KEY_DRYRUN  "dryrun"
+#define IOT_BD_KEY_COUNTER_TX_TOTAL "counter_tx_total"
+#define IOT_BD_KEY_COUNTER_TX_SUCC  "counter_tx_success"
+#define IOT_BD_KEY_COUNTER_TX_FAIL  "counter_tx_failure"
+#define IOT_BD_KEY_LOCAL_SIM_NO     "local_sim_no"
 
 #define IOT_MAX_BD_NUMBER 0x1FFFFF
 
@@ -32,10 +39,10 @@ typedef struct _bd_info {
     T_IOT_CFG   *pcfg;
     const char  *ttypath;
     int         ttyfd;
-    int32_t     ttybaudrate;
-    int32_t     myno;
-    int32_t     remoteno;
-    int32_t     is_dryrun;
+    uint32_t     ttybaudrate;
+    uint32_t     local_sim;
+    uint32_t     target_sim;
+    uint32_t     is_dryrun;
 } BD_INFO;
 
 #endif

@@ -69,7 +69,8 @@ def prepare_common_app(args, app_name, init_function, top_index, logger, load_pl
     # basic and bottle settings
     template_dir = os.path.join(BASE_DIR, "templates")
     bottle.TEMPLATE_PATH.append(template_dir)
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    #logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    logging.basicConfig(filename='/var/log/foris.log', level=logging.DEBUG)
 
     # mount apps
     app.mount("/main", init_function())
