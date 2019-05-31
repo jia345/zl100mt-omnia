@@ -724,7 +724,7 @@ def config_ajax(page_name):
 
 def init_app():
     app = Bottle()
-    app.install(CSRFPlugin())
+    #app.install(CSRFPlugin())
     app.route("/", name="config_index", callback=index)
     app.route("/<page_name:re:.+>/ajax", name="config_ajax", method=("GET", "POST"),
               callback=config_ajax)

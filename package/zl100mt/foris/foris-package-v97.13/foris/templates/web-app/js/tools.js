@@ -182,6 +182,46 @@
             return "Unkown";
         }
     }
+    /**
+     * IP地址合法性检查
+     * return true, if it's validated.
+     */
+    tools.chkIpAddress = function(strIP){
+        var exp=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/;  
+        var rc = strIP.match(exp);  
+        if(rc == null){
+            return false;
+        }else{
+            return true;
+        }
+    }
+    /**
+     * MAC地址合法性检查
+     * return true, if it's validated.
+     */
+    tools.chkMacAddress = function(strMac){
+        var exp=/^([A-Fa-f0-9]{2}[-,:]){5}[A-Fa-f0-9]{2}$/;  
+        var rc = strMac.match(exp);  
+        if(rc == null){
+            return false;
+        }else{
+            return true;
+        }
+    }
+    /**
+     * IMEI地址合法性检查
+     * IMEI规则：3位字母+5位数字
+     * return true, if it's validated.
+     */
+    tools.chkImeiAddress = function(strImei){
+        var exp=/^[A-Za-z]{3}[0-9]{5}$/;  
+        var rc = strImei.match(exp);  
+        if(rc == null){
+            return false;
+        }else{
+            return true;
+        }
+    }
     //
     if ( typeof window === "object" && typeof window.document === "object" ) {
         window.tools = tools;

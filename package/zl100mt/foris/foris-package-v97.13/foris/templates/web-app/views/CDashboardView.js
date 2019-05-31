@@ -21,17 +21,19 @@ CDashboardView.prototype.deactiveMyView = function(){
     tools.viewShow(this.node, false);
 }
 CDashboardView.prototype.render = function(){
-    $('#dsvLocTimeVal').text(tools.getDateByYMD(oStore.store.system.localDatetime)); 
-    $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.store.system.currDuration));
-    $('#dsvIMEIVal').text(oStore.store.system.hwIMEI);
-    $('#dsvFWVerVal').text(oStore.store.system.swVersion);
+    $('#dsvLocTimeVal').text(tools.getDateByYMD(oStore.system.localDatetime)); 
+    $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.system.currDuration));
+    $('#dsvHwMacVal').text(oStore.system.hwMAC);
+    $('#dsvHwIPVal').text(oStore.LAN.LAN[0].IP);
+    $('#dsvIMEIVal').text(oStore.system.hwIMEI);
+    $('#dsvFWVerVal').text(oStore.system.swVersion);
     //
-    $('#dsvModTblZConnectVal').text(oStore.store.LTEZ.connection);
-    $('#dsvLteZSignalVal').text(oStore.store.LTEZ.signal);
-    $('#dsvModTbl4GConnectVal').text(oStore.store.LTE4G.connection);
-    $('#dsvLte4GSignalVal').text(oStore.store.LTE4G.signal);
-    $('#dsvModTblGnssConnectVal').text(oStore.store.GNSS.connection);
-    $('#dsvGnssSignalVal').text(oStore.store.GNSS.signal);
+    $('#dsvModTblZConnectVal').text(oStore.LTEZ.connection);
+    $('#dsvLteZSignalVal').text(oStore.LTEZ.signal);
+    $('#dsvModTbl4GConnectVal').text(oStore.LTE4G.connection);
+    $('#dsvLte4GSignalVal').text(oStore.LTE4G.signal);
+    $('#dsvModTblGnssConnectVal').text(oStore.GNSS.connection);
+    $('#dsvGnssSignalVal').text(oStore.GNSS.signal);
 }
 CDashboardView.prototype.loadHtml = function(){
     // 1.加载本view的html 2.注册控件回调函数 3.多语言实现
@@ -58,11 +60,14 @@ CDashboardView.prototype.loadHtml = function(){
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
                 data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function(res){
                     /* 返回参数格式
                         { "rc": 0/1, "errCode": "xxx"}
                     */
-                    var data = JSON.parse(res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'dsvOptSucc') + " code: " + data.errCode);
                         console.log(data.dat);
@@ -88,11 +93,14 @@ CDashboardView.prototype.loadHtml = function(){
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
                 data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function(res){
                     /* 返回参数格式
                         { "rc": 0/1, "errCode": "xxx"}
                     */
-                    var data = JSON.parse(res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         console.log(data.dat);
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'dsvOptSucc') + " code: " + data.errCode);
@@ -118,11 +126,14 @@ CDashboardView.prototype.loadHtml = function(){
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
                 data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function(res){
                     /* 返回参数格式
                         { "rc": 0/1, "errCode": "xxx"}
                     */
-                    var data = JSON.parse(res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'dsvOptSucc') + " code: " + data.errCode);
                         console.log(data.dat);
@@ -148,11 +159,14 @@ CDashboardView.prototype.loadHtml = function(){
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
                 data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function(res){
                     /* 返回参数格式
                         { "rc": 0/1, "errCode": "xxx"}
                     */
-                    var data = JSON.parse(res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'dsvOptSucc') + " code: " + data.errCode);
                         console.log(data.dat);
@@ -166,10 +180,10 @@ CDashboardView.prototype.loadHtml = function(){
     });
 }
 // 多语言实现
-CDashboardView.prototype.enHtmlMap = {dsvSysTitleTxt: "System Status", dsvLocTimeTxt: "Local Time", dsvDurationTimeTxt:"Duration Time",dsvIMEITxt: "IMEI",dsvFWVerTxt:"Firmware Ver.",
+CDashboardView.prototype.enHtmlMap = {dsvSysTitleTxt: "System Status", dsvLocTimeTxt: "Local Time", dsvDurationTimeTxt:"Duration Time",dsvHwMacTxt:"Mac Address",dsvHwIPTxt:"IP Address",dsvIMEITxt: "IMEI",dsvFWVerTxt:"Firmware Ver.",
         dsvModTitleTxt:"Module Status",dsvModTblTxt:"Module",dsvConnTblTxt:"Connection", dsvSignalTxt:"Signal(dBm)", dsvOperaTxt:"Operation",dsvmtZConnectBtn:"Connect",dsvmtZDisconBtn:"Disconnect",dsvmt4GConnectBtn:"Connect",dsvmt4GDisconBtn:"Disconnect",
 }
-CDashboardView.prototype.cnHtmlMap = {dsvSysTitleTxt:"系统状态",dsvLocTimeTxt:"本机时间",dsvDurationTimeTxt:"本次开机持续时间",dsvIMEITxt:"硬件设备号",dsvFWVerTxt:"固件版本号",
+CDashboardView.prototype.cnHtmlMap = {dsvSysTitleTxt:"系统状态",dsvLocTimeTxt:"本机时间",dsvDurationTimeTxt:"本次开机持续时间",dsvHwMacTxt:"本机硬件地址",dsvHwIPTxt:"本机IP地址",dsvIMEITxt:"本机设备号",dsvFWVerTxt:"固件版本号",
         dsvModTitleTxt:"模块状态",dsvModTblTxt:"模块",dsvConnTblTxt:"连接状态", dsvSignalTxt:"信号强度(dBm)", dsvOperaTxt:"操作",dsvmtZConnectBtn:"连接",dsvmtZDisconBtn:"断开",dsvmt4GConnectBtn:"连接",dsvmt4GDisconBtn:"断开",
 }
 CDashboardView.prototype.enJsMap = {

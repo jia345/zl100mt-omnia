@@ -22,27 +22,27 @@ function getURL(){
             return './debug/mock';
         else
             return './debug/action/action.test.php';
-    }
-    else
+    } else {
         var cur_url = window.location.href.substring(0, location.href.indexOf("web-app"))
         return cur_url+'zl_main'
+    }
 }
 
-var csrf_token = ''
-function update_csrf(callback){
-    $.ajax({
-         type:"GET",
-	 url: window.location.href.substring(0, location.href.indexOf("web-app"))+'get_csrf',
-	 data:'',
-	 success: function(res){
-	     console.log(res)
-	     csrf_token = res.dat
-	     $('#csrf_token').val(csrf_token)
-	     console.log($('#csrf_token').val())
-	     callback()
-	 }
-    })
-}
+// var csrf_token = ''
+// function update_csrf(callback){
+//     $.ajax({
+//         type:"GET",
+//         url: window.location.href.substring(0, location.href.indexOf("web-app"))+'get_csrf',
+//         data:'',
+//         success: function(res){
+//             console.log(res)
+//             csrf_token = res.dat
+//             $('#csrf_token').val(csrf_token)
+//             console.log($('#csrf_token').val())
+//             callback()
+//         }
+//     })
+// }
 
 gAllView = {}; // 包括所有的view,用于全局刷新操作
 gMainView = {}; // 包含所有的MainView对象，用于View hidden操作
@@ -64,7 +64,6 @@ function Init()
     　　　　　window.close();
         }
     }
-
     */
     // 全局数据
     oStore = new CStore();
@@ -194,49 +193,49 @@ function CStore(){
     var _this = this;
     //1.内部变量+内部函数
     //3.初始化对象和成员函数
-    _this.store =  {};
+    _this.store =  {
+        "defaultRtmpSrvPortNum": 1935,
+        "defaultRtmpSrvAppName": "live"
+    };
     // get this global var
-    update_csrf(_this.render);
+    _this.render();
+    //update_csrf(_this.render);
 
 }
 CStore.prototype.store;
 CStore.prototype.render = function(){
-    console.log('render: '+csrf_token)
-    let that = this.oStore
-    console.log('CStore.render')
-    console.log(that)
+    let that = this.oStore;
     var str = {
-        "command":"getSysInfor",
+        "command":"getSysInfor"
     }
-    
     parameters = JSON.stringify(str);
     $.ajax({
         type:"POST",
         url: getURL(), //"/cgi-bin/cgi.cgi",
-        data:{
-                "csrf_token":csrf_token,
-	        "data_str": parameters
-	    },
-	contentType: 'application/json',
+        data:parameters,
+        contentType: 'application/json',
+        dataType: 'json',
         success: (res)=>{
             // 返回参数格式
-            // var data = JSON.parse(res);
-            data = res
-            console.log(res)
+
+            //var data = JSON.parse(res);
+            var data = res;
+            console.log(data);
             if(0 == data.rc){
                 // console.log('getSysInfor, succ.=>'+data.errCode);
                 // this.store = data.dat;
-                that.store.system = data.dat.system;
-                that.store.LTEZ = data.dat.LTEZ;
-                that.store.LTE4G = data.dat.LTE4G;
-                that.store.GNSS = data.dat.GNSS;
-                that.store.DHCP = data.dat.DHCP;
-                that.store.LAN = data.dat.LAN;
-                that.store.RTMP = data.dat.RTMP;
-                that.store.VPN = data.dat.VPN;
-                that.store.FireWall = data.dat.FireWall;
-                that.store.Mapping = data.dat.Mapping;
-                that.store.NTP = data.dat.NTP;
+                //data = '';
+                this.system = data.dat.system;
+                this.LTEZ = data.dat.LTEZ;
+                this.LTE4G = data.dat.LTE4G;
+                this.GNSS = data.dat.GNSS;
+                this.DHCP = data.dat.DHCP;
+                this.LAN = data.dat.LAN;
+                this.RTMP = data.dat.RTMP;
+                this.VPN = data.dat.VPN;
+                this.FireWall = data.dat.FireWall;
+                this.Mapping = data.dat.Mapping;
+                this.NTP = data.dat.NTP;
             }
             else{
                 tools.msgBox(data.errCode);

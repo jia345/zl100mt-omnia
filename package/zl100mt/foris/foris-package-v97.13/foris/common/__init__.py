@@ -51,7 +51,7 @@ def login(next, session):
         session.recreate()
         session["user_authenticated"] = True
 
-        update_csrf_token(save_session=False)
+        #update_csrf_token(save_session=False)
         session.save()
 
         # update contract status
@@ -225,7 +225,7 @@ def init_default_app(index, include_static=False):
     """
 
     app = bottle.app()
-    app.install(CSRFPlugin())
+    #app.install(CSRFPlugin())
     app.route("/", name="index", callback=index)
     app.route("/", method="POST", name="login", callback=index)
     app.route("/lang/<lang:re:\w{2}>", name="change_lang", callback=change_lang)

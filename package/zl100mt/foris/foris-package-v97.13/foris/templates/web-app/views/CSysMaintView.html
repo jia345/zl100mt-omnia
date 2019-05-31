@@ -6,10 +6,10 @@ CSysMaintView View html
     <table class="dataintable">
     <tbody>
         <tr><th colspan="3" id='smvNTPTitle'>NTP对时</th></tr>
-        <tr><td class="weight" style="width: 100px">NTP Server</td> <td><input id="smvNTPServerIP" value="" style="width: 100px;"><a> default: 210.72.145.44</a></td>
+        <tr><td class="weight" style="width: 100px">NTP Server</td> <td><input id="smvNTPServerIP" value="" placeholder="new ip" style="width: 100px;"><a> default: 210.72.145.44</a></td>
             <td rowspan="2" style="text-align: center;vertical-align: middle"><button id="smvRefreshBtn" class="incell" style="width: 100px; height: 50px">刷新</button></td>
         </tr>
-        <tr><td class="weight" style="width: 100px"><a id="smvTime">网络对时</a></td> <td><a id="smvTimeVal">TBD</a></td>
+        <tr><td class="weight" style="width: 100px"><a id="smvTime">网络对时</a></td> <td><a id="smvTimeVal">n/a</a></td>
         </tr>
     </tbody>
     </table>
@@ -18,17 +18,20 @@ CSysMaintView View html
     <table class="dataintable">
     <tbody>
         <tr><th colspan="4" id='smvTitleGJWH'>固件升级维护</th></tr>
-        <tr><td id="smvHWIp" class="weight" style="width: 100px"><a>设备地址</a></td>
-            <td colspan="3"><a id="smvHWIpVal">N/A</a></td>
+        <tr><td id="smvHwMac" class="weight" style="width: 100px"><a>本机硬件地址</a></td>
+            <td colspan="2"><input id="smvHwMacVal" value="" placeholder="n/a" style="width: 350px;"></td>
+            <td rowspan="3" style="width: 100px;text-align: center;vertical-align: middle"><button id="smvUpdateHwCodeBtn" class="incell" style="width: 95px; height: 45px">刷新设备编码</button>
+                <button id="smvSetDefaultBtn" class="incell" style="width: 95px;height: 45px; margin: 5px 0 5px 0; color: red">恢复出厂设置</button>
+            </td>
         </tr>
-        <tr><td class="weight"><a id="smvHWIMEI">硬件设备号</a></td>
-            <td colspan="3"><a id="smvHWIMEIVal">N/A</a></td>
+        <tr><td class="weight"><a id="smvHWIMEI">本机设备号</a></td>
+            <td colspan="2"><input id="smvHWIMEIVal" value="" placeholder="n/a" style="width: 350px;"></td>
         </tr>
         <tr><td class="weight"><a id="smvFWVer">固件版本号</a></td>
-            <td colspan="2"><a id="smvFWVerVal">N/A</a></td>
-            <td style="width: 100px"><button id="smvSetDefaultBtn" class="incell" style="width: 95px">恢复出厂设置</button></td>
+            <td colspan="2"><a id="smvFWVerVal">n/a</a></td>
+            <!-- <td style="width: 100px"><button id="smvSetDefaultBtn" class="incell" style="width: 95px">恢复出厂设置</button></td> -->
         </tr>
-        <tr><td class="weight"><a id="smvUpFW">升级固件</a></td>
+        <tr><td class="weight" style="vertical-align: middle"><a id="smvUpFW">升级固件</a></td>
             <td  colspan="2" style="vertical-align: middle"> <input id = "smvUpgradeFileObj" type="file" class="hidden" />
                 <input id="smvUpgradeFilePath" readonly="readonly" placeholder="firmware upgrade package" style="width: 350px;"></td>
             <td style="width: 100px">
@@ -36,8 +39,8 @@ CSysMaintView View html
                 <button id="smvUploadFileBtn" class="incell" style="width: 95px; margin: 3px 0 3px 0;">上传新固件</button></td>
         </tr>
         <tr><td class="weight"><a id="smvNewFW">新固件</a></td>
-            <td>Ver: <a id="smvNewFWVerVal">N/A</a></td>
-            <td>MD5: <a id="smvNewFWMd5Val">N/A</a></td>
+            <td>Ver: <a id="smvNewFWVerVal">n/a</a></td>
+            <td>MD5: <a id="smvNewFWMd5Val">n/a</a></td>
             <td><button id="smvRebootBtn" class="incell" style="width: 95px">重启设备</button></td>
         </tr>
     </tbody>
@@ -48,7 +51,7 @@ CSysMaintView View html
     <tbody>
         <tr><th colspan="3" id="smvTitleLog">日志维护</th></tr>
         <tr><th class="light" id="smvLogStartDate">开始时间:</th><th class="light" id="smvLogEndDate">结束时间:</th><th class="light" id="smvLogOperation">操作</th></tr>
-        <tr><td><input id = "smvStartDateInput" type="datetime-local"/></td><td><input id = "smvEndDateInput" type="datetime-local"/></td>
+        <tr><td><input id = "smvStartDateInput" type="date"/></td><td><input id = "smvEndDateInput" type="date"/></td>
             <td style="width: 100px"><button id="smvRefreshLogBtn" class="incell" style="width: 85px" >刷新日志</button></td>
         </tr>
     </tbody>

@@ -25,8 +25,11 @@ function cCfgView(){
             { url: getURL(), // "/cgi-bin/cgi.cgi",
                 type: "POST", 
                 data: parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function (res) {
-                    var data = JSON.parse(res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc)
                     {
                         if(data.dat.length){

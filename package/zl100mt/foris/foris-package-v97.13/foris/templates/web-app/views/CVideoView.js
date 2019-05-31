@@ -24,7 +24,7 @@ CVideoView.prototype.activeMyView = function(){
     // resize
     window.onresize = this.adjustShowAreaSize;
 
-    // gDebug = 0;
+    //gDebug = 0;
     if(gDebug){
         this.rtmpUrl =  "rtmp://127.0.0.1:1935/live/fqr";
         $("#vvRtmpUrlSelector").empty();
@@ -35,8 +35,8 @@ CVideoView.prototype.activeMyView = function(){
     else{
         // 初始化rtmp链接
         $("#vvRtmpUrlSelector").empty();
-        oStore.store.RTMP.channelList.forEach(function(value,index){
-            let rtmpUrl = "rtmp://" + oStore.store.RTMP.ServerIP + ":1935/live/" + value.Code;
+        oStore.RTMP.channelList.forEach(function(value,index){
+            let rtmpUrl = "rtmp://" + oStore.RTMP.ServerIP +  ":" + oStore.store.defaultRtmpSrvPortNum + "/" + oStore.store.defaultRtmpSrvAppName + "/" + value.Code; //":1935/live/" + value.Code;
             let tr = "<option id='vvRtmpUrlSelector" + index +"'" + " value=" + rtmpUrl + ">" + rtmpUrl + "</option>";
             $("#vvRtmpUrlSelector").append(tr);
         });

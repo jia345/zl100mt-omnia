@@ -5,29 +5,30 @@ function CLoginView(){
     // 构造函数
     var _this = this;
     //初始化中使用原生DOM操作，避免引入库冲突
-    console.log(csrf_token)
     document.getElementById("lgSubmitBtn").onclick = function(){
         //login view业务流程
         var str = {
             "command":"login",
             "name":$("#lgUserNameInput").val(),
-            "pwd":$("#lgPWDInput").val(),
+            "pwd":$("#lgPWDInput").val()
         }
         parameters = JSON.stringify(str);
-	console.log(str)
         $.ajax({
             type:"POST",
             url: getURL(), //"/cgi-bin/cgi.cgi",
-            data: {
-                    "csrf_token": csrf_token,
-	            "data_str": parameters
-		 },
-	    contentType: 'application/json',
+            data:parameters,
+            contentType: "application/json",
+            dataType: 'json',
             success: function(res){
-                // var data = JSON.parse(res);
-		console.log(res);
-		csrf_token = res['csrf_token']
-                if(0 == res.rc)
+                /* 返回参数格式
+                    {"rc":0/1,  //0 =>成功/1=>失败
+                    "errCode": error msg txt //错误代码或消息文本
+                    }
+                */
+                //var data = JSON.parse(res);
+                var data = res;
+                console.log(data);
+                if(0 == data.rc)
                 {
                     //1.hide loginview;
                     //2. active maincontent + active sidebar;

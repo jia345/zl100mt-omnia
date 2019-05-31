@@ -32,17 +32,15 @@ CUserMgtView.prototype.render = function(){
     $.ajax({
         type:"POST",
         url: getURL(), //"/cgi-bin/cgi.cgi",
-        data: {
-                  "csrf_token": csrf_token,
-	          "data_str": parameters
-            },
-	contentType: 'application/json',
+        data:parameters,
+        contentType: 'application/json',
+        dataType: 'json',
         success: (res)=>{
             // 返回参数格式
             //     { "rc":0/1, "errCode": error msg tx,
             //     "dat":  {"pwd":"xxx"}
             //    }
-            // var data = JSON.parse(res);
+            //var data = JSON.parse(res);
             var data = res;
             if(0 == data.rc){
                 console.log('getUserInfor, succ.=>'+data.dat.pwd);
@@ -83,16 +81,14 @@ CUserMgtView.prototype.loadHtml = function(){
             $.ajax({
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
-                data: {
-                          "csrf_token": csrf_token,
-	                  "data_str": parameters
-                     },
-		contentType: 'application/json',
+                data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: (res)=>{
                     // 返回参数格式
                     //    { "rc": 0/1, "errCode": "xxx"}  //0 =>成功/1=>失败
-                    // var data = JSON.parse(res);
-                    var data = (res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         console.log('resetDefaultPwd, succ.=>'+data.dat);
                         this.store.pwd = data.dat.pwd;
@@ -112,8 +108,7 @@ CUserMgtView.prototype.loadHtml = function(){
             let oldPwd = $('#uvOldPWDInput').val();
             let newPwd = $('#uvNewPWDInput').val();
             let confirmPwd = $('#uvConfirmNewPWDInput').val();
-            // if((oldPwd != this.store.pwd) || (newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
-            if((newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
+            if((oldPwd != this.store.pwd) || (newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
                 tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'umvPwdCheckFail'));//'密码校验未通过！'
                 return;
             }
@@ -129,16 +124,14 @@ CUserMgtView.prototype.loadHtml = function(){
             $.ajax({
                 type:"POST",
                 url: getURL(), //"/cgi-bin/cgi.cgi",
-                data: {
-                          "csrf_token": csrf_token,
-	                  "data_str": parameters
-                     },
-		contentType: 'application/json',
+                data:parameters,
+                contentType: 'application/json',
+                dataType: 'json',
                 success: function(res){
                     // 返回参数格式
                     //    { "rc": 0/1, "errCode": "xxx"}  //0 =>成功/1=>失败
-                    // var data = JSON.parse(res);
-                    var data = (res);
+                    //var data = JSON.parse(res);
+                    var data = res;
                     if(0 == data.rc){
                         console.log('setPWD, succ.=>'+data.errCode);
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'umvSetPwdSucc'));//'密码设置成功！'
