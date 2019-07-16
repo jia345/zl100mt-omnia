@@ -49,7 +49,7 @@ CSysMaintView.prototype.loadHtml = function(){
         };
     var cnHtmlMap = {
             smvNTPTitle:"NTP网络对时",smvTime:"网络对时",smvRefreshBtn:"刷新",
-            smvTitleGJWH:'固件升级维护',smvHwMac:'本机硬件地址',smvHWIMEI:"本机设备号",smvUpdateHwCodeBtn:"刷新设备编码",smvFWVer:"固件版本号",smvUpFW:"升级固件",smvNewFW:"新固件",
+            smvTitleGJWH:'固件维护',smvHwMac:'本机硬件地址',smvHWIMEI:"本机设备号",smvUpdateHwCodeBtn:"刷新设备编码",smvFWVer:"固件版本号",smvUpFW:"升级固件",smvNewFW:"新固件",
             smvSetDefaultBtn:"恢复出厂设置",smvBrowseFileBtn:"选取文件",smvUploadFileBtn:"上传新固件",smvRebootBtn:"重启升级",
             smvTitleLog:"日志维护",smvLogTH:"Log记录链接",smvLog:"Log记录",smvLogStartDate:"开始时间",smvLogEndDate:"结束时间",smvLogOperation:"操作",smvRefreshLogBtn:"刷新日志",
         };

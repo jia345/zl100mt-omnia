@@ -17,7 +17,7 @@ CSysMaintView View html
 <div>
     <table class="dataintable">
     <tbody>
-        <tr><th colspan="4" id='smvTitleGJWH'>固件升级维护</th></tr>
+        <tr><th colspan="4" id='smvTitleGJWH'>固件维护</th></tr>
         <tr><td id="smvHwMac" class="weight" style="width: 100px"><a>本机硬件地址</a></td>
             <td colspan="2"><input id="smvHwMacVal" value="" placeholder="n/a" style="width: 350px;"></td>
             <td rowspan="3" style="width: 100px;text-align: center;vertical-align: middle"><button id="smvUpdateHwCodeBtn" class="incell" style="width: 95px; height: 45px">刷新设备编码</button>
@@ -31,7 +31,8 @@ CSysMaintView View html
             <td colspan="2"><a id="smvFWVerVal">n/a</a></td>
             <!-- <td style="width: 100px"><button id="smvSetDefaultBtn" class="incell" style="width: 95px">恢复出厂设置</button></td> -->
         </tr>
-        <tr><td class="weight" style="vertical-align: middle"><a id="smvUpFW">升级固件</a></td>
+        <!-- 20190716: 文件系统支持原因，暂时屏蔽该功能。 -->
+        <!-- <tr><td class="weight" style="vertical-align: middle"><a id="smvUpFW">升级固件</a></td>
             <td  colspan="2" style="vertical-align: middle"> <input id = "smvUpgradeFileObj" type="file" class="hidden" />
                 <input id="smvUpgradeFilePath" readonly="readonly" placeholder="firmware upgrade package" style="width: 350px;"></td>
             <td style="width: 100px">
@@ -42,7 +43,7 @@ CSysMaintView View html
             <td>Ver: <a id="smvNewFWVerVal">n/a</a></td>
             <td>MD5: <a id="smvNewFWMd5Val">n/a</a></td>
             <td><button id="smvRebootBtn" class="incell" style="width: 95px">重启设备</button></td>
-        </tr>
+        </tr> -->
     </tbody>
     </table>
 </div>
