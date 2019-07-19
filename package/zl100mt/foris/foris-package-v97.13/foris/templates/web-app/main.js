@@ -150,43 +150,7 @@ CMainFrm.prototype.loadHtml = function(){
     $('#titleRefreshAllBtn').click(()=>{
         if(window.oStore){
         //从主板获取所有的数据
-        var str = {
-            "command":"getSysInfor"
-        }
-        parameters = JSON.stringify(str);
-        $.ajax({
-            type:"POST",
-            url: getURL(), //"/cgi-bin/cgi.cgi",
-            data:parameters,
-            contentType: 'application/json',
-            dataType: 'json',
-            success: (res)=>{
-                //var data = JSON.parse(res);
-                var data = res;
-                console.log(data);
-                if(0 == data.rc){
-                    // console.log('getSysInfor, succ.=>'+data.errCode);
-                    // this.store = data.dat;
-                    //data = '';
-                    oStore.system = data.dat.system;
-                    oStore.LTEZ = data.dat.LTEZ;
-                    oStore.LTE4G = data.dat.LTE4G;
-                    oStore.GNSS = data.dat.GNSS;
-                    oStore.DHCP = data.dat.DHCP;
-                    oStore.LAN = data.dat.LAN;
-                    oStore.RTMP = data.dat.RTMP;
-                    oStore.VPN = data.dat.VPN;
-                    oStore.FireWall = data.dat.FireWall;
-                    oStore.Mapping = data.dat.Mapping;
-                    oStore.NTP = data.dat.NTP;
-                }
-                else{
-                    tools.msgBox(data.errCode);
-                }
-                // console.log('_this.system.=>'+this.system.localDatetime);
-            },
-            error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
-        });
+        oStore.getSysInfor();
         //刷新各个页面刷新
         this.refreshAllViews();
         }
@@ -239,14 +203,70 @@ function CStore(){
         "defaultRtmpSrvPortNum": 1935,
         "defaultRtmpSrvAppName": "live"
     };
-    // get this global var
+    //
+    _this.initDat();
     _this.render();
     //update_csrf(_this.render);
-
 }
 CStore.prototype.store;
+CStore.prototype.initDat = function(){
+    this.system = ''; //data.dat.system;
+    this.LTEZ = ''; //data.dat.LTEZ;
+    this.LTE4G = ''; //data.dat.LTE4G;
+    this.GNSS = ''; //data.dat.GNSS;
+    this.DHCP = ''; //data.dat.DHCP;
+    this.LAN = ''; //data.dat.LAN;
+    this.RTMP = ''; //data.dat.RTMP;
+    this.VPN = ''; //data.dat.VPN;
+    this.FireWall = ''; //data.dat.FireWall;
+    this.Mapping = ''; //data.dat.Mapping;
+    this.NTP = ''; //data.dat.NTP;
+}
 CStore.prototype.render = function(){
     // let that = this.oStore;
+    this.getHostStatusInfo();
+}
+CStore.prototype.getSysInfor = function(){
+    var str = {
+        "command":"getSysInfor"
+    }
+    parameters = JSON.stringify(str);
+    $.ajax({
+        type:"POST",
+        url: getURL(), //"/cgi-bin/cgi.cgi",
+        data:parameters,
+        contentType: 'application/json',
+        dataType: 'json',
+        success: (res)=>{
+            //var data = JSON.parse(res);
+            var data = res;
+            console.log(data);
+            if(0 == data.rc){
+                // console.log('getSysInfor, succ.=>'+data.errCode);
+                // this.store = data.dat;
+                //data = '';
+                this.system = data.dat.system;
+                this.LTEZ = data.dat.LTEZ;
+                this.LTE4G = data.dat.LTE4G;
+                this.GNSS = data.dat.GNSS;
+                this.DHCP = data.dat.DHCP;
+                this.LAN = data.dat.LAN;
+                this.NTP = data.dat.NTP;
+                this.RTMP = data.dat.RTMP;
+                this.VPN = data.dat.VPN;
+                this.FireWall = data.dat.FireWall;
+                this.Mapping = data.dat.Mapping;
+            }
+            else{
+                tools.msgBox(data.errCode);
+            }
+            // console.log('_this.system.=>'+this.system.localDatetime);
+        },
+        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
+    });
+
+}
+CStore.prototype.getHostStatusInfo = function(){
     var str = {
         "command":"getHostStatusInfo"  //"getSysInfor"
     }
@@ -273,11 +293,7 @@ CStore.prototype.render = function(){
                 this.GNSS = data.dat.GNSS;
                 this.DHCP = data.dat.DHCP;
                 this.LAN = data.dat.LAN;
-                this.RTMP = ''; //data.dat.RTMP;
-                this.VPN = ''; //data.dat.VPN;
-                this.FireWall = ''; //data.dat.FireWall;
-                this.Mapping = ''; //data.dat.Mapping;
-                this.NTP = ''; //data.dat.NTP;
+                this.NTP = data.dat.NTP;
             }
             else{
                 tools.msgBox(data.errCode);
@@ -286,4 +302,35 @@ CStore.prototype.render = function(){
         },
         error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
     });
+}
+CStore.prototype.getNetworkCfgInfor = function(){
+    var str = {
+        "command":"getNetworkCfgInfor"
+    }
+    parameters = JSON.stringify(str);
+    $.ajax({
+        type:"POST",
+        url: getURL(), //"/cgi-bin/cgi.cgi",
+        data:parameters,
+        contentType: 'application/json',
+        dataType: 'json',
+        success: (res)=>{
+            //var data = JSON.parse(res);
+            var data = res;
+            console.log(data);
+            if(0 == data.rc){
+                // console.log('getNetworkCfgInfor, succ.=>'+data.errCode);
+                this.RTMP = data.dat.RTMP;
+                this.VPN = data.dat.VPN;
+                this.FireWall = data.dat.FireWall;
+                this.Mapping = data.dat.Mapping;
+            }
+            else{
+                tools.msgBox(data.errCode);
+            }
+            // console.log('_this.system.=>'+this.system.localDatetime);
+        },
+        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
+    });
+
 }

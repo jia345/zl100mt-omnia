@@ -18,35 +18,7 @@ CNetworkView.prototype.node;
 CNetworkView.prototype.jqNode;
 CNetworkView.prototype.activeMyView = function(){
     // get networkcfg
-    var str = {
-        "command":"getNetworkCfgInfor"
-    }
-    parameters = JSON.stringify(str);
-    $.ajax({
-        type:"POST",
-        url: getURL(), //"/cgi-bin/cgi.cgi",
-        data:parameters,
-        contentType: 'application/json',
-        dataType: 'json',
-        success: (res)=>{
-            //var data = JSON.parse(res);
-            var data = res;
-            console.log(data);
-            if(0 == data.rc){
-                // console.log('getNetworkCfgInfor, succ.=>'+data.errCode);
-                oStore.RTMP = data.dat.RTMP;
-                oStore.VPN = data.dat.VPN;
-                oStore.FireWall = data.dat.FireWall;
-                oStore.Mapping = data.dat.Mapping;
-                oStore.NTP = data.dat.NTP;
-            }
-            else{
-                tools.msgBox(data.errCode);
-            }
-            // console.log('_this.system.=>'+this.system.localDatetime);
-        },
-        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
-    });
+    oStore.getNetworkCfgInfor();
     // active windows
     tools.ActivateViewByNodeInContainer(gMainView, this.node);
     $('#netvTabRoutingTextarea').text("No.  Dst.Net       SubMask    Gateway       Interface     Metric" + " \n ");

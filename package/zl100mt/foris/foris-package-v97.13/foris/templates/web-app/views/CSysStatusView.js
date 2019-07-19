@@ -17,6 +17,9 @@ function CSysStatusView(){
 CSysStatusView.prototype.node;
 CSysStatusView.prototype.jqNode;
 CSysStatusView.prototype.activeMyView = function(){
+    // getHostStatusInfo
+    oStore.getHostStatusInfo();
+    // active windows
     tools.ActivateViewByNodeInContainer(gMainView, this.node);
     this.render();
 }

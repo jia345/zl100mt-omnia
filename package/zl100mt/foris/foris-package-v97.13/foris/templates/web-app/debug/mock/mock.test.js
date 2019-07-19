@@ -133,6 +133,7 @@ Mock.mock(
                         "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "type":"xiaomi"},
                                         {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "type":"ibm"},
                                         {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "type":"pc"} ]},
+                "NTP":{"serverIP":"10.1.1.12"},
                 "RTMP":{"ServerIP":"10.1.1.12",
                         "channelList":[ {"Name":"Cam01", "Code":"left-1"},
                                         {"Name":"Cam02", "Code":"right-1"},
@@ -154,7 +155,6 @@ Mock.mock(
                                              "WLanPort":"11000","LanSlot":"LAN1",/* LanSlot 取值: LAN1 到 LAN3 */ "LanIP":"128.0.1.22","LanPort":"110","Desc":"mock-WLanSlot-Max40字符"},
                                 {"WLanSlot":"LTE-4G", "WLanPort":"12000","LanSlot":"LAN3", "LanIP":"128.0.1.2","LanPort":"80","Desc":"mock-LanSlot-Max40字符"}],
                         },
-                "NTP":{"serverIP":"10.1.1.12"},
              }; 
             res = fillResCodeTxt(0,'getSysInfor',params);
             //
@@ -189,6 +189,7 @@ Mock.mock(
                         "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "type":"xiaomi"},
                                         {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "type":"ibm"},
                                         {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "type":"pc"} ]},
+                "NTP":{"serverIP":"10.1.1.12"},
             };
             res = fillResCodeTxt(0,'getHostStatusInfo',params);
             //
@@ -216,7 +217,6 @@ Mock.mock(
                                              "WLanPort":"11000","LanSlot":"LAN1",/* LanSlot 取值: LAN1 到 LAN3 */ "LanIP":"128.0.1.22","LanPort":"110","Desc":"mock-WLanSlot-Max40字符"},
                                 {"WLanSlot":"LTE-4G", "WLanPort":"12000","LanSlot":"LAN3", "LanIP":"128.0.1.2","LanPort":"80","Desc":"mock-LanSlot-Max40字符"}],
                         },
-                "NTP":{"serverIP":"10.1.1.12"},
             };
             res = fillResCodeTxt(0,'getNetworkCfgInfor',params);
             //
