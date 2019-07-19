@@ -43,7 +43,7 @@ function cCfgView(){
                         tools.msgBox(res);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
         });
 
     });

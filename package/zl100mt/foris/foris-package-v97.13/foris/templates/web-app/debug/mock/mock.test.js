@@ -141,8 +141,8 @@ Mock.mock(
                         "vpnProtocol":"L2TP", /* PPTP 或 L2TP/IPSec */
                         "vpnKey":"34sd4", "vpnStatus":"on"}, /* on/off */
                 "FireWall":{"ipFilter":"off", "macFilter":"on", "DMZ":{"IP":"123.3.3.1", "Status":"on"},
-                        "ipList":[{"LanIPs":"127.1.1.2 - 127.1.1.20", "LanPort":"3122","WLanIPs":"10.1.1.2", "WLanPort":"213", "Protocol":"SNMP", "Status":"disable"},
-                                    {"LanIPs":"127.1.1.3 - 127.1.1.30", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Protocol":"UDP", "Status":"enable"}
+                        "ipList":[{"LanIPs":"127.1.1.2 - 127.1.1.20", "LanPort":"3122","WLanIPs":"10.1.1.2", "WLanPort":"213", "Status":"disable"}, //"Protocol":"SNMP",
+                                    {"LanIPs":"127.1.1.3 - 127.1.1.30", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Status":"enable"} //"Protocol":"UDP", 
                                 ],
                         "macList":[{"MAC":"ED-DD-4D-45-5A-9A", "Status":"enable","Desc":"mock-xx-Max40字符"}, /* status 取值: enable 或 disable */
                                 {"MAC":"ED-DD-4D-45-5A-9B", "Status":"disable","Desc":"mock-xx-Max40字符"}]},
@@ -157,6 +157,68 @@ Mock.mock(
                 "NTP":{"serverIP":"10.1.1.12"},
              }; 
             res = fillResCodeTxt(0,'getSysInfor',params);
+            //
+            return res;
+        }else if(command == 'getHostStatusInfo'){
+            params = {
+                "system": {"localDatetime":"1531817800000", //ms数
+                            "currDuration":"17800000", //本次开机时间
+                            "hwMAC":"ED-DD-4D-45-01-01","hwIMEI": "ABC12345", "swVersion":"1.1.0"},
+                "LTEZ":{"type":"LTE-Z","connection":"on", "signal":"1.2",
+                        "wlanIP":"10.1.1.100", "defaultGwIP":"10.2.1.1",
+                        "mDnsIP":"10.2.1.1", "sDnsIP":"10.2.1.2", "MAC":"867223022323208",
+                        "usim":"Ready", /* Ready 或 Invalid */
+                        "IMSI":"08509123", "PLMN":"18509123",
+                        "frq":"23.7", "RSRQ":"3.2"},
+                "LTE4G":{"type":"LTE-4G","connection":"on", "signal":"1.2",
+                        "wlanIP":"10.1.1.109", "defaultGwIP":"10.2.1.1",
+                        "mDnsIP":"10.2.1.1", "sDnsIP":"10.2.1.2", "MAC":"867223022323209",
+                        "usim":"Invalid", "IMSI":"08509123", "PLMN":"9854509123",
+                        "frq":"73.32", "RSRQ":"33.2"},
+                "GNSS":{ "connection":"on", "signal":"1.01",
+                        "satelliteNum":"9", "totalMsg":"4531", 
+                        "succMsg":"4500", "failMsg":"31", 
+                        "targetSim":"01897", "localSim":"02654",
+                        "beam1":"11","beam2":"12","beam3":"13","beam4":"14","beam5":"15","beam6":"16"},
+                "DHCP":{"dhcpStatus":'DHCP', /* DHCP 或 Statics */
+                        "startIP":"12.2.2.1", "endIP":"12.2.2.100", "leaseTerm":"120",
+                        "subMask":"255.255.0.0", "defaultGwIP":"12.2.2.1","DNS1":"12.2.2.2", "DNS2":"12.2.2.1"},
+                "LAN":{ "LAN":[{"port":"LAN1", "MAC":"ED-DD-4D-45-5A-9A", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
+                                {"port":"LAN2", "MAC":"ED-DD-4D-45-5A-9B", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
+                                {"port":"LAN3", "MAC":"ED-DD-4D-45-5A-9C", "IP":"10.1.1.13", "subMask":"255.255.255.0"} ],
+                        "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "type":"xiaomi"},
+                                        {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "type":"ibm"},
+                                        {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "type":"pc"} ]},
+            };
+            res = fillResCodeTxt(0,'getHostStatusInfo',params);
+            //
+            return res;
+        }else if(command == 'getNetworkCfgInfor'){
+            params = {
+                "RTMP":{"ServerIP":"10.1.1.12",
+                        "channelList":[ {"Name":"Cam01", "Code":"left-1"},
+                                        {"Name":"Cam02", "Code":"right-1"},
+                                        {"Name":"Cam03", "Code":"top-2"} ] },
+                "VPN":{"vpnAddress":"124.1.2.1/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd", 
+                        "vpnProtocol":"L2TP", /* PPTP 或 L2TP/IPSec */
+                        "vpnKey":"34sd4", "vpnStatus":"on"}, /* on/off */
+                "FireWall":{"ipFilter":"off", "macFilter":"on", "DMZ":{"IP":"123.3.3.1", "Status":"on"},
+                        "ipList":[{"LanIPs":"127.1.1.2 - 127.1.1.20", "LanPort":"3122","WLanIPs":"10.1.1.2", "WLanPort":"213", "Status":"disable"}, //"Protocol":"SNMP",
+                                    {"LanIPs":"127.1.1.3 - 127.1.1.30", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Status":"enable"} //"Protocol":"UDP", 
+                                ],
+                        "macList":[{"MAC":"ED-DD-4D-45-5A-9A", "Status":"enable","Desc":"mock-xx-Max40字符"}, /* status 取值: enable 或 disable */
+                                {"MAC":"ED-DD-4D-45-5A-9B", "Status":"disable","Desc":"mock-xx-Max40字符"}]},
+                "Mapping":{ "slotLTEZ":{"LAN1":"on", "LAN2":"off", "LAN3":"on"}, /* LAN 取值: on 或 off */
+                            "slotLTE4G":{"LAN1":"off", "LAN2":"on", "LAN3":"off"},
+                            "mac2ip":[{"MAC":"ED-DD-4D-45-5A-9A", "IP":"123.4.3.1","Desc":"mock-xx-Max40字符"},
+                                {"MAC":"ED-DD-4D-45-5A-9B", "IP":"123.4.3.2","Desc":"mock-xx-Max40字符"}],
+                            "portMapping":[{"WLanSlot":"LTE-Z",/* WLanSlot 取值: LTE-Z 或 LTE-4G */
+                                             "WLanPort":"11000","LanSlot":"LAN1",/* LanSlot 取值: LAN1 到 LAN3 */ "LanIP":"128.0.1.22","LanPort":"110","Desc":"mock-WLanSlot-Max40字符"},
+                                {"WLanSlot":"LTE-4G", "WLanPort":"12000","LanSlot":"LAN3", "LanIP":"128.0.1.2","LanPort":"80","Desc":"mock-LanSlot-Max40字符"}],
+                        },
+                "NTP":{"serverIP":"10.1.1.12"},
+            };
+            res = fillResCodeTxt(0,'getNetworkCfgInfor',params);
             //
             return res;
         }else if(command == 'reBoot')

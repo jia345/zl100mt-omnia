@@ -126,27 +126,69 @@ function CMainFrm(){
 CMainFrm.prototype.init = function(){
     //
 };
+CMainFrm.prototype.refreshAllViews = function(){
+    for(element in gAllView)
+    {
+        // console.log(element);
+        gAllView[element].loadHtml();
+        //解决切换语言后页面不会再次加载数据问题,强制所有mainView隐藏.
+        tools.DeactivateAllViewInContainer(gMainView);
+    }
+};
 CMainFrm.prototype.loadHtml = function(){
     // 多语言实现
-    var enHtmlMap = {footerTitle:"ZL100MT | All right reserved, 2018. ", titleRefreshBtn:"Refresh All",};
-    var cnHtmlMap = {footerTitle:"ZL100MT 数据融合仪 | 版权所有XXX, 2018. ", titleRefreshBtn:"刷新数据",};
+    var enHtmlMap = {footerTitle:"ZL100MT | All right reserved, 2018. ", titleRefreshAllBtn:"Refresh All",};
+    var cnHtmlMap = {footerTitle:"ZL100MT 数据融合仪 | 版权所有, 2018. ", titleRefreshAllBtn:"刷新所有数据",};
     tools.language = $('#langSelector').children('option:selected').val();
     tools.htmlSwitchLang(enHtmlMap, cnHtmlMap);
     //2.注册控件回调函数
     // 语言selector
     $('#langSelector').change(()=>{ 
-        for(element in gAllView)
-        {
-            // console.log(element);
-            gAllView[element].loadHtml();
-            //解决切换语言后页面不会再次加载数据问题,强制所有mainView隐藏.
-            tools.DeactivateAllViewInContainer(gMainView);
-        }
+        this.refreshAllViews();
     });
     // 全局刷新Btn
-    $('#titleRefreshBtn').click(()=>{
+    $('#titleRefreshAllBtn').click(()=>{
         if(window.oStore){
-            oStore.render();
+        //从主板获取所有的数据
+        var str = {
+            "command":"getSysInfor"
+        }
+        parameters = JSON.stringify(str);
+        $.ajax({
+            type:"POST",
+            url: getURL(), //"/cgi-bin/cgi.cgi",
+            data:parameters,
+            contentType: 'application/json',
+            dataType: 'json',
+            success: (res)=>{
+                //var data = JSON.parse(res);
+                var data = res;
+                console.log(data);
+                if(0 == data.rc){
+                    // console.log('getSysInfor, succ.=>'+data.errCode);
+                    // this.store = data.dat;
+                    //data = '';
+                    oStore.system = data.dat.system;
+                    oStore.LTEZ = data.dat.LTEZ;
+                    oStore.LTE4G = data.dat.LTE4G;
+                    oStore.GNSS = data.dat.GNSS;
+                    oStore.DHCP = data.dat.DHCP;
+                    oStore.LAN = data.dat.LAN;
+                    oStore.RTMP = data.dat.RTMP;
+                    oStore.VPN = data.dat.VPN;
+                    oStore.FireWall = data.dat.FireWall;
+                    oStore.Mapping = data.dat.Mapping;
+                    oStore.NTP = data.dat.NTP;
+                }
+                else{
+                    tools.msgBox(data.errCode);
+                }
+                // console.log('_this.system.=>'+this.system.localDatetime);
+            },
+            error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
+        });
+        //刷新各个页面刷新
+        this.refreshAllViews();
         }
     });
 }
@@ -204,9 +246,9 @@ function CStore(){
 }
 CStore.prototype.store;
 CStore.prototype.render = function(){
-    let that = this.oStore;
+    // let that = this.oStore;
     var str = {
-        "command":"getSysInfor"
+        "command":"getHostStatusInfo"  //"getSysInfor"
     }
     parameters = JSON.stringify(str);
     $.ajax({
@@ -231,17 +273,17 @@ CStore.prototype.render = function(){
                 this.GNSS = data.dat.GNSS;
                 this.DHCP = data.dat.DHCP;
                 this.LAN = data.dat.LAN;
-                this.RTMP = data.dat.RTMP;
-                this.VPN = data.dat.VPN;
-                this.FireWall = data.dat.FireWall;
-                this.Mapping = data.dat.Mapping;
-                this.NTP = data.dat.NTP;
+                this.RTMP = ''; //data.dat.RTMP;
+                this.VPN = ''; //data.dat.VPN;
+                this.FireWall = ''; //data.dat.FireWall;
+                this.Mapping = ''; //data.dat.Mapping;
+                this.NTP = ''; //data.dat.NTP;
             }
             else{
                 tools.msgBox(data.errCode);
             }
             // console.log('_this.system.=>'+this.system.localDatetime);
         },
-        error: function (errorThrown) { alert("error");}
+        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
     });
 }

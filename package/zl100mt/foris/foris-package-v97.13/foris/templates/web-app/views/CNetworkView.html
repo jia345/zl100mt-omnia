@@ -156,9 +156,10 @@ CNetworkView View的 html 定义
             </div>
             <table class="dataintable" style="margin-top: 1px;">
             <tbody id="firewallIPFilterTbl">
-                <tr> <th colspan="7" id="firewallIPFilterTblTxt">IP过滤表</th> </tr>
-                <tr> <th class="light">No.</th><!--th id="nvtpfValidation" class="light">有效期</th--><th id="nvtpfLanIP" class="light">局域网IP地址段</th><th id="nvtpfLanPort" class="light">局域网端口</th><th id="nvtpfWLanIP" class="light">广域网IP地址段</th><th id="nvtpfWLanPort" class="light">广域网端口</th><th id="nvtpfProtocol" class="light">协议类型</th><th id="nvtpfStatus" class="light">状态</th> </tr>
-                <tr> <td><input type='checkbox' checked='' /></td> <!--td><input class='nvtpfValiVal'/></td--> <td><input class='nvtpfLanIPVal'/></td> <td><input class='nvtpfLanPortVal'/></td> <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td> <td><input class='nvtpfProtocolVal'/></td> <td><select id='nvtpfProtocolValSelector'><option value='enable'>enable</option><option value='disbale'>disbale</option></select></td></tr>
+                <tr> <th colspan="6" id="firewallIPFilterTblTxt">IP过滤表</th> </tr>
+                <!-- 20190719删除【有效期、协议类型】字段 -->
+                <tr> <th class="light">No.</th><th id="nvtpfLanIP" class="light">局域网IP地址段</th><th id="nvtpfLanPort" class="light">局域网端口</th><th id="nvtpfWLanIP" class="light">广域网IP地址段</th><th id="nvtpfWLanPort" class="light">广域网端口</th><th id="nvtpfStatus" class="light">状态</th> </tr>
+                <tr> <td><input type='checkbox' checked='' /></td> <td><input class='nvtpfLanIPVal'/></td> <td><input class='nvtpfLanPortVal'/></td> <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td> <td><select id='nvtpfProtocolValSelector'><option value='enable'>enable</option><option value='disbale'>disbale</option></select></td></tr>
             </tbody>
             </table>
             <div style="margin: 25px 0 1px 0; text-align:left;">
@@ -227,7 +228,7 @@ CNetworkView View的 html 定义
                 <tr> <th class="light" style='width:25px'><a>No.</a></th> <th class="light" style='width:100px'>MAC</th> <th id="" class="light" style='width:100px'>IP</th> <th id="netvTabMappingMacIPTblDesc" class="light">描述(Max40字符）</th> </tr>
                 <tr> <td><input type='checkbox' /></td> <td><input class='netvTabMappingMacVal' placeholder="mac address"/></td>
                     <td><input class='netvTabMappingIPVal' type='IP' placeholder='ip address' /></td>
-                    <td><input class='netvTabMappingMemoVal' placeholder="description"/></td> </tr>
+                    <td><input class='netvTabMappingMacIpMemoVal' placeholder="description"/></td> </tr>
             </tbody>
             </table>
         </div>

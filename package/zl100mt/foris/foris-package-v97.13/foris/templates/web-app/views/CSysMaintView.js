@@ -102,7 +102,7 @@ CSysMaintView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         /** 刷新设备编码
@@ -153,7 +153,7 @@ CSysMaintView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         /**
@@ -332,7 +332,7 @@ CSysMaintView.prototype.loadHtml = function(){
                             tools.msgBox(res);
                         }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
             
             function refreshTable(data){

@@ -44,6 +44,19 @@
     tools.msgDebug = function(strMsg){
         console.debug(strMsg);
     }
+    //
+    tools.msgBoxFailed = function(strMsg){
+        var msg = "";
+        if(tools.language == "en"){
+            msg = "Operation failed!";
+            console.error(strMsg);
+        }else if(tools.language == "cn"){
+            msg = "操作失败!";
+            console.error(strMsg);
+        }
+        //
+        alert(msg);
+    }
 
     //
     tools.ActivateViewByNodeInContainer = function( aViewContainer, viewNode ){ // 注意：本函数只能对主View区的div进行Show操作，过要对sidebar进行类似操作需要重新写实现 
@@ -81,7 +94,7 @@
             for ( var name in enMap ){
                 var element = document.getElementById( name );
                 if(null == element){
-                    console.log(name);
+                    // console.log(name);
                 }
                 else{
                     element.innerHTML = enMap[name];
@@ -93,7 +106,7 @@
             for ( var name in cnMap ){
                 var element = document.getElementById( name );
                 if(null == element){
-                    console.log(name);
+                    // console.log(name);
                 }
                 else{
                     element.innerHTML = cnMap[name];

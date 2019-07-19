@@ -51,7 +51,7 @@ CUserMgtView.prototype.render = function(){
                 tools.msgBox(data.errCode);
             }
         },
-        error: function (errorThrown) { alert("error");}
+        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
     });
 
 }
@@ -100,7 +100,7 @@ CUserMgtView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
     
         });
@@ -140,7 +140,7 @@ CUserMgtView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
     });

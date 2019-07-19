@@ -38,7 +38,7 @@ function CLoginView(){
                     tools.viewShow(document.getElementById('mainContent'), true);
                 }
             },
-            error: function (errorThrown) { alert("error");}
+            error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
         });
     }
     //3.初始化对象和成员函数

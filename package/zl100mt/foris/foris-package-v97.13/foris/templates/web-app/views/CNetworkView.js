@@ -17,6 +17,37 @@ function CNetworkView(){
 CNetworkView.prototype.node;
 CNetworkView.prototype.jqNode;
 CNetworkView.prototype.activeMyView = function(){
+    // get networkcfg
+    var str = {
+        "command":"getNetworkCfgInfor"
+    }
+    parameters = JSON.stringify(str);
+    $.ajax({
+        type:"POST",
+        url: getURL(), //"/cgi-bin/cgi.cgi",
+        data:parameters,
+        contentType: 'application/json',
+        dataType: 'json',
+        success: (res)=>{
+            //var data = JSON.parse(res);
+            var data = res;
+            console.log(data);
+            if(0 == data.rc){
+                // console.log('getNetworkCfgInfor, succ.=>'+data.errCode);
+                oStore.RTMP = data.dat.RTMP;
+                oStore.VPN = data.dat.VPN;
+                oStore.FireWall = data.dat.FireWall;
+                oStore.Mapping = data.dat.Mapping;
+                oStore.NTP = data.dat.NTP;
+            }
+            else{
+                tools.msgBox(data.errCode);
+            }
+            // console.log('_this.system.=>'+this.system.localDatetime);
+        },
+        error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
+    });
+    // active windows
     tools.ActivateViewByNodeInContainer(gMainView, this.node);
     $('#netvTabRoutingTextarea').text("No.  Dst.Net       SubMask    Gateway       Interface     Metric" + " \n ");
     this.render();
@@ -178,17 +209,17 @@ CNetworkView.prototype.render = function(){
         // 20190521: remove Validation parameter
         if((undefined != oStore.FireWall.ipList) && (0 != oStore.FireWall.ipList.length)){
             $("#firewallIPFilterTbl tr:gt(1)").empty("");
-            //"ipList":[{"LanIPs":"127.1.1.2", "LanPort":"3122","WLanIPs":"10.1.1.2", "WLanPort":"213", "Protocol":"SNMP", "Status":"enable"},
-            // {"LanIPs":"127.1.1.3", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Protocol":"UDP", "Status":"diabale"}],
+            //"ipList":[{"LanIPs":"127.1.1.2", "LanPort":"3122","WLanIPs":"10.1.1.2", "WLanPort":"213", "Status":"enable"},
+            // {"LanIPs":"127.1.1.3", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Status":"diabale"}],
             // ** html 格式
             // <tr> <td><input type='checkbox' checked='' /></td> <td><input class='nvtpfLanIPVal'/></td> <td><input class='nvtpfLanPortVal'/></td>
-            //  <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td> <td><input class='nvtpfProtocolVal'/></td>
+            //  <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td> 
             //   <td><select id='nvtpfProtocolValSelector'><option value='enable'>enable</option><option value='disbale'>disbale</option></select></td></tr>
             oStore.FireWall.ipList.forEach(function(value,index){
                 let tr = "<tr> <td><input type='checkbox' /></td>" + // <td><input class='nvtpfValiVal'  style='width:35px' value=" + value.Validation + "></td>
                         "<td><input class='nvtpfLanIPVal' style='width:100px' value=" + value.LanIPs +"></td> <td><input  style='width:100px' class='nvtpfLanPortVal' value=" + value.LanPort +"></td>" +
                         "<td><input class='nvtpfWLanIPVal' style='width:100px' value="+ value.WLanIPs+"></td> <td><input style='width:100px' class='nvtpfWLanPortVal' value="+value.WLanPort +"></td>" +
-                        "<td><input class='nvtpfProtocolVal' style='width:50px' value=" + value.Protocol + "></td><td><select style='width:100px' id='nvtpfProtocolValSelector"+index+ "'"+"><option value='enable'>Enable</option><option value='disbale'>Disbale</option></select></td></tr>";
+                        "<td><select style='width:100px' id='nvtpfProtocolValSelector"+index+ "'"+"><option value='enable'>Enable</option><option value='disbale'>Disbale</option></select></td></tr>";
                 $("#firewallIPFilterTbl").append(tr);
                 $("#"+"nvtpfProtocolValSelector"+ index).find("option:contains('" + value.Status + "')").attr("selected",true);
             })
@@ -394,7 +425,7 @@ CNetworkView.prototype.render = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         }
 
@@ -406,7 +437,7 @@ CNetworkView.prototype.render = function(){
             oStore.Mapping.mac2ip.forEach(function(value,index){
                 let tr = "<tr> <td><input type='checkbox' /></td> <td><input class='netvTabMappingMacVal' value=" + value.MAC + "></td>" +
                         "<td><input class='netvTabMappingIPVal' type='IP' placeholder='10.10.10.11' value="+ value.IP+"></td>" +
-                        "<td><input class='netvTabMappingMemoVal' style='width:300px' value="+ value.Desc+"></td></tr>";
+                        "<td><input class='netvTabMappingMacIpMemoVal' style='width:300px' value="+ value.Desc+"></td></tr>";
                 $("#netvTabMappingMacIPTbl").append(tr);
             })
             }
@@ -574,7 +605,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabLanApplyLanCfgBtn
@@ -649,7 +680,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabLanApplyDhcpBtn
@@ -709,7 +740,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabRTMPApplyCfgBtn
@@ -762,7 +793,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabRTMPNewBtn
@@ -844,7 +875,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabVpnConnectBtn
@@ -889,7 +920,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabRoutingRefreshBtn
@@ -932,7 +963,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // routing operation
@@ -986,7 +1017,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         }
         $('#ntvtrAddBtn').click(()=>{
@@ -1050,7 +1081,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // IP filter
@@ -1061,7 +1092,7 @@ CNetworkView.prototype.loadHtml = function(){
             let tr = "<tr> <td><input type='checkbox' /></td> " +
                 "<td><input class='nvtpfLanIPVal' style='width:100px' value=''></td> <td><input  style='width:100px' class='nvtpfLanPortVal' value=''></td>" +
                 "<td><input class='nvtpfWLanIPVal' style='width:100px' value=''></td> <td><input style='width:100px' class='nvtpfWLanPortVal' value=''></td>" +
-                "<td><input class='nvtpfProtocolVal' style='width:50px' value=''></td><td><select style='width:100px'><option value='enable'>Enable</option><option selected value='disbale'>Disbale</option></select></td></tr>";
+                "<td><select style='width:100px'><option value='enable'>Enable</option><option selected value='disbale'>Disbale</option></select></td></tr>";
             $("#firewallIPFilterTbl").append(tr);
         });
         // nvTPFWIPFilterDelBtn
@@ -1085,10 +1116,10 @@ CNetworkView.prototype.loadHtml = function(){
                 var LanPort = $(item).find(".nvtpfLanPortVal").val();
                 var WLanIPs = $(item).find(".nvtpfWLanIPVal").val();
                 var WLanPort= $(item).find(".nvtpfWLanPortVal").val();
-                var Protocol= $(item).find(".nvtpfProtocolVal").val();
+                //var Protocol= $(item).find(".nvtpfProtocolVal").val();
                 var Status = $(item).find("select").children('option:selected').val();
-                if(/*(undefined != Validation) && */(undefined != LanIPs) && (undefined != LanPort) && (undefined != WLanIPs) && (undefined != WLanPort) && (undefined != Protocol) && (undefined != Status)){
-                    if(('' == LanIPs) || (false == tools.chkIpAddress(LanIPs)) || ('' == LanPort) || ('' == WLanIPs) || (false == tools.chkIpAddress(WLanIPs)) || ('' == WLanPort) || ('' == Protocol) || ('' == Status)){
+                if(/*(undefined != Validation) && */(undefined != LanIPs) && (undefined != LanPort) && (undefined != WLanIPs) && (undefined != WLanPort) && /*(undefined != Protocol) && */ (undefined != Status)){
+                    if(('' == LanIPs) || (false == tools.chkIpAddress(LanIPs)) || ('' == LanPort) || ('' == WLanIPs) || (false == tools.chkIpAddress(WLanIPs)) || ('' == WLanPort) || /*('' == Protocol) ||*/ ('' == Status)){
                         // alert("WLAN Port不能为空!");
                         parametersErr = tools.jsSwitchLang(enJsMap, cnJsMap, 'nvIcorrectValErr')+ (idx-2) +")";//"取值无效(无效行号="
                         return false; // 用此方法退出jQuery each loop
@@ -1099,7 +1130,7 @@ CNetworkView.prototype.loadHtml = function(){
                             "LanPort": LanPort,
                             "WLanIPs": WLanIPs,
                             "WLanPort":WLanPort,
-                            "Protocol":Protocol,
+                            //"Protocol":Protocol,
                             "Status": Status
                         };
                     selectedData.push(cfg);
@@ -1112,7 +1143,7 @@ CNetworkView.prototype.loadHtml = function(){
             // "dat": {
             //     "FireWall":{
             //       "ipList":[{"LanIPs":"xx", "LanPort":"xx",
-            //                  "WLanIPs":"xx", "WLanPort":"xx", "Protocol":"xx", "Status":xx"}
+            //                  "WLanIPs":"xx", "WLanPort":"xx", "Status":xx"}
             //         ]}
             //   }
             var str = {
@@ -1144,7 +1175,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);} 
             });
         });
         // Mac Filter
@@ -1175,7 +1206,7 @@ CNetworkView.prototype.loadHtml = function(){
                 var Desc = $(item).find(".nvTMFMemoVal").val();
                 var Status = $(item).find("select").children('option:selected').val();
                 if((undefined != mac)&&(undefined != Desc)&&(undefined != Status)){
-                    if(('' == mac)||(false == tools.chkMacAddress(mac))||('' == Desc)||('' == Status)){
+                    if(('' == mac)||(false == tools.chkMacAddress(mac))||('' == Status)/*||('' == Desc)*/){
                         // alert("WLAN Port不能为空!");
                         parametersErr = tools.jsSwitchLang(enJsMap, cnJsMap, 'nvIcorrectValErr')+ (idx-2) +")";//"取值无效(无效行号="
                         return false; // 用此方法退出jQuery each loop
@@ -1224,7 +1255,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // porting mapping
@@ -1326,7 +1357,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // nvtnvtMChannelMapApplyBtn
@@ -1374,14 +1405,14 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // netvTabMappMacIPNewBtn
         $('#netvTabMappMacIPNewBtn').click(()=>{
             let tr = "<tr> <td><input type='checkbox' /></td> <td><input class='netvTabMappingMacVal' value=''></td>" +
                     "<td><input class='netvTabMappingIPVal' type='IP' placeholder='10.10.10.11' value=''></td>" +
-                    "<td><input class='netvTabMappingMemoVal' style='width:300px' value=''></td></tr>";
+                    "<td><input class='netvTabMappingMacIpMemoVal' style='width:300px' value=''></td></tr>";
             $("#netvTabMappingMacIPTbl").append(tr);
         });
         // netvTabMappMacIPDelBtn
@@ -1411,7 +1442,7 @@ CNetworkView.prototype.loadHtml = function(){
                     }
                     let cfg = {"MAC": mac,
                         "IP": ip,
-                        "Desc": $(item).find(".netvTabMappingMemoVal").val(),
+                        "Desc": $(item).find(".netvTabMappingMacIpMemoVal").val(),
                     };
                     selectedData.push(cfg);
                 }
@@ -1455,7 +1486,7 @@ CNetworkView.prototype.loadHtml = function(){
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { alert("error");}
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
     });
