@@ -56,7 +56,7 @@ CNetworkView.prototype.render = function(){
                 let number = index + 1;
                 let tr = "<tr class='cfglines'><td id='netvTabLanCfgListTablePort'>"+ value.port+"</td> <td id='netvTabLanCfgListTableMac'>"+ value.MAC+"</td> <td><input id='netvTabLanCfgListTableIP' type='IP' placeholder='10.10.10.11' style='width: 150px;' value="+ value.IP + "></td>" +
                         " <td><select class='netvTabLanCfgListTableSelect' id='netvTabLanCfgListTableSelect" + index +"'" +"> <option value='255.255.255.0'>255.255.255.0</option> <option value='255.255.0.0'>255.255.0.0</option> <option value='255.0.0.0'>255.0.0.0</option> </select></td>" +
-                        // " <td><input type='radio' name='lan-rtmp' id='netvTabLanCfgListTableRadio" + index +"'" +"/>RTMP Server:1935</td>" + 
+                        // " <td><input type='radio' name='lan-rtmp' id='netvTabLanCfgListTableRadio" + index +"'" +"/>RTMP Server:1935</td>" +
                         "</tr>";
                 $("#netvTabLanCfgListTable").append(tr);
                 $("#"+"netvTabLanCfgListTableSelect"+ index).find("option:contains('" + value.subMask + "')").attr("selected",true);
@@ -85,7 +85,16 @@ CNetworkView.prototype.render = function(){
         $('#netvTabLanDhcpDNS1Val').val(oStore.DHCP.DNS1);
         $('#netvTabLanDhcpDNS2Val').val(oStore.DHCP.DNS2);
         $("#netvTabLanDhcpSubmaskSelector").find("option:contains('" + oStore.DHCP.subMask + "')").attr("selected",true);
-        $("#netvTabLan input[name=netvTabLanDHCPRadio][value='" + oStore.DHCP.dhcpStatus + "']").attr('checked','checked');
+        // $("#netvTabLan input[name=netvTabLanDHCPRadio][value='" + oStore.DHCP.dhcpStatus + "']").attr('checked','checked');
+        // 20190720: 为避免下层送上的参数有大小写失误，选用以下代码
+        let dhcpStatus = oStore.DHCP.dhcpStatus;
+        if((dhcpStatus == 'DHCP')||(dhcpStatus == 'Dhcp')||(dhcpStatus == 'dhcp')){
+            $('#netvTabLanDHCPRadioStaticsCtrl').removeAttr("checked");
+            $('#netvTabLanDHCPRadioDhcpCtrl').attr('checked','checked');
+        }else{ // if((dhcpStatus == 'Statics')||(dhcpStatus == 'STATICS')||(dhcpStatus == 'statics')){
+            $('#netvTabLanDHCPRadioDhcpCtrl').removeAttr("checked");
+            $('#netvTabLanDHCPRadioStaticsCtrl').attr('checked','checked');
+        }
 
     break;
     case 'netvTabRTMP':
@@ -97,7 +106,7 @@ CNetworkView.prototype.render = function(){
         oStore.LAN.LAN.forEach(function(value,index){
             let tr = "<option id='RTMPInforIPValSelector" + index +"'" + " value=" + value.IP + ">" + value.IP + " (" + value.port + ")" + "</option>";
             $("#RTMPInforIPValSelector").append(tr);
-            if(oStore.RTMP.ServerIP == value.IP){ 
+            if(oStore.RTMP.ServerIP == value.IP){
                 $("#"+"RTMPInforIPValSelector"+ index).attr("selected",true);
                 rtmpUrl = rtmpUrl + oStore.RTMP.ServerIP + ":" + defaultPortNum + "/" + defaultAppName + "/";//":1935/live/";
             }
@@ -141,13 +150,13 @@ CNetworkView.prototype.render = function(){
         //2. init the channel list table
         if((undefined != oStore.RTMP.channelList) && (0 != oStore.RTMP.channelList.length)){
             $("#netvTabRTMPChannelTable tr:gt(1)").empty("");
-            // *** HTML 
+            // *** HTML
             // <tr> <td><input type='checkbox' checked='' /></td> <td><input class='netvTabRTMPChannelNameVal'/></td> <td><input class='netvTabRTMPChannelCodeVal'/></td> <td><a id='netvTabRTMPChannelRefVal'></a></td></tr>
             oStore.RTMP.channelList.forEach(function(value,index){
                 let rtmpRefUrl = "rtmp://" + oStore.RTMP.ServerIP + ":1935/live/";
-                let tr =  "<tr> <td><input type='checkbox' /></td>" + 
+                let tr =  "<tr> <td><input type='checkbox' /></td>" +
                     "<td><input class='netvTabRTMPChannelNameVal' value=" + value.Name + "></td>" +
-                    "<td><input class='netvTabRTMPChannelCodeVal' value="+ value.Code+"></td>" + 
+                    "<td><input class='netvTabRTMPChannelCodeVal' value="+ value.Code+"></td>" +
                     "<td><a>" + rtmpRefUrl + value.Code + "</a></td></tr>"
                 $("#netvTabRTMPChannelTable").append(tr);
             });
@@ -185,7 +194,7 @@ CNetworkView.prototype.render = function(){
             // {"LanIPs":"127.1.1.3", "LanPort":"3123","WLanIPs":"10.1.1.3", "WLanPort":"214", "Status":"diabale"}],
             // ** html 格式
             // <tr> <td><input type='checkbox' checked='' /></td> <td><input class='nvtpfLanIPVal'/></td> <td><input class='nvtpfLanPortVal'/></td>
-            //  <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td> 
+            //  <td><input class='nvtpfWLanIPVal'/></td> <td><input class='nvtpfWLanPortVal'/></td>
             //   <td><select id='nvtpfProtocolValSelector'><option value='enable'>enable</option><option value='disbale'>disbale</option></select></td></tr>
             oStore.FireWall.ipList.forEach(function(value,index){
                 let tr = "<tr> <td><input type='checkbox' /></td>" + // <td><input class='nvtpfValiVal'  style='width:35px' value=" + value.Validation + "></td>
@@ -571,7 +580,7 @@ CNetworkView.prototype.loadHtml = function(){
                     if(0 == data.rc){
                         oStore.GNSS.targetSim = selectedData.targetSim;
                         console.log(data.dat);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
@@ -645,7 +654,7 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         oStore.LAN.LAN = selectedData;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
@@ -672,7 +681,7 @@ CNetworkView.prototype.loadHtml = function(){
                 (false == tools.chkIpAddress(defaultGwIP))||
                 (false == tools.chkIpAddress(DNS1))||
                 (false == tools.chkIpAddress(DNS2))){
-                tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'invalidIPVal')); //发现无效的IP地址 
+                tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'invalidIPVal')); //发现无效的IP地址
                 return;
             }
             var selectedData =  {
@@ -706,7 +715,7 @@ CNetworkView.prototype.loadHtml = function(){
                     if(0 == data.rc){
                         oStore.DHCP = selectedData;
                         console.log(data.dat);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
@@ -748,13 +757,13 @@ CNetworkView.prototype.loadHtml = function(){
                         oStore.RTMP.ServerIP = selectedData;
                         //2. refresh the channel list table
                         $("#netvTabRTMPChannelTable tr:gt(1)").empty("");
-                        // *** HTML 
+                        // *** HTML
                         // <tr> <td><input type='checkbox' checked='' /></td> <td><input class='netvTabRTMPChannelNameVal'/></td> <td><input class='netvTabRTMPChannelCodeVal'/></td> <td><a id='netvTabRTMPChannelRefVal'></a></td></tr>
                         oStore.RTMP.channelList.forEach(function(value,index){
                             let rtmpRefUrl = "rtmp://" + oStore.RTMP.ServerIP +  ":" + oStore.store.defaultRtmpSrvPortNum + "/" + oStore.store.defaultRtmpSrvAppName + "/";//":1935/live/";
-                            let tr =  "<tr> <td><input type='checkbox' /></td>" + 
+                            let tr =  "<tr> <td><input type='checkbox' /></td>" +
                                 "<td><input class='netvTabRTMPChannelNameVal' value=" + value.Name + "></td>" +
-                                "<td><input class='netvTabRTMPChannelCodeVal' value="+ value.Code+"></td>" + 
+                                "<td><input class='netvTabRTMPChannelCodeVal' value="+ value.Code+"></td>" +
                                 "<td><a style='color: red'>" + rtmpRefUrl + value.Code + "</a></td></tr>"
                             $("#netvTabRTMPChannelTable").append(tr);
                         });
@@ -770,16 +779,16 @@ CNetworkView.prototype.loadHtml = function(){
         });
         // netvTabRTMPNewBtn
         $('#netvTabRTMPNewBtn').click(()=>{
-            let tr =  "<tr> <td><input type='checkbox' /></td>" + 
+            let tr =  "<tr> <td><input type='checkbox' /></td>" +
                 "<td><input class='netvTabRTMPChannelNameVal' value=''></td>" +
-                "<td><input class='netvTabRTMPChannelCodeVal' value=''></td>" + 
+                "<td><input class='netvTabRTMPChannelCodeVal' value=''></td>" +
                 "<td><a></a></td></tr>"
             $("#netvTabRTMPChannelTable").append(tr);
 
         });
         // netvTabRTMPDelBtn
         $('#netvTabRTMPDelBtn').click(()=>{
-            tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'nvDelLinesWarning'));//alert('所有选中的行将被删除！'); 
+            tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'nvDelLinesWarning'));//alert('所有选中的行将被删除！');
             // get the selected idx file information
             $(":checkbox:checked","#netvTabRTMPChannelTable").each(function(){
                 idx = $(this).parents("tr").index();  // 获取checkbox所在行的顺序
@@ -840,7 +849,7 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         oStore.RTMP.channelList = selectedData;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
@@ -886,7 +895,7 @@ CNetworkView.prototype.loadHtml = function(){
                         oStore.VPN = selectedData;
                         oStore.VPN.vpnStatus = data.dat.VPN.vpnStatus;
                         $('#netvTabVpnStatusVal').text(oStore.VPN.vpnStatus);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
@@ -983,7 +992,7 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         console.log(data.dat);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
@@ -1016,7 +1025,7 @@ CNetworkView.prototype.loadHtml = function(){
             // });
             var dmzIP = $('#nvtMDMZIPAddressVal').val();
             if(false == tools.chkIpAddress(dmzIP)){
-                tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'invalidIPVal')); //发现无效的IP地址 
+                tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'invalidIPVal')); //发现无效的IP地址
                 return;
             }
             selectedData.DMZ.IP = dmzIP;
@@ -1046,7 +1055,7 @@ CNetworkView.prototype.loadHtml = function(){
                         oStore.FireWall.ipFilter = selectedData.ipFilter;
                         oStore.FireWall.macFilter = selectedData.macFilter;
                         oStore.FireWall.DMZ = selectedData.DMZ;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
@@ -1140,14 +1149,14 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         oStore.FireWall.ipList = selectedData;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
                         tools.msgBox(data.errCode);
                     }
                 },
-                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);} 
+                error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
             });
         });
         // Mac Filter
@@ -1220,7 +1229,7 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         oStore.FireWall.macList = selectedData;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
@@ -1323,7 +1332,7 @@ CNetworkView.prototype.loadHtml = function(){
                     if(0 == data.rc){
                         oStore.Mapping.portMapping = selectedData;
                         // console.log(data.dat);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
@@ -1370,7 +1379,7 @@ CNetworkView.prototype.loadHtml = function(){
                     if(0 == data.rc){
                         oStore.Mapping.slotLTEZ = selectedData.slotLTEZ;
                         oStore.Mapping.slotLTE4G = selectedData.slotLTE4G;
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
                     else{
@@ -1452,7 +1461,7 @@ CNetworkView.prototype.loadHtml = function(){
                     if(0 == data.rc){
                         oStore.Mapping.mac2ip = selectedData;
                         console.log(data.dat);
-                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功! 
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                     }
                     else{
                         tools.msgBox(data.errCode);
