@@ -6,6 +6,9 @@ import time
 import uuid
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from bottle import Bottle, request, template, response, jinja2_template
 import bottle
@@ -14,8 +17,8 @@ from foris.utils import login_required, messages, is_safe_redirect
 from foris.middleware.bottle_csrf import get_csrf_token
 
 from foris.zl100mt.Login import cmdLogin, cmdGetUserInfo, cmdSetPwd, cmdResetPwd
-from foris.zl100mt.Routing import cmdSysInfor, cmdRoutingInfor, cmdGetRoutingInfo
-from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime
+from foris.zl100mt.Routing import cmdRoutingInfor, cmdGetRoutingInfo
+from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime, cmdGetHostStatusInfo, cmdGetNetworkCfgInfo, cmdGetAllSysInfo
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.testAjax import run_ajax_test
 from foris.zl100mt.wan import cmdSetWanOnOff
@@ -34,7 +37,9 @@ CONFIG_COMMANDS = {
     #'resetToDefault': cmdResetToFactoryDefault,
     'reBoot': cmdReboot,
     'getLogLink': cmdGetLogLink,
-    'getSysInfor': cmdSysInfor,
+    'getSysInfor': cmdGetAllSysInfo,
+    'getNetworkCfgInfor': cmdGetNetworkCfgInfo,
+    'getHostStatusInfo': cmdGetHostStatusInfo,
     'setRouting': cmdRoutingInfor,
     'getRoutingInfor': cmdGetRoutingInfo,
     'operateModul': cmdSetWanOnOff,
@@ -86,14 +91,24 @@ def zl100mt_main():
     # print("form: {0}".format(bottle.request.forms))
     # print("par: {0}".format(bottle.request.params))
     # print("JSON: {0}".format(bottle.request.json))
-    str = bottle.request.POST.get('data_str')
-    data = json.loads(str)
+
+    logger.debug("xijia main")
+    logger.debug(bottle.request)
+    logger.debug("xijia 1")
+    logger.debug(bottle.request.POST.items())
+    logger.debug("xijia 2")
+    logger.debug(bottle.request.json)
+    #logger.debug("xijia 3")
+    #str = bottle.request.POST.get('data_str')
+    #logger.debug("xijia 4")
+    #data = json.loads(str)
+    data = bottle.request.json
     command = data['command']
     print data
     if command in CONFIG_COMMANDS:
         handle = bottle.request.POST
         res = CONFIG_COMMANDS[command].implement(data,session)
-	res['csrf_token'] = get_csrf_token()
+	#res['csrf_token'] = get_csrf_token()
 	return res
 
     return {"rc": 1,"errCode": "command({}) is wrong!!!".format(command),"dat": None,"csrf_token":get_csrf_token()}

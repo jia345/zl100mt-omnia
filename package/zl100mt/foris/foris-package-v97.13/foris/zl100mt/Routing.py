@@ -3,7 +3,6 @@ from foris.zl100mt.portmapping import channelmapping,setportmapping
 from foris.zl100mt.dhcp import cmdDhcpCfg
 from foris.zl100mt.rtmp import cmdGetRtmpInfo
 from foris.zl100mt.firewall import cmdGetFirewall
-from foris.zl100mt.System import cmdGetSysInfo, cmdGetNtpServerIp
 from foris.zl100mt.gnss import cmdGetGnssInfo
 from foris.zl100mt.wan import cmdGetLteZ, cmdGetLte4G
 
@@ -55,7 +54,7 @@ class RoutingInforCmd() :
 
 cmdRoutingInfor = RoutingInforCmd()
 
-class GetRoutingInforCmd() :
+class GetRoutingInforCmd():
     def __init__(self) :
         self.action = 'getRoutingInfor'
         self.default_data = {}
@@ -81,45 +80,4 @@ class GetRoutingInforCmd() :
         return  {"rc": 0, "errCode": "success", "dat": {"routing":routes}}
 
 cmdGetRoutingInfo = GetRoutingInforCmd()
-
-class GetSysInforCmd() :
-    def __init__(self) :
-        self.action = 'getSysInfor'
-        self.default_data = {}
-
-    def implement(self, handle,session):
-        data = {
-            "system": cmdGetSysInfo.implement(session),
-            "LTEZ": cmdGetLteZ.implement(session),
-            "LTE4G": cmdGetLte4G.implement(session),
-            "GNSS": cmdGetGnssInfo.implement(session),
-            "DHCP": cmdDhcpCfg.get_dhcp(),
-            "LAN": cmdDhcpCfg.get_lan_cfg(),
-            "RTMP": cmdGetRtmpInfo.implement(session),
-            "VPN":{
-                "vpnAddress":"124.1.2.1/vpn/",
-                "vpnUser":"zhang",
-                "vpnPwd":"zhangpwd",
-                "vpnProtocol":"L2TP", # PPTP or L2TP/IPSec
-                "vpnKey":"34sd4",
-                "vpnStatus":"on"
-            }, # on/off
-            "FireWall": cmdGetFirewall.implement(session),
-                "Mapping":{
-                    "slotLTEZ":channelmapping.get_slotLTEZ(), # LAN value: on or off
-                    "slotLTE4G":channelmapping.get_slotLTE4G(),
-                    "mac2ip": cmdIpmacbind.get_ip2mac(),
-                    "portMapping":setportmapping.get_portmapping(),
-            },
-            "NTP": cmdGetNtpServerIp.implement(session)
-        }
-
-        res = {
-                "rc": 0,
-                "errCode": "success",
-                "dat": data
-              }
-        return res
-
-cmdSysInfor = GetSysInforCmd()
 

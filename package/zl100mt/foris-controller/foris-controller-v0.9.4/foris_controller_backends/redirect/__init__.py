@@ -68,21 +68,25 @@ class RedirectUciCommands(object):
     def update_settings(self, data):
         print 'redirect update_settings :'
         with UciBackend() as backend:
-            # firewall_data = backend.read("firewall")
+            #
             # redirects = get_sections_by_type(firewall_data, "firewall", "redirect")
             if data["action"] == "set_port_mapping":
+                port_mapping_data = None
                 try:
+                    firewall_data = backend.read("firewall")
                     redirects = get_sections_by_type(firewall_data, "firewall", "redirect")
-                    port_mapping_data = [e['data'] for e in redirects if e['name'].startswith('port_mapping_')]
+                    print "delete portMapping ......."
+                    for e in redirects :
+                        if e['name'].startswith('port_mapping_') :
+                            print "deleting %s" % e['name']
+                            backend.del_section('firewall', e['name'])
                 except:
                     port_mapping_data = []
-
-                for e in port_mapping_data:
-                    backend.del_section('firewall', e['name'])
 
                 for redirect in data["redirects"]:
                     content = '%s_%s_%s%s' %(redirect["target"],redirect["src_zone"],redirect["src_ip"].replace('.',''),redirect["src_dport"])
                     section_name = 'port_mapping_%s' % hashlib.md5(content).hexdigest()
+                    print section_name
                     backend.add_section('firewall', 'redirect', section_name)
                     backend.set_option('firewall', section_name, 'proto', redirect['proto'])
                     backend.set_option('firewall', section_name, 'src', redirect['src_zone'])

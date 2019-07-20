@@ -36,7 +36,14 @@ armada-xp-gp)
 rtrom01)
         #ucidef_set_interfaces_lan_wan "eth0 eth1" "eth2 usb0"
         ucidef_set_interface_lan "eth0"
-        ucidef_set_interface_raw "lte_4g" "usb0" "dhcp"
+        ucidef_set_interface_raw "lte_4g" "usb0" "ncm"
+        uci batch <<EOF
+set network.lte_4g='interface'
+set network.lte_4g.ifname='usb0'
+set network.lte_4g.proto='ncm'
+set network.lte_4g.device='/dev/ttyUSB4'
+set network.lte_4g.apn='unknown'
+EOF
         ucidef_set_interface_raw "lte_z" "eth2" "dhcp"
         #ucidef_add_switch "switch0" "1" "0"
         #ucidef_add_switch_vlan "switch0" "1" "0 1 2 3 5"

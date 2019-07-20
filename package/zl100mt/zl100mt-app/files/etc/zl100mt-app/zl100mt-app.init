@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+
+START=80
+STOP=90
+
+start() {
+    /usr/sbin/zl100mt-app &
+}
+stop() {
+    killall -w zl100mt-app
+}
+

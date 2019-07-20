@@ -45,14 +45,14 @@ CNetworkView.prototype.render = function(){
     break;
     case 'netvTabLan':
         // fill LAN
-        if((undefined != oStore.LAN.LAN) && (0 != oStore.LAN.LAN.length)){
+        if((undefined != oStore.LAN.accessList) && (0 != oStore.LAN.accessList.length)){
             //1.清除表格内容
             $("#netvTabLanCfgListTable tr:gt(1)").empty("");
             //2.构建表格内容
             /** 数据格式
                 "LAN":{ "LAN":[{"port":"lan1", "MAC":"01-21-09", "IP":"10.1.1.10", "subMask":"255.255.255.0", "RTMP":"1/0"}, {..}],
             ***/
-            oStore.LAN.LAN.forEach(function(value,index){
+            oStore.LAN.accessList.forEach(function(value,index){
                 let number = index + 1;
                 let tr = "<tr class='cfglines'><td id='netvTabLanCfgListTablePort'>"+ value.port+"</td> <td id='netvTabLanCfgListTableMac'>"+ value.MAC+"</td> <td><input id='netvTabLanCfgListTableIP' type='IP' placeholder='10.10.10.11' style='width: 150px;' value="+ value.IP + "></td>" +
                         " <td><select class='netvTabLanCfgListTableSelect' id='netvTabLanCfgListTableSelect" + index +"'" +"> <option value='255.255.255.0'>255.255.255.0</option> <option value='255.255.0.0'>255.255.0.0</option> <option value='255.0.0.0'>255.0.0.0</option> </select></td>" +
@@ -103,7 +103,7 @@ CNetworkView.prototype.render = function(){
         $("#RTMPInforIPValSelector").empty();
         //<option value=''>10.0.11.1(LAN1)</option>
         let rtmpUrl = "rtmp://";
-        oStore.LAN.LAN.forEach(function(value,index){
+        oStore.LAN.accessList.forEach(function(value,index){
             let tr = "<option id='RTMPInforIPValSelector" + index +"'" + " value=" + value.IP + ">" + value.IP + " (" + value.port + ")" + "</option>";
             $("#RTMPInforIPValSelector").append(tr);
             if(oStore.RTMP.ServerIP == value.IP){

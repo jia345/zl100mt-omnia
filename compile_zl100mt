@@ -1,0 +1,2 @@
+#!/bin/sh -x
+`dirname "$0"`/compile_fw omnia "$@"

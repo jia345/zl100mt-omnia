@@ -31,7 +31,6 @@ class FirewallUciCommands(object):
         for e in [dict(d) for d in ip_filter_data]:
             ip_filter_table.append({
                 'enabled': parse_bool(e['enabled']),
-                'timeout': int(e['timeout']),
                 'lan_ips': e['src_ip'],
                 'lan_ports': e['src_port'],
                 'wan_ips': e['dest_ip'],
@@ -153,7 +152,7 @@ class FirewallUciCommands(object):
                 backend.set_option('firewall', rule_section_name, 'dest_ip', wan_iprange)
                 backend.set_option('firewall', rule_section_name, 'dest_port', wan_portrange)
                 backend.set_option('firewall', rule_section_name, 'proto', proto)
-                backend.set_option('firewall', rule_section_name, 'timeout', e['timeout'])
+                #backend.set_option('firewall', rule_section_name, 'timeout', e['timeout'])
 
         with OpenwrtServices() as services:
             services.restart("firewall", delay=2)

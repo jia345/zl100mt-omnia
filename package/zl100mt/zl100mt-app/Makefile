@@ -58,12 +58,16 @@ define Package/$(PKG_NAME)/install
 
 	$(INSTALL_DIR) $(1)/etc/cron.d
 	$(INSTALL_DATA) ./files/cron.conf $(1)/etc/cron.d/zl100mt
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.init $(1)/etc/init.d/zl100mt-app
 	$(INSTALL_DIR) $(1)/etc/syslog-ng.d
 	$(INSTALL_DATA) ./files/syslog-ng.conf $(1)/etc/syslog-ng.d/zl100mt
 	$(INSTALL_DIR) $(1)/etc/logrotate.d
 	$(INSTALL_DATA) ./files/logrotate.conf $(1)/etc/logrotate.d/zl100mt
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/temperature.sh $(1)/usr/bin/temperature.sh
+	$(INSTALL_BIN) ./files/4g.sh $(1)/usr/bin/zl100mt-4g.sh
+	$(INSTALL_BIN) ./files/sp4g.sh $(1)/usr/bin/zl100mt-zw.sh
 	$(INSTALL_DIR) $(1)/usr/libexec/rpcd
 	$(INSTALL_BIN) ./files/wan.rpcd $(1)/usr/libexec/rpcd/wan
 	$(INSTALL_DIR) $(1)/root

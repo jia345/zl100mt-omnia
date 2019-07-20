@@ -22,9 +22,9 @@ class LoginCmd():
             session.recreate()
             session['user_authenticated'] = True
 
-            update_csrf_token(save_session=False)
+            #update_csrf_token(save_session=False)
             session.save()
-            res = {'rc': 0,'errCode': 'success','dat': None}
+            res = {'rc': 0,'errCode': 'success','dat': "ok"}
         else:
             res = {'rc': 1,'errCode': 'wrong password','dat': 'Wrong password'}
 
@@ -71,7 +71,7 @@ class ResetPwdCmd():
     def implement(self, data, session=None):
         encoded_password = base64.b64encode('admin'.encode('utf-8')).decode('utf-8')
         current_state.backend.perform('password', 'set', {'password': encoded_password, 'type': 'foris'})
-        return {'rc': 0, 'errCode': 'success', 'dat': None}
+        return {'rc': 0, 'errCode': 'success', 'dat': { 'pwd': 'admin' }}
 
 cmdLogin = LoginCmd()
 cmdGetUserInfo = GetUserInfoCmd()

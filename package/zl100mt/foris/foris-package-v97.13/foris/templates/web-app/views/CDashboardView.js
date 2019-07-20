@@ -24,7 +24,8 @@ CDashboardView.prototype.render = function(){
     $('#dsvLocTimeVal').text(tools.getDateByYMD(oStore.system.localDatetime)); 
     $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.system.currDuration));
     $('#dsvHwMacVal').text(oStore.system.hwMAC);
-    $('#dsvHwIPVal').text(oStore.LAN.LAN[0].IP);
+    //$('#dsvHwIPVal').text(oStore.LAN.LAN[0].IP);
+    $('#dsvHwIPVal').text(oStore.system.hostIP);
     $('#dsvIMEIVal').text(oStore.system.hwIMEI);
     $('#dsvFWVerVal').text(oStore.system.swVersion);
     //

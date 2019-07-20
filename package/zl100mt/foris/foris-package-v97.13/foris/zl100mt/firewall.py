@@ -7,7 +7,6 @@ class GetSettingsCmd():
         ipList = []
         for e in res['ip_filter_table']:
             item = {
-                'Validation': e['timeout'],
                 'LanIPs': e['lan_ips'],
                 'LanPort': e['lan_ports'],
                 'WLanIPs': e['wan_ips'],
@@ -55,7 +54,6 @@ class SetIpFilterCmd():
         ip_filter_table = []
         for ip in data['dat']['FireWall']['ipList']:
             item = {
-                    'timeout': int(ip['Validation']),
                     'lan_ips': ip['LanIPs'],
                     'lan_ports': ip['LanPort'],
                     'wan_ips': ip['WLanIPs'],

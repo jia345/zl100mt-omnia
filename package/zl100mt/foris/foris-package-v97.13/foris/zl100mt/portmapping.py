@@ -40,7 +40,7 @@ class SetPortMappingCmd():
                 "LanSlot": "LAN%s" % port,  # LanSlot value: LAN1 to LAN3
                 "LanIP": redirect["dest_ip"],
                 "LanPort": redirect["dest_port"],
-                "Desc": redirect["name"]
+                "Desc": redirect["name"] if "name" in redirect else ""
             })
         return portmaps
 

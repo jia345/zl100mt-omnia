@@ -86,7 +86,7 @@ break;
     case 'ssvTabHeaderLan':
         $('#ssvTabDHCPStatus').text(oStore.DHCP.dhcpStatus);
         // fill LAN
-        oStore.LAN.LAN.forEach(function(value,index){
+        oStore.LAN.accessList.forEach(function(value,index){
             if(('lan1' == value.port)||('LAN1' == value.port)){
                 $('#ssvTabLan1IP').text(value.IP);
             }
