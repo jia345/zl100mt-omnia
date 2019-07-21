@@ -25,7 +25,8 @@ CDashboardView.prototype.render = function(){
     $('#dsvDurationTimeVal').text(tools.getDateByHMS(oStore.system.currDuration));
     $('#dsvHwMacVal').text(oStore.system.hwMAC);
     //$('#dsvHwIPVal').text(oStore.LAN.LAN[0].IP);
-    $('#dsvHwIPVal').text(oStore.system.hostIP);
+    $('#dsvHwIPVal').text(oStore.system.hostIP.IP);
+    $('#dsvHwSubmaskVal').text(oStore.system.hostIP.subMask);
     $('#dsvIMEIVal').text(oStore.system.hwIMEI);
     $('#dsvFWVerVal').text(oStore.system.swVersion);
     //
@@ -181,10 +182,10 @@ CDashboardView.prototype.loadHtml = function(){
     });
 }
 // 多语言实现
-CDashboardView.prototype.enHtmlMap = {dsvSysTitleTxt: "System Status", dsvLocTimeTxt: "Local Time", dsvDurationTimeTxt:"Duration Time",dsvHwMacTxt:"Mac Address",dsvHwIPTxt:"IP Address",dsvIMEITxt: "IMEI",dsvFWVerTxt:"Firmware Ver.",
+CDashboardView.prototype.enHtmlMap = {dsvSysTitleTxt: "System Status", dsvLocTimeTxt: "Local Time", dsvDurationTimeTxt:"Duration Time",dsvHwMacTxt:"Mac Address",dsvHwIPTxt:"IP Address",dsvHwSubmaskTxt:"Submask",dsvIMEITxt: "IMEI",dsvFWVerTxt:"Firmware Ver.",
         dsvModTitleTxt:"Module Status",dsvModTblTxt:"Module",dsvConnTblTxt:"Connection", dsvSignalTxt:"Signal(dBm)", dsvOperaTxt:"Operation",dsvmtZConnectBtn:"Connect",dsvmtZDisconBtn:"Disconnect",dsvmt4GConnectBtn:"Connect",dsvmt4GDisconBtn:"Disconnect",
 }
-CDashboardView.prototype.cnHtmlMap = {dsvSysTitleTxt:"系统状态",dsvLocTimeTxt:"本机时间",dsvDurationTimeTxt:"本次开机持续时间",dsvHwMacTxt:"本机硬件地址",dsvHwIPTxt:"本机IP地址",dsvIMEITxt:"本机设备号",dsvFWVerTxt:"固件版本号",
+CDashboardView.prototype.cnHtmlMap = {dsvSysTitleTxt:"系统状态",dsvLocTimeTxt:"本机时间",dsvDurationTimeTxt:"本次开机持续时间",dsvHwMacTxt:"本机硬件地址",dsvHwIPTxt:"本机IP地址",dsvHwSubmaskTxt:"子网掩码",dsvIMEITxt:"本机设备号",dsvFWVerTxt:"固件版本号",
         dsvModTitleTxt:"模块状态",dsvModTblTxt:"模块",dsvConnTblTxt:"连接状态", dsvSignalTxt:"信号强度(dBm)", dsvOperaTxt:"操作",dsvmtZConnectBtn:"连接",dsvmtZDisconBtn:"断开",dsvmt4GConnectBtn:"连接",dsvmt4GDisconBtn:"断开",
 }
 CDashboardView.prototype.enJsMap = {

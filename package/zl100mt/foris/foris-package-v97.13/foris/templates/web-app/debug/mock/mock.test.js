@@ -107,6 +107,7 @@ Mock.mock(
             params = {
                 "system": {"localDatetime":"1531817800000", //ms数
                            "currDuration":"17800000", //本次开机时间
+                           "hostIP":{"IP":"10.1.1.13", "subMask":"255.255.255.0"},
                            "hwMAC":"ED-DD-4D-45-01-01","hwIMEI": "ABC12345", "swVersion":"1.1.0"},
                 "LTEZ":{"type":"LTE-Z","connection":"on", "signal":"1.2",
                         "wlanIP":"10.1.1.100", "defaultGwIP":"10.2.1.1",
@@ -127,12 +128,12 @@ Mock.mock(
                 "DHCP":{"dhcpStatus":'DHCP', /* DHCP 或 Statics */
                         "startIP":"12.2.2.1", "endIP":"12.2.2.100", "leaseTerm":"120",
                         "subMask":"255.255.0.0", "defaultGwIP":"12.2.2.1","DNS1":"12.2.2.2", "DNS2":"12.2.2.1"},
-                "LAN":{ "LAN":[{"port":"LAN1", "MAC":"ED-DD-4D-45-5A-9A", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
+                "LAN":{ /*"LAN":[{"port":"LAN1", "MAC":"ED-DD-4D-45-5A-9A", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
                                 {"port":"LAN2", "MAC":"ED-DD-4D-45-5A-9B", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
-                                {"port":"LAN3", "MAC":"ED-DD-4D-45-5A-9C", "IP":"10.1.1.13", "subMask":"255.255.255.0"} ],
-                        "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "type":"xiaomi"},
-                                        {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "type":"ibm"},
-                                        {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "type":"pc"} ]},
+                                {"port":"LAN3", "MAC":"ED-DD-4D-45-5A-9C", "IP":"10.1.1.13", "subMask":"255.255.255.0"} ], */
+                        "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "subMask":"255.255.0.0", "type":"xiaomi"},
+                                        {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "subMask":"255.255.0.0", "type":"ibm"},
+                                        {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "subMask":"255.255.0.0", "type":"pc"} ]},
                 "NTP":{"serverIP":"10.1.1.12"},
                 "RTMP":{"ServerIP":"10.1.1.12",
                         "channelList":[ {"Name":"Cam01", "Code":"left-1"},
@@ -163,6 +164,7 @@ Mock.mock(
             params = {
                 "system": {"localDatetime":"1531817800000", //ms数
                             "currDuration":"17800000", //本次开机时间
+                            "hostIP":{"IP":"10.1.1.13", "subMask":"255.255.255.0"},
                             "hwMAC":"ED-DD-4D-45-01-01","hwIMEI": "ABC12345", "swVersion":"1.1.0"},
                 "LTEZ":{"type":"LTE-Z","connection":"on", "signal":"1.2",
                         "wlanIP":"10.1.1.100", "defaultGwIP":"10.2.1.1",
@@ -183,12 +185,12 @@ Mock.mock(
                 "DHCP":{"dhcpStatus":'DHCP', /* DHCP 或 Statics */
                         "startIP":"12.2.2.1", "endIP":"12.2.2.100", "leaseTerm":"120",
                         "subMask":"255.255.0.0", "defaultGwIP":"12.2.2.1","DNS1":"12.2.2.2", "DNS2":"12.2.2.1"},
-                "LAN":{ "LAN":[{"port":"LAN1", "MAC":"ED-DD-4D-45-5A-9A", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
-                                {"port":"LAN2", "MAC":"ED-DD-4D-45-5A-9B", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
-                                {"port":"LAN3", "MAC":"ED-DD-4D-45-5A-9C", "IP":"10.1.1.13", "subMask":"255.255.255.0"} ],
-                        "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "type":"xiaomi"},
-                                        {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "type":"ibm"},
-                                        {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "type":"pc"} ]},
+                "LAN":{ /*"LAN":[{"port":"LAN1", "MAC":"ED-DD-4D-45-5A-9A", "IP":"10.1.1.10", "subMask":"255.0.0.0"},
+                        {"port":"LAN2", "MAC":"ED-DD-4D-45-5A-9B", "IP":"10.1.1.12", "subMask":"255.255.0.0"},
+                        {"port":"LAN3", "MAC":"ED-DD-4D-45-5A-9C", "IP":"10.1.1.13", "subMask":"255.255.255.0"} ], */
+                        "accessList":[{"port":"LAN3","MAC":"ED-DD-4D-45-5A-9D", "IP":"128.0.1.2", "subMask":"255.255.0.0", "type":"xiaomi"},
+                                        {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "subMask":"255.255.0.0", "type":"ibm"},
+                                        {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "subMask":"255.255.0.0", "type":"pc"} ]},
                 "NTP":{"serverIP":"10.1.1.12"},
             };
             res = fillResCodeTxt(0,'getHostStatusInfo',params);

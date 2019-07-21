@@ -26,12 +26,12 @@ CNetworkView View的 html 定义
         </div>
         <div id="netvTabLan" class="tab-content-view hide"> 
             <div style="margin: 25px 0 1px 0; text-align:left;">
-                <button id="netvTabLanApplyLanCfgBtn" class="incell" style="width: 100px;">应用LAN修改</button>
+                <button id="netvTabLanApplyLanCfgBtn" class="incell" style="width: 150px;">应用LAN静态地址分配</button>
             </div>
             <table class="dataintable" style="margin-top: 1px;">
             <tbody id="netvTabLanCfgListTable">
-                <tr> <th colspan="4" id="nvtlanCfgTitle">LAN Configuration</th></tr>
-                <tr> <th class="light" style="width: 80px">Slot</th><th class="light">MAC</th><th class="light">IP</th><th id="netvTabLanSubmask" class="light">子网掩码</th><!--th id="netvTabLanRTMPServer" class="light">RTMP Serer</th--></tr>
+                <tr> <th colspan="5" id="nvtlanCfgTitle">LAN Configuration</th></tr>
+                <tr> <th class="light" style="width: 80px">Slot</th><th class="light">MAC</th><th class="light">IP</th><th id="netvTabLanSubmask" class="light">子网掩码</th><th class="light" id="netvTabLanDevType">设备类型</th><!--th id="netvTabLanRTMPServer" class="light">RTMP Serer</th--></tr>
                 <tr class='cfglines'> <td >lan number</td> <td>mac address</td> <td><input id="" type="IP" placeholder="ip address" style="width: 150px;"/></td>
                      <td><select id="netvTabLanCfgListTableSelect">
                             <option value="255.255.255.0">255.255.255.0</option>
@@ -39,6 +39,7 @@ CNetworkView View的 html 定义
                             <option value="255.0.0.0">255.0.0.0</option>
                         </select>
                     </td> 
+                    <td><a>dev name </a></td>
                     <!-- <td><input type="radio" name="lan-rtmp" />RTMP</td> -->
                 </tr>
             </tbody>
@@ -179,11 +180,22 @@ CNetworkView View的 html 定义
             </table>
         </div>
         <div id="netvTabMapping" class="tab-content-view hide">
-                <div style="margin: 25px 0 1px 0; text-align:left;">
-                        <button id="netvTabMappingPortTblNewBtn" class="incell">New</button><button id="netvTabMappingPortTblDelBtn" class="incell">Del</button> <button id="netvTabMappingPortTblApplyBtn" class="incell">Apply</button>
-                </div>
-                <table class="dataintable"  style="margin-top: 1px;">
-                <tbody id="netvTabMappingPortTbl">
+
+                <!-- <div style="margin: 15px 10px 1px 10px; text-align:left;"> -->
+                        <table class="dataintable">
+                        <tbody id="netvTabLanAccessListTbl" style="font-style: italic;font-size: 10px">
+                            <tr> <th colspan="5" id="netTabLanDevLst">设备接入列表</th></tr>
+                            <tr> <th class="light" style="width: 50px">No.</th><th class="light" >Slot</th>  <th class="light" id="netvTabLanDevMac">MAC</th> <th class="light" id="netvTabLanDevIP">IP</th> <th class="light" id="netvTabLanDevType">设备类型</th></tr>
+                            <tr> <td><a> </a></td><td><a> </a></td> <td><a> </a></td> <td><a> </a></td> <td><a> </a></td></tr>
+                        </tbody>
+                        </table>
+                <!-- </div>         -->
+
+            <div style="margin: 25px 0 1px 0; text-align:left;">
+                <button id="netvTabMappingPortTblNewBtn" class="incell">New</button><button id="netvTabMappingPortTblDelBtn" class="incell">Del</button> <button id="netvTabMappingPortTblApplyBtn" class="incell">Apply</button>
+            </div>
+            <table class="dataintable"  style="margin-top: 1px;">
+            <tbody id="netvTabMappingPortTbl">
                 <tr> <th colspan="5" id="netvTabMappingPortTblTitle">端口映射</th> </tr>
                 <tr> <th class="light" style='width:25px'><a>No.</a></th> <th class="light" style='width:200px'>WLAN:Port =></th> <th id="" class="light" style='width:200px'>LAN/IP:Port</th><th id="" class="light" style='width:30px'>LAN/Slot</th> <th id="netvTabMappingPortTblDesc" class="light">描述(Max40字符）</th> </tr>
                 <tr> <td><input type='checkbox' /></td> 

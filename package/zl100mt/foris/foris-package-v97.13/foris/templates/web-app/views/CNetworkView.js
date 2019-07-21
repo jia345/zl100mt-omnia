@@ -56,6 +56,7 @@ CNetworkView.prototype.render = function(){
                 let number = index + 1;
                 let tr = "<tr class='cfglines'><td id='netvTabLanCfgListTablePort'>"+ value.port+"</td> <td id='netvTabLanCfgListTableMac'>"+ value.MAC+"</td> <td><input id='netvTabLanCfgListTableIP' type='IP' placeholder='10.10.10.11' style='width: 150px;' value="+ value.IP + "></td>" +
                         " <td><select class='netvTabLanCfgListTableSelect' id='netvTabLanCfgListTableSelect" + index +"'" +"> <option value='255.255.255.0'>255.255.255.0</option> <option value='255.255.0.0'>255.255.0.0</option> <option value='255.0.0.0'>255.0.0.0</option> </select></td>" +
+                        " <td><a>" + value.type + "</a></td>" +
                         // " <td><input type='radio' name='lan-rtmp' id='netvTabLanCfgListTableRadio" + index +"'" +"/>RTMP Server:1935</td>" +
                         "</tr>";
                 $("#netvTabLanCfgListTable").append(tr);
@@ -224,6 +225,15 @@ CNetworkView.prototype.render = function(){
         }
     break;
     case 'netvTabMapping':
+        // 接入设备表
+        $("#netvTabLanAccessListTbl tr:gt(1)").empty(""); //1.清除表格内容
+        oStore.LAN.accessList.forEach(function(value,index){ //2.构建表格内容
+            let number = index + 1;
+            let tr = "<tr>"+
+                    " <td><a>" + number + "</a></td> <td><a>"+value.port+"</a></td> <td><a>"+ value.MAC + "</a></td> <td><a>" + value.IP + "</a></td> <td><a>" + value.type + "</a></td></tr>";
+            $("#netvTabLanAccessListTbl").append(tr);
+        })
+        
         // 端口映射
         if((undefined != oStore.Mapping.portMapping) && (0 != oStore.Mapping.portMapping.length)){
             $("#netvTabMappingPortTbl tr:gt(1)").empty("");
@@ -636,7 +646,7 @@ CNetworkView.prototype.loadHtml = function(){
                 "command":"setLanCfg",
                 "dat":{
                     "LAN": {
-                        "LAN": selectedData
+                        "accessList": selectedData
                     }
                 }
             }
@@ -653,7 +663,7 @@ CNetworkView.prototype.loadHtml = function(){
                     //var data = JSON.parse(res);
                     var data = res;
                     if(0 == data.rc){
-                        oStore.LAN.LAN = selectedData;
+                        oStore.LAN.accessList = selectedData;
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }
@@ -1502,7 +1512,7 @@ CNetworkView.prototype.netvTabMappingPortTblXXPortValOnChange = function(node){
 CNetworkView.prototype.enHtmlMap = {
     ntwvTabRouting:"Routing",ntwvTabPortF:"Firewall/Filter",ntwvTabMappinf:"Mapping",
     netvTabGnssTitleTxt:"GNSS Configuration", netvTabGnssTargetSimTxt:"Dest. SIM Number", netvTabGnssTargetSimSaveBtn:"Save",
-    netvTabLanApplyLanCfgBtn:"Apply",nvtlanCfgTitle:"LAN Configuration", nvtlanDHCPCfgTitle:"DHCP Configuration",netvTabLanSubmask:"Network mask",/*netvTabLanRTMPServer:"RTMP Server IP",*/netvTabLanSIP:"Start IP address",netvTabLanEIP:"End IP address",netvTabLanLease:"Lease Term(min)",netvTabLanSubmask2:"Network mask",netvTabLanDefaultGW:"Default Gateway",netvTabLanApplyDhcpBtn:"Apply All",
+    netvTabLanApplyLanCfgBtn:"Apply StaticAddr",nvtlanCfgTitle:"LAN Configuration", nvtlanDHCPCfgTitle:"DHCP Configuration",netvTabLanSubmask:"Network mask",netvTabLanDevType:"Device Type",/*netvTabLanRTMPServer:"RTMP Server IP",*/netvTabLanSIP:"Start IP address",netvTabLanEIP:"End IP address",netvTabLanLease:"Lease Term(min)",netvTabLanSubmask2:"Network mask",netvTabLanDefaultGW:"Default Gateway",netvTabLanApplyDhcpBtn:"Apply All",
     netvTabVpnTitle:"VPN Passthrough",netvTabVpnAddr:"VPN Address",netvTabVpnName:"VPN User Name",netvTabVpnPwd:"VPN Password",netvTabVpnProtocol:"Protocol",netvTabVpnKey:"Sec. Key",netvTabVpnStatus:"Connection",netvTabVpnConnectBtn:"Connect",
     netvTabRoutingM:"Module:", netvTabRoutingRefreshBtn:"Refresh", ntvtrAddBtn:"ADD",ntvtrDelBtn:"DEL",//ntvtrChgBtn:"CHG",
     firewall:"Firewall",firewallIPFilterTblTxt:"IP Filter table",firewallMacFilterTable:"MAC Filter table", nvtIPFilterTXt:"IP Filter",nvtMacFilterTXt:"MAC Filter",
@@ -1515,11 +1525,12 @@ CNetworkView.prototype.enHtmlMap = {
     netvTabMappingSlotTblTitle:"Slot Mapping",nvtMChannel:"WLAN", nvtMSrc:"LAN",/*nvtMSlotOpt:"操作",*/nvtnvtMChannelMapApplyBtn:"Apply All",nvtMMemo:"The IP (marked & monitor data) can be transfered on GNSS",
     netvTabMappingMacIPTblTitle:"IP/MAC pair",netvTabMappMacIPNewBtn:"New", netvTabMappMacIPDelBtn:"Delete", netvTabMappMacIPApplyBtn:"Apply All",netvTabMappingMacIPTblDesc:"Memo(Max40 char.)",
     netvTabRTMPApplyCfgBtn:"Apply Cfg",RTMPInforTitle:"RTMP Configuration",RTMPInforIPTxt:"Server IP",RTMPInforPortTxt:"Port",RTMPInforAppTxt:"APP",RTMPInforAddrTxt:"Push URL",RTMPInforIPValSelectorWarning:"Attention：If selecte one, LAN_IP will be set to 'Static', DHCP will be disbaled!",netvTabRTMPNewBtn:"New", netvTabRTMPDelBtn:"Del", netvTabRTMPApplyBtn:"Apply All",netvTabRTMPChannelTableTitle:"RTMP Channel conf.",netvTabRTMPChannelNameTxt:"Channel Name",netvTabRTMPChannelNoTxt:"Channel Code",netvTabRTMPChannelRefTxt:"Full Address",
+    netvTabLanDevLst:"Accessed List",netvTabLanDevMac:'Device MAC',netvTabLanDevIP:'Device IP',netvTabLanDevType:"Device Type", 
 };
 CNetworkView.prototype.cnHtmlMap = {
     ntwvTabRouting:"路由",ntwvTabPortF:"防火墙/过滤器",ntwvTabMappinf:"端口映射",
     netvTabGnssTitleTxt:"GNSS配置", netvTabGnssTargetSimTxt:"目标SIM卡号", netvTabGnssTargetSimSaveBtn:"保存",
-    netvTabLanApplyLanCfgBtn:"应用LAN修改",nvtlanCfgTitle:"LAN 配置", nvtlanDHCPCfgTitle:"DHCP 配置", netvTabLanSubmask:"子网掩码",/*netvTabLanRTMPServer:"设置为RTMP服务器IP",*/ netvTabLanSIP:"起始IP地址",netvTabLanEIP:"终止IP地址",netvTabLanLease:"地址租期(分钟)",netvTabLanSubmask2:"子网掩码",netvTabLanDefaultGW:"默认网关",netvTabLanApplyDhcpBtn:"应用DHCP修改",
+    netvTabLanApplyLanCfgBtn:"应用LAN静态地址设置",nvtlanCfgTitle:"LAN 静态地址设置", nvtlanDHCPCfgTitle:"DHCP 配置", netvTabLanSubmask:"子网掩码",netvTabLanDevType:"设备类型",/*netvTabLanRTMPServer:"设置为RTMP服务器IP",*/ netvTabLanSIP:"起始IP地址",netvTabLanEIP:"终止IP地址",netvTabLanLease:"地址租期(分钟)",netvTabLanSubmask2:"子网掩码",netvTabLanDefaultGW:"默认网关",netvTabLanApplyDhcpBtn:"应用DHCP修改",
     netvTabVpnTitle:"VPN 穿透",netvTabVpnAddr:"VPN地址",netvTabVpnName:"VPN用户名",netvTabVpnPwd:"VPN密码",netvTabVpnProtocol:"协议",netvTabVpnKey:"连接身份密钥",netvTabVpnStatus:"VPN连接状态",netvTabVpnConnectBtn:"连接",
     netvTabRoutingM:"模块: ", netvTabRoutingRefreshBtn:"刷新", ntvtrAddBtn:"新加",ntvtrDelBtn:"删除",//ntvtrChgBtn:"修改",
     firewall:"防火墙设置", firewallIPFilterTblTxt:"IP过滤表",firewallMacFilterTable:"MAC过滤表", nvtIPFilterTXt:"IP 过滤",nvtMacFilterTXt:"MAC 过滤",
@@ -1532,6 +1543,7 @@ CNetworkView.prototype.cnHtmlMap = {
     netvTabMappingSlotTblTitle:"通道映射",nvtMChannel:"WLAN通道", nvtMSrc:"LAN通道",/*nvtMSlotOpt:"操作",*/nvtnvtMChannelMapApplyBtn:"应用所有",nvtMMemo:"GNSS通道只传输特殊IP包(段标识+监控数据)",
     netvTabMappingMacIPTblTitle:"IP/MAC绑定",netvTabMappMacIPNewBtn:"新建", netvTabMappMacIPDelBtn:"删除", netvTabMappMacIPApplyBtn:"应用所有",netvTabMappingMacIPTblDesc:"描述(Max40字符)",
     netvTabRTMPApplyCfgBtn:"应用配置修改",RTMPInforTitle:"RTMP Server设置",RTMPInforIPTxt:"Server IP",RTMPInforPortTxt:"端口号",RTMPInforAppTxt:"推流APP名",RTMPInforAddrTxt:"推流地址",RTMPInforIPValSelectorWarning:"注意：选中后IP地址对应的LAN口会被设置为Static, DHCP将失效！",netvTabRTMPNewBtn:"新建", netvTabRTMPDelBtn:"删除", netvTabRTMPApplyBtn:"应用所有",netvTabRTMPChannelTableTitle:"RTMP频道配置表",netvTabRTMPChannelNameTxt:"频道名称",netvTabRTMPChannelNoTxt:"频道编码",netvTabRTMPChannelRefTxt:"频道引用地址",
+    netvTabLanDevLst:"设备接入列表",netvTabLanDevMac:'设备MAC',netvTabLanDevIP:'设备IP',netvTabLanDevType:"设备类型", 
 };
 CNetworkView.prototype.enJsMap = {
     operationSucc:'Operation is successful.',nvPortCfgErr:'Incorrect port cfg, please check the device.', nvPortMapLAN12ZErr:'[PortMapping]LAN1<->LTE-Z is already allocated in PORT table!',nvPortMapLAN22ZErr:'[PortMapping]LAN2<->LTE-Z is already allocated in PORT table!',nvPortMapLAN32ZErr: '[PortMapping]LAN3<->LTE-Z is already allocated in PORT table!',nvPortMapLAN12GErr: '[PortMapping]LAN1<->LTE-4G is already allocated in PORT table!',nvPortMapLAN22GErr:'[PortMapping]LAN2<->LTE-4G is already allocated in PORT table!',nvPortMapLAN32GErr:'[PortMapping]LAN3<->LTE-4G is already allocated in PORT table!',nvSetPortMap:'[Set Mapping]',
