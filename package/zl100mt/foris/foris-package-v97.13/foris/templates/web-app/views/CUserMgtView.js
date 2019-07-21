@@ -108,7 +108,8 @@ CUserMgtView.prototype.loadHtml = function(){
             let oldPwd = $('#uvOldPWDInput').val();
             let newPwd = $('#uvNewPWDInput').val();
             let confirmPwd = $('#uvConfirmNewPWDInput').val();
-            if((oldPwd != this.store.pwd) || (newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
+            //if((oldPwd != this.store.pwd) || (newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
+            if((newPwd != confirmPwd) || ('' == newPwd) || ('' == confirmPwd)){
                 tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'umvPwdCheckFail'));//'密码校验未通过！'
                 return;
             }
@@ -137,7 +138,8 @@ CUserMgtView.prototype.loadHtml = function(){
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'umvSetPwdSucc'));//'密码设置成功！'
                     }
                     else{
-                        tools.msgBox(data.errCode);
+                        //tools.msgBox(.errCode);
+                        tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'umvPwdCheckFail'));//'密码校验未通过！'
                     }
                 },
                 error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}

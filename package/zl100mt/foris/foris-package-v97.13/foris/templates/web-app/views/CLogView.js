@@ -36,6 +36,8 @@ function CLoginView(){
                     _this.deactiveMyView();
                     oLeftSideBar.activeMyView();
                     tools.viewShow(document.getElementById('mainContent'), true);
+                } else {
+                    tools.msgBox(data.errCode);
                 }
             },
             error: function (errorThrown) { tools.msgBoxFailed(errorThrown);}
@@ -56,6 +58,7 @@ CLoginView.prototype.loadHtml = function(){
     // 多语言实现
     var enHtmlMap = {lgSubmitBtn:"Login"};
     var cnHtmlMap = {lgSubmitBtn:"用户登陆"};
+
     tools.language = $('#langSelector').children('option:selected').val();
     tools.htmlSwitchLang(enHtmlMap, cnHtmlMap);
 }

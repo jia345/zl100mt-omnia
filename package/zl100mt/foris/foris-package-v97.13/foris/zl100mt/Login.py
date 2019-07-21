@@ -26,7 +26,7 @@ class LoginCmd():
             session.save()
             res = {'rc': 0,'errCode': 'success','dat': "ok"}
         else:
-            res = {'rc': 1,'errCode': 'wrong password','dat': 'Wrong password'}
+            res = {'rc': 1,'errCode': 'Wrong user name or password','dat': 'Wrong password'}
 
         return res
 
@@ -51,7 +51,7 @@ class SetPwdCmd():
         old_password = data['dat']['old'] if 'old' in data['dat'] else None
         new_password = data['dat']['new'] if 'new' in data['dat'] else ''
         
-        if len(new_password) < 6:
+        if len(new_password) < 5:
             return {'rc': 1,'errCode': 'new passwrod length shoud be >= 6!','dat': None}
 
         if old_password == None :
@@ -62,7 +62,7 @@ class SetPwdCmd():
             result = current_state.backend.perform(
                           'password', 'set', {'password': encoded_password, 'type': 'foris'})['result']
             logger.debug('SetPwdCmd %s',result)
-            res = {'rc': 1,'errCode': 'Wrong new password','dat': None} if not result else res
+            res = {'rc': 1,'errCode': 'Fail to set password','dat': None} if not result else res
         else:
             res = {'rc': 1,'errCode': 'Wrong old password','dat': None}
         return res
