@@ -120,6 +120,7 @@ function CMainFrm(){
     else{
         verString = 'release V' + releaseVer;
     }
+    //verString = 'release V' + releaseVer;
     $('#titleVer').text(verString);
 
 }

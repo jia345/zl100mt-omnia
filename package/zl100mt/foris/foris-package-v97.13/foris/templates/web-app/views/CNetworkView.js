@@ -114,7 +114,7 @@ CNetworkView.prototype.render = function(){
         });
         $('#RTMPInforAddrVal').text(rtmpUrl);
         $('#RTMPInforAppVal').val(defaultAppName);
-        //注册text监听
+        //注册text监听 20190723：为简化后台处理当前设置为app input为只读，所以以下text监听无效
         $("#RTMPInforAppVal").bind("input propertychange",function(event){
             let strApp = $('#RTMPInforAppVal').val();
             if(strApp == ""){
@@ -859,6 +859,21 @@ CNetworkView.prototype.loadHtml = function(){
                     var data = res;
                     if(0 == data.rc){
                         oStore.RTMP.channelList = selectedData;
+                        // update table cells
+                        if((undefined != oStore.RTMP.channelList) && (0 != oStore.RTMP.channelList.length)){
+                            $("#netvTabRTMPChannelTable tr:gt(1)").empty("");
+                            // *** HTML
+                            // <tr> <td><input type='checkbox' checked='' /></td> <td><input class='netvTabRTMPChannelNameVal'/></td> <td><input class='netvTabRTMPChannelCodeVal'/></td> <td><a id='netvTabRTMPChannelRefVal'></a></td></tr>
+                            oStore.RTMP.channelList.forEach(function(value,index){
+                                let rtmpRefUrl = "rtmp://" + oStore.RTMP.ServerIP + ":1935/live/";
+                                let tr =  "<tr> <td><input type='checkbox' /></td>" +
+                                    "<td><input class='netvTabRTMPChannelNameVal' value=" + value.Name + "></td>" +
+                                    "<td><input class='netvTabRTMPChannelCodeVal' value="+ value.Code+"></td>" +
+                                    "<td><a>" + rtmpRefUrl + value.Code + "</a></td></tr>"
+                                $("#netvTabRTMPChannelTable").append(tr);
+                            });
+                        }
+                        //
                         tools.msgBox(tools.jsSwitchLang(enJsMap, cnJsMap, 'operationSucc')+ ' code:' + data.errCode); //'操作成功!
                         console.log(data.dat);
                     }

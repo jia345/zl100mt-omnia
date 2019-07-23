@@ -135,11 +135,11 @@ Mock.mock(
                                         {"port":"LAN1","MAC":"ED-DD-4D-45-5A-9E", "IP":"128.0.1.22", "subMask":"255.255.0.0", "type":"ibm"},
                                         {"port":"LAN2","MAC":"ED-DD-4D-45-5A-9F", "IP":"128.0.1.12", "subMask":"255.255.0.0", "type":"pc"} ]},
                 "NTP":{"serverIP":"10.1.1.12"},
-                "RTMP":{"ServerIP":"10.1.1.12",
+                "RTMP":{"ServerIP":"128.0.1.22",
                         "channelList":[ {"Name":"Cam01", "Code":"left-1"},
                                         {"Name":"Cam02", "Code":"right-1"},
                                         {"Name":"Cam03", "Code":"top-2"} ] },
-                "VPN":{"vpnAddress":"124.1.2.1/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd", 
+                "VPN":{"vpnAddress":"128.0.1.22/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd", 
                         "vpnProtocol":"L2TP", /* PPTP 或 L2TP/IPSec */
                         "vpnKey":"34sd4", "vpnStatus":"on"}, /* on/off */
                 "FireWall":{"ipFilter":"off", "macFilter":"on", "DMZ":{"IP":"123.3.3.1", "Status":"on"},
@@ -198,11 +198,11 @@ Mock.mock(
             return res;
         }else if(command == 'getNetworkCfgInfor'){
             params = {
-                "RTMP":{"ServerIP":"10.1.1.12",
+                "RTMP":{"ServerIP":"128.0.1.22",
                         "channelList":[ {"Name":"Cam01", "Code":"left-1"},
                                         {"Name":"Cam02", "Code":"right-1"},
                                         {"Name":"Cam03", "Code":"top-2"} ] },
-                "VPN":{"vpnAddress":"124.1.2.1/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd", 
+                "VPN":{"vpnAddress":"128.0.1.22/vpn/", "vpnUser":"zhang", "vpnPwd":"zhangpwd", 
                         "vpnProtocol":"L2TP", /* PPTP 或 L2TP/IPSec */
                         "vpnKey":"34sd4", "vpnStatus":"on"}, /* on/off */
                 "FireWall":{"ipFilter":"off", "macFilter":"on", "DMZ":{"IP":"123.3.3.1", "Status":"on"},
