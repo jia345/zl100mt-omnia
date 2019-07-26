@@ -1,0 +1,87 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+json_init
+
+case "$1" in
+    list)
+        echo '{
+            "sync_ntp_time": {
+                "server": "x.x.x.x"
+            },
+            "get_hw_id": {
+            },
+            "get_host_ip": {
+            },
+            "set_hw_id": {
+                "mac": "aa-bb-cc-dd-ee-ff",
+                "imei": "012345678901234"
+            }
+        }'
+    ;;
+    call)
+        case "$2" in
+            get_ntp_info)
+                server=`uci get system.ntp.server|awk '{print $1}'`
+                echo "{
+                    'server': '$server'
+                }"
+            ;;
+            sync_ntp_time)
+                read input
+                logger -t "zl100mt-rpcd" "call" "$2" "$input"
+                json_load $input
+                json_get_var server server_ip
+                TIMEOUT=2 # seconds
+                DEFAULT_SERVER=210.72.145.44
+                /usr/sbin/ntpdate -s -b -u -t "$TIMEOUT" "$server" 
+                uci -q del_list system.ntp.server
+                uci add_list system.ntp.server=$server
+                uci add_list system.ntp.server=$DEFAULT_SERVER
+                uci commit system
+                /etc/init.d/sysntpd restart
+                rc = $?
+                ts = `date +%s`
+                ts = ((ts * 1000)) # we need ms
+                echo "{
+                    'rc': '$rc',
+                    'ts': '$ts'
+                }"
+            ;;
+            get_hw_id)
+                mac=`hexdump -e '6/1 "%x "' -s 12 -n 6 /sys/bus/i2c/devices/0-0054/eeprom|sed -e "s/ /-/g"`
+                imei=`hexdump -e '15/1 "%c"' -s 18 -n 15 /sys/bus/i2c/devices/0-0054/eeprom`
+
+                echo "{
+                    'mac': '$mac',
+                    'imei': '$imei'
+                }"
+            ;;
+            set_hw_id)
+                read input
+                logger -t "zl100mt-rpcd" "call" "$2" "$input"
+                json_load $input
+                json_get_var mac mac
+                mac=`echo $mac|sed -e 's/[-:]/\\\x/g'`
+                mac="\\x$mac"
+                echo -n -e $mac|dd of=/sys/bus/i2c/devices/0-0054/eeprom seek=12 bs=1 count=6
+
+                json_get_var imei imei
+                echo -n $imei|dd of=/sys/bus/i2c/devices/0-0054/eeprom seek=18 bs=1 count=15
+
+                echo "{
+                    'rc': 'ok'
+                }"
+            ;;
+            get_host_ip)
+                ip=`ifconfig br-lan | awk '/inet addr:/{split($2,a,":"); print a[2]}'`
+                submask=`ifconfig br-lan | awk '/Mask:/{split($4,a,":"); print a[2]}'`
+                echo "{
+                    'ip': '$ip',
+                    'submask': '$submask'
+                }"
+        esac
+    ;;
+esac

@@ -9,7 +9,7 @@ at_cmds=(
     "AT+SNR?"
     "AT+COPS?"
     "AT+CIMI"
-    "AT+CSQ?"
+    "AT+CSQ"
     "AT+CGPDNS=1"
     "AT+CGPADDR=1"
     "AT+CBAND?"
@@ -19,10 +19,10 @@ at_cmds=(
 cmd_data=(
 	'1;connection_status;echo ${line#*:}|cut -d, -f1;0'
 	'1;sim_status;echo ${line#*:};0'
-	'1;snr;echo ${line::15};0'
+	'1;snr;echo ${line#*:};0'
 	'1;plmn;echo ${line#*:}|cut -d, -f3;0'
 	'1;imsi;echo ${line#*:};0'
-	'1;signal_strength;echo ${line#*:}|cut -d, -f2;0;0'
+	'1;signal_strength;echo ${line#*:}|cut -d, -f1;0;0'
 	'2;dns1;echo ${line#*:}|cut -d, -f2;0;0;dns2;echo ${line#*:}|cut -d, -f3;0;0'
 	'1;ipaddr;echo ${line#*:}|cut -d, -f2;0;0'
 	'1;band;echo ${line#*:}|cut -d, -f1;0'

@@ -136,10 +136,13 @@ static struct hws_topology_map board_topology_map_2g = {
 
 
 struct omnia_eeprom {
-	u32 magic;
-	u32 ramsize;
+	u32  magic;
+	u32  ramsize;
 	char region[4];
-	u32 crc;
+    u8   mac[6];
+    u16  pad;
+    char sn[16];
+	u32  crc;
 };
 
 static int read_omnia_eeprom(struct omnia_eeprom *oep)
@@ -180,6 +183,8 @@ static int read_omnia_eeprom(struct omnia_eeprom *oep)
 static int set_regdomain(void)
 {
 	struct omnia_eeprom oep;
+    memset(&oep, 0, sizeof(oep));
+
 	char rd[3] = {' ', ' ', 0};
 
 	if(!(read_omnia_eeprom(&oep)))
@@ -196,6 +201,7 @@ struct hws_topology_map *ddr3_get_topology_map(void)
 {
 	static int mem = 0;
 	struct omnia_eeprom oep;
+    memset(&oep, 0, sizeof(oep));
 
 	/* Get the board config from EEPROM */
 	if (mem == 0) {
@@ -433,6 +439,7 @@ out:
 	}
 
 #else
+/*
 	otp0[0] = 0;
 	otp0[1] = 0xAA;
 	otp0[2] = 0xBB;
@@ -441,10 +448,23 @@ out:
 	otp1[1] = 0x20;
 	otp1[2] = 0x19;
 	otp1[3] = 0x02;
+*/
 
-	for(i=0; i<3; i++)
-		turris_increment_mac(otp0, otp1, addr[i], i);
-	armada385_set_mac(addr[0], addr[1], addr[2]);
+	struct omnia_eeprom oep;
+
+	if(!(read_omnia_eeprom(&oep))) {
+		memcpy(addr[0], &(oep.mac), 6);
+		memcpy(addr[1], &(oep.mac), 6);
+		memcpy(addr[2], &(oep.mac), 6);
+        for(i=0; i<3; i++) {
+            //turris_increment_mac(otp0, otp1, addr[i], i);
+            addr[i][5]+=i;
+        }
+        armada385_set_mac(addr[0], addr[1], addr[2]);
+    } else {
+		printf("EEPROM MAC address read failed.\n");
+    }
+
 #endif
 	cpu_eth_init(bis); /* Built in controller(s) come first */
 	return pci_eth_init(bis);

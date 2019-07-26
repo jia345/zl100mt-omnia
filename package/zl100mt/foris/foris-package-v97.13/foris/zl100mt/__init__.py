@@ -18,7 +18,7 @@ from foris.middleware.bottle_csrf import get_csrf_token
 
 from foris.zl100mt.Login import cmdLogin, cmdGetUserInfo, cmdSetPwd, cmdResetPwd
 from foris.zl100mt.Routing import cmdRoutingInfor, cmdGetRoutingInfo
-from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime, cmdGetHostStatusInfo, cmdGetNetworkCfgInfo, cmdGetAllSysInfo
+from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime, cmdGetHostStatusInfo, cmdGetNetworkCfgInfo, cmdGetAllSysInfo, cmdSetHwId
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.testAjax import run_ajax_test
 from foris.zl100mt.wan import cmdSetWanOnOff
@@ -47,6 +47,7 @@ CONFIG_COMMANDS = {
     'setDhcpCfg': cmdDhcpCfg,
     #'connectVPN': cmdDhcpCfg,
     'syncDatetime': cmdTime,
+    'updateHwCode': cmdSetHwId,
     'setFirewall': cmdSetFirewall,
     'setIPFilterTable': cmdSetIpFilter,
     'setMacFilterTable': cmdSetMacFilter,
@@ -92,15 +93,10 @@ def zl100mt_main():
     # print("par: {0}".format(bottle.request.params))
     # print("JSON: {0}".format(bottle.request.json))
 
-    logger.debug("xijia main")
     logger.debug(bottle.request)
-    logger.debug("xijia 1")
     logger.debug(bottle.request.POST.items())
-    logger.debug("xijia 2")
     logger.debug(bottle.request.json)
-    #logger.debug("xijia 3")
     #str = bottle.request.POST.get('data_str')
-    #logger.debug("xijia 4")
     #data = json.loads(str)
     data = bottle.request.json
     command = data['command']

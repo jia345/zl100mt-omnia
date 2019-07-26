@@ -1,4 +1,3 @@
-
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -161,9 +160,19 @@ static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *o
     blobmsg_add_string(&b, "result", "ok");
     blobmsg_add_string(&b, "connection", g_connection_status ? "on" : "off");
 
-    memset(tmp, 0, sizeof(tmp));
-    sprintf(tmp, "%.2f", g_signal_strength);
-    blobmsg_add_string(&b, "signal", tmp);
+    char beam[10];
+
+    int i;
+    for (i = 0; i < 6; i++) {
+        memset(beam, 0, sizeof(beam));
+        sprintf(beam, "beam%d", i);
+        memset(tmp, 0, sizeof(tmp));
+        sprintf(tmp, "%x", g_ZJXX[4+i]);
+        blobmsg_add_string(&b, beam, tmp);
+    }
+    //memset(tmp, 0, sizeof(tmp));
+    //sprintf(tmp, "%.2f", g_ZJXX[4+i]);
+    //blobmsg_add_string(&b, "beam1", tmp);
 
     memset(tmp, 0, sizeof(tmp));
     sprintf(tmp, "%d", g_satellite_num);
@@ -401,17 +410,19 @@ void iot_logbuf(char *label, unsigned char *buf, int len)
 	int i;
     char *tmp = NULL;
 
-    if ((tmp = (char *)malloc(strlen(label) + (3 * len) + 1))) {
-        if (label)
-        	sprintf(tmp, "%s", label);
+    if (g_bd_inf.debug_mode) {
+        if ((tmp = (char *)malloc(strlen(label) + (3 * len) + 1))) {
+            if (label)
+                sprintf(tmp, "%s", label);
 
-        for (i = 0; i < len; i++)
-    		sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
+            for (i = 0; i < len; i++)
+                sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
 
-    	tmp[strlen(tmp)] = 0;
-    	iot_dbg("%s", tmp);
+            tmp[strlen(tmp)] = 0;
+            iot_dbg("%s", tmp);
 
-        IOT_FREE_AND_NULL(tmp);
+            IOT_FREE_AND_NULL(tmp);
+        }
     }
 }
 
@@ -531,6 +542,7 @@ static int init_bdinf(BD_INFO *pinf)
     }
     pinf->ttypath     =          iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_TTY,    NULL);
     pinf->ttybaudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_BDRATE, 0);
+    pinf->debug_mode  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DBG_MODE, 0);
     pinf->target_sim  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_REMOTE,  IOT_BD_KEY_NUMBER, 0);
     pinf->local_sim   = 0;
 
@@ -997,17 +1009,19 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
         }
     }
 
-    // update signal strength ($SJSC/$SJXX)
+    // update time ($SJSC/$SJXX)
+#if 0
     txlen = compose_SJSC(txbuf, 0);
     tx_bd_msg(&g_bd_inf, txbuf, txlen);
     ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
     if (ret > 0) {
         if (0 == memcmp(rxbuf, "$SJXX", 5)) {
-            memcpy(g_SJXX, &(rxbuf[10]), sizeof(g_ZJXX));
+            memcpy(g_SJXX, &(rxbuf[10]), sizeof(g_SJXX));
         }
     }
+#endif
 
-    uloop_timeout_set(t, 2000);
+    uloop_timeout_set(t, 3000);
 }
 
 static void bd_relayer_cb(struct uloop_timeout *t)
@@ -1316,10 +1330,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
 
     // listen on 0xBDBD messages
-    struct uloop_timeout relayer_timeout = {
-        .cb = bd_relayer_cb
-    };
-    uloop_timeout_set(&relayer_timeout, 0);
+    //struct uloop_timeout relayer_timeout = {
+    //    .cb = bd_relayer_cb
+    //};
+    //uloop_timeout_set(&relayer_timeout, 0);
 
     // RDSS: poll beidou status and send relayed messages out
     struct uloop_timeout rdss_poller_timeout = {
@@ -1328,10 +1342,10 @@ int main(int argc, char **argv)
     uloop_timeout_set(&rdss_poller_timeout, 0);
 
     // RNSS: listen messages
-    struct uloop_timeout rnss_listener_timeout = {
-        .cb = bd_rnss_listener_cb
-    };
-    uloop_timeout_set(&rnss_listener_timeout, 0);
+    //struct uloop_timeout rnss_listener_timeout = {
+    //    .cb = bd_rnss_listener_cb
+    //};
+    //uloop_timeout_set(&rnss_listener_timeout, 0);
 
     uloop_run();
 

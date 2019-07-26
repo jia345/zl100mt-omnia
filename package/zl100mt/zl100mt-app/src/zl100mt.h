@@ -12,15 +12,16 @@
 
 #define BD_DBG 1
 
-#define IOT_BD_CONF        "/etc/zl100mt-app/zl100mt-app.conf"
-#define IOT_BD_SEC_GENERAL "GENERAL"
-#define IOT_BD_SEC_DEBUG   "DEBUG"
-#define IOT_BD_SEC_REMOTE  "REMOTE"
-#define IOT_BD_SEC_PM      "PM"
-#define IOT_BD_KEY_TTY     "ttypath"
-#define IOT_BD_KEY_BDRATE  "baudrate"
-#define IOT_BD_KEY_NUMBER  "number"
-#define IOT_BD_KEY_DRYRUN  "dryrun"
+#define IOT_BD_CONF                 "/etc/zl100mt-app/zl100mt-app.conf"
+#define IOT_BD_SEC_GENERAL          "GENERAL"
+#define IOT_BD_SEC_DEBUG            "DEBUG"
+#define IOT_BD_SEC_REMOTE           "REMOTE"
+#define IOT_BD_SEC_PM               "PM"
+#define IOT_BD_KEY_DBG_MODE         "debug"
+#define IOT_BD_KEY_TTY              "ttypath"
+#define IOT_BD_KEY_BDRATE           "baudrate"
+#define IOT_BD_KEY_NUMBER           "number"
+#define IOT_BD_KEY_DRYRUN           "dryrun"
 #define IOT_BD_KEY_COUNTER_TX_TOTAL "counter_tx_total"
 #define IOT_BD_KEY_COUNTER_TX_SUCC  "counter_tx_success"
 #define IOT_BD_KEY_COUNTER_TX_FAIL  "counter_tx_failure"
@@ -43,6 +44,7 @@ typedef struct _bd_info {
     uint32_t     local_sim;
     uint32_t     target_sim;
     uint32_t     is_dryrun;
+    uint32_t     debug_mode;
 } BD_INFO;
 
 #endif

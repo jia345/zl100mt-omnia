@@ -64,13 +64,18 @@ class GetLogLinkCmd():
 class GetSysInfoCmd():
     def implement(self, session=None):
         system = ubus.call('system', 'info', {})[0]
-        print 'xijia sys %s' % system
         version = os.popen('cat /etc/zl100mt-version').read().splitlines()[0]
+        hwId = ubus.call('zl100mt-rpcd', 'get_hw_id', {})[0]
+        hostIp = ubus.call('zl100mt-rpcd', 'get_host_ip', {})[0]
         return {
             'localDatetime': system['localtime'] * 1000,
             'currDuration': system['uptime'] * 1000,
-            'hwIMEI': '---todo---',
-            'hostIP': '192.168.3.1',
+            'hwIMEI': hwId['imei'],
+            'hwMAC': hwId['mac'],
+            'hostIP': {
+                'IP': hostIp['ip'],
+                'subMask': hostIp['submask']
+            },
             'swVersion': version
         }
 
@@ -79,9 +84,10 @@ class NtpSyncDatetime():
         self.action = 'syncDatetime'
         self.default_data = {}
 
-    def implement(self, data,session=None):
+    def implement(self, data, session=None):
         #rc = current_state.backend.perform("zl100mt-ntp", "refresh", {'server_ip': data['serverIP'] if 'serverIP' in data else '210.72.145.44'})
-        rc = ubus.call("zl100mt-ntp", "refresh", {'server_ip': ''})[0]
+        server_ip = data['dat']['NTP']['serverIP']
+        rc = ubus.call("zl100mt-rpcd", "sync_ntp_time", {'server_ip': server_ip})[0]
         res = {
             "rc": 0,
             "errCode": "success",
@@ -89,6 +95,17 @@ class NtpSyncDatetime():
         }
 
         return res
+
+class SetHwId():
+    def implement(self, data, session=None):
+        mac = data['dat']['system']['hwMAC']
+        imei = data['dat']['system']['hwIMEI']
+        # TODO validate for MAC and IMEI
+        rc = ubus.call("zl100mt-rpcd", "set_hw_id", {'mac': mac, 'imei': imei})
+        return {
+            "rc": 0,
+            "errCode": "success",
+        }
 
 class GetNtpServerIpCmd():
     def implement(self, session=None):
@@ -105,16 +122,7 @@ class GetNetworkCfgInfoCmd():
             }
         }
         data = {
-            "GNSS": {
-                "connection":"on",
-                "signal":"1.01",
-                "satelliteNum":"9",
-                "totalMsg":"4531", 
-                "succMsg":"4500",
-                "failMsg":"31", 
-                "targetSim":"01897",
-                "localSim":"02654"
-            },
+            "GNSS": cmdGetGnssInfo.implement(session),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
             "RTMP": cmdGetRtmpInfo.implement(session),
             "VPN":{
@@ -144,23 +152,15 @@ class GetNetworkCfgInfoCmd():
 
 class GetHostStatusInfoCmd():
     def implement(self, handle,session):
+        ntp = ubus.call("zl100mt-rpcd", "get_ntp_info", {})[0]
         data = {
             "system": cmdGetSysInfo.implement(session),
             "LTEZ": cmdGetLteZ.implement(session),
             "LTE4G": cmdGetLte4G.implement(session),
-            "GNSS": {
-                "connection":"on",
-                "signal":"1.01",
-                "satelliteNum":"9",
-                "totalMsg":"4531", 
-                "succMsg":"4500",
-                "failMsg":"31", 
-                "targetSim":"01897",
-                "localSim":"02654"
-            },
+            "GNSS": cmdGetGnssInfo.implement(session),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
             "DHCP": cmdDhcpCfg.get_dhcp(),
-            "NTP": { "serverIP":"10.1.1.12" }
+            "NTP": { "serverIP": ntp['server'] }
         }
 
         res = {
@@ -180,16 +180,7 @@ class GetAllSysInforCmd() :
             "system": cmdGetSysInfo.implement(session),
             "LTEZ": cmdGetLteZ.implement(session),
             "LTE4G": cmdGetLte4G.implement(session),
-            "GNSS": {
-                "connection":"on",
-                "signal":"1.01",
-                "satelliteNum":"9",
-                "totalMsg":"4531", 
-                "succMsg":"4500",
-                "failMsg":"31", 
-                "targetSim":"01897",
-                "localSim":"02654"
-            },
+            "GNSS": cmdGetGnssInfo.implement(session),
             "DHCP": cmdDhcpCfg.get_dhcp(),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
             "RTMP": cmdGetRtmpInfo.implement(session),
@@ -217,6 +208,16 @@ class GetAllSysInforCmd() :
             "LTEZ": cmdGetLteZ.implement(session),
             "LTE4G": cmdGetLte4G.implement(session),
             "GNSS": cmdGetGnssInfo.implement(session),
+            "GNSS": {
+                "connection":"on",
+                "signal":"1.01",
+                "satelliteNum":"9",
+                "totalMsg":"4531", 
+                "succMsg":"4500",
+                "failMsg":"31", 
+                "targetSim":"01897",
+                "localSim":"02654"
+            },
             "DHCP": cmdDhcpCfg.get_dhcp(),
             "LAN": cmdDhcpCfg.get_lan_cfg(),
             "RTMP": cmdGetRtmpInfo.implement(session),
@@ -255,3 +256,4 @@ cmdGetSysInfo = GetSysInfoCmd()
 cmdGetNtpServerIp = GetNtpServerIpCmd()
 cmdGetHostStatusInfo = GetHostStatusInfoCmd()
 cmdGetNetworkCfgInfo = GetNetworkCfgInfoCmd()
+cmdSetHwId = SetHwId()

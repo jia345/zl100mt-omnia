@@ -23,7 +23,9 @@ cat << HTML
 		<meta http-equiv="refresh" content="0; URL=$SCRIPTNAME/$APP/" />
 	</head>
 	<body style="background-color: white">
+    <!--
 		<a style="color: black; font-family: arial, helvetica, sans-serif;" href="$SCRIPTNAME/$APP/">Foris - $APP</a>
+    -->
 	</body>
 </html>
 HTML

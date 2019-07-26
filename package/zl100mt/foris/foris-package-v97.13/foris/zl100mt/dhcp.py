@@ -49,13 +49,11 @@ class DhcpCmd():
     def get_dhcp(self):
         data = current_state.backend.perform('dhcp', 'get_settings', {})
         dhcp_data = data['dhcp_cfg']
-        print "xijia!!!! %d" % dhcp_data['ignore']
 
-        #'dhcpStatus': 'Statics' if dhcp_data['ignore'] else 'DHCP',
         dhcp = {
             'startIP': dhcp_data['start_ip'],
             'endIP': dhcp_data['end_ip'],
-            'dhcpStatus': 'DHCP',
+            'dhcpStatus': 'DHCP' if dhcp_data['dynamicdhcp'] else 'Statics',
             'leaseTerm': dhcp_data['leasetime_m'],
             'subMask': dhcp_data['netmask'],
             'defaultGwIP': dhcp_data['gw_ip'],
