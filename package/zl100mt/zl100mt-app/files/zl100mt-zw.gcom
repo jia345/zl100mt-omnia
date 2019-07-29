@@ -1,0 +1,159 @@
+opengt
+  set com 115200n81
+  set comecho off
+  set senddelay 0.02
+  waitquiet 0.2 0.2
+  flash 0.1
+
+:start
+  gosub connection_status
+  gosub signal_strength
+  gosub ipaddr
+  gosub dns
+  gosub imei
+  gosub plmn
+  gosub imsi
+  gosub sim_status
+  gosub band
+  gosub rsrq
+  gosub snr
+  goto end
+
+:connection_status
+  send "AT+SYSINFO^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "connection_status:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'connection_status:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' -F'[:,]' '{print $2}'"
+  waitfor 1 "OK"
+  return
+
+:signal_strength
+  send "AT+CSQ?^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "signal_strength:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'signal_strength:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $2}'|cut -d, -f1"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:imei
+  send "AT+CGSN^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "imei:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  print "imei:"
+  system "echo $GCOM_ZL100MT_VAR | grep -q 'ERROR'; if [ $? -eq 0 ]; then echo -e ''; else echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $2}'; fi"
+  waitfor 1 "OK"
+  return
+
+:ipaddr
+  send "AT+CGPADDR=1^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  let $s = $right($s, x-1)
+  if $s = "ERROR" print "ipaddr:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'ipaddr:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $3}'|sed -e 's/\"//g'"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:sim_status
+  send "AT+CPIN?^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "sim_status:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'sim_status:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print tolower($2)}'"
+  waitfor 1 "OK"
+  return
+
+:imsi
+  send "AT+CIMI^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "imsi:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'imsi:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $2}'|awk '{$1=$1}1'"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:plmn
+  send "AT+COPS?^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "plmn:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'plmn:';echo $GCOM_ZL100MT_VAR|awk -F: '{print $2}'|cut -d, -f3|sed -e 's/\"//g'"
+  putenv "GCOM_ZL100MT_VAR="
+  :plmn_end
+  waitfor 1 "OK"
+  return
+
+:band
+  send "AT+CBAND?^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "band:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'band:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $2}'|cut -d, -f1"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:dns
+  send "AT+CGPDNS=1^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "dns1:\ndns2:\n" return
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo -n 'dns1:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $3}'|sed -e 's/\"//g'"
+  system "echo -n 'dns2:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $4}'|sed -e 's/\"//g'"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:rsrq
+  print "rsrq:\n"
+  return
+
+:snr
+  send "AT+SNR?^m"
+  get 1 "^m" $s
+  get 1 "^m" $s
+  get 1 "^m" $s
+  let x = len($s)
+  if x<2 print "snr:\n" return
+  print "snr:"
+  putenv "GCOM_ZL100MT_VAR="$s
+  system "echo $GCOM_ZL100MT_VAR | grep -q 'ERROR'; if [ $? -eq 0 ]; then echo -e ''; else echo $GCOM_ZL100MT_VAR|awk -F: '{print $2}'|cut -d' ' -f2; fi"
+  putenv "GCOM_ZL100MT_VAR="
+  waitfor 1 "OK"
+  return
+
+:end
+exit 0

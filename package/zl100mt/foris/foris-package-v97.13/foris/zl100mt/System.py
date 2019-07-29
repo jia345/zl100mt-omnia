@@ -1,4 +1,4 @@
-import bottle, os, ubus
+import bottle, os, ubus, time, re, glob
 from foris.state import current_state
 from foris.zl100mt.wan import cmdGetLteZ, cmdGetLte4G
 from foris.zl100mt.gnss import cmdGetGnssInfo
@@ -58,8 +58,60 @@ class SysReboot():
 
 class GetLogLinkCmd():
     def implement(self, data, session=None):
-        res = current_state.backend.perform("maintain", "get_log_links", {})
-        return res
+        #res = current_state.backend.perform("maintain", "get_log_links", {})
+        start = data['dat']['startDatetime']
+        end   = data['dat']['endDatetime']
+        f_list = list(filter(re.compile("/var/log/zl100mt-\d{8}\.log(\.gz)?$").match, globl.glob("/var/log/zl100mt-*.log*")))
+
+        log_list = []
+        filepath = 'log'
+        if start == "":
+            # get all the logs before end time
+            start_date = 0
+            end_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(end))))
+            for f in f_list:
+                filename = os.path.basename(f)
+                match = re.search("zl100mt-(\d{8})\.log(\.gz)?$", filename)
+                log_date = int(match.group(1))
+                if log_date <= end_date:
+                    log_list.append({
+                        'filePath': filepath,
+                        'fileName': filename
+                    })
+        else if end == "":
+            # get all the logs after start time
+            start_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(start))))
+            end_date = 0
+            for f in f_list:
+                filename = os.path.basename(f)
+                match = re.search("zl100mt-(\d{8})\.log(\.gz)?$", filename)
+                log_date = int(match.group(1))
+                if log_date >= start_date:
+                    log_list.append({
+                        'filePath': filepath,
+                        'fileName': filename
+                    })
+        else if start == "" and end == "":
+            # get today's log
+            log_list.append({
+                'filePath': filepath,
+                'fileName': 'zl100mt.log'
+            })
+        else
+            # get the logs between start and end time
+            start_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(start))))
+            end_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(end))))
+            for f in f_list:
+                filename = os.path.basename(f)
+                match = re.search("zl100mt-(\d{8})\.log(\.gz)?$", filename)
+                log_date = int(match.group(1))
+                if log_date >= start_date and log_date <= end_date:
+                    log_list.append({
+                        'filePath': filepath,
+                        'fileName': filename
+                    })
+
+        return  { "rc": 0, "errCode": "success", "dat": log_list }
 
 class GetSysInfoCmd():
     def implement(self, session=None):
@@ -85,9 +137,8 @@ class NtpSyncDatetime():
         self.default_data = {}
 
     def implement(self, data, session=None):
-        #rc = current_state.backend.perform("zl100mt-ntp", "refresh", {'server_ip': data['serverIP'] if 'serverIP' in data else '210.72.145.44'})
         server_ip = data['dat']['NTP']['serverIP']
-        rc = ubus.call("zl100mt-rpcd", "sync_ntp_time", {'server_ip': server_ip})[0]
+        rc = ubus.call("zl100mt-rpcd", "sync_ntp_time", {'server': server_ip})[0]
         res = {
             "rc": 0,
             "errCode": "success",
@@ -100,7 +151,6 @@ class SetHwId():
     def implement(self, data, session=None):
         mac = data['dat']['system']['hwMAC']
         imei = data['dat']['system']['hwIMEI']
-        # TODO validate for MAC and IMEI
         rc = ubus.call("zl100mt-rpcd", "set_hw_id", {'mac': mac, 'imei': imei})
         return {
             "rc": 0,
@@ -109,9 +159,9 @@ class SetHwId():
 
 class GetNtpServerIpCmd():
     def implement(self, session=None):
-        #rc = ubus.call("zl100mt-ntp", "refresh", {'server_ip':'xxx'})[0]
+        rc = ubus.call("zl100mt-rpcd", "get_ntp_info", {})[0]
         return {
-            'serverIP': '210.72.145.44'
+            'serverIP': rc['server']
         }
 
 class GetNetworkCfgInfoCmd():
@@ -176,6 +226,7 @@ class GetAllSysInforCmd() :
         self.default_data = {}
 
     def implement(self, handle,session):
+        ntp = ubus.call("zl100mt-rpcd", "get_ntp_info", {})[0]
         data = {
             "system": cmdGetSysInfo.implement(session),
             "LTEZ": cmdGetLteZ.implement(session),
@@ -200,7 +251,7 @@ class GetAllSysInforCmd() :
                 "portMapping":setportmapping.get_portmapping(),
             },
             #"NTP": cmdGetNtpServerIp.implement(session)
-            "NTP": { "serverIP":"10.1.1.12" }
+            "NTP": { "serverIP": ntp['server'] }
         }
         '''
         data = {

@@ -11,6 +11,8 @@ case "$1" in
             "sync_ntp_time": {
                 "server": "x.x.x.x"
             },
+            "get_ntp_info": {
+            },
             "get_hw_id": {
             },
             "get_host_ip": {
@@ -18,6 +20,36 @@ case "$1" in
             "set_hw_id": {
                 "mac": "aa-bb-cc-dd-ee-ff",
                 "imei": "012345678901234"
+            },
+            "get_lte_z": {
+                "type": "LTE-Z",
+                "connection_status": "on/off",
+                "signal_strength": "17.0",
+                "ipaddr": "x.x.x.x",
+                "": "x.x.x.x",
+                "dns1": "x.x.x.x",
+                "dns2": "x.x.x.x",
+                "sim_status": "ready",
+                "imsi": "imsi",
+                "plmn": "plmn",
+                "band": "band",
+                "rsrq": "rsrq",
+                "snr": "snr"
+            },
+            "get_lte_4g": {
+                "type": "LTE-4G",
+                "connection_status": "on/off",
+                "signal_strength": "17.0",
+                "ipaddr": "x.x.x.x",
+                "": "x.x.x.x",
+                "dns1": "x.x.x.x",
+                "dns2": "x.x.x.x",
+                "sim_status": "ready",
+                "imsi": "imsi",
+                "plmn": "plmn",
+                "band": "band",
+                "rsrq": "rsrq",
+                "snr": "snr"
             }
         }'
     ;;
@@ -44,7 +76,7 @@ case "$1" in
                 /etc/init.d/sysntpd restart
                 rc = $?
                 ts = `date +%s`
-                ts = ((ts * 1000)) # we need ms
+                ts = $((ts * 1000)) # we need ms
                 echo "{
                     'rc': '$rc',
                     'ts': '$ts'
@@ -82,6 +114,42 @@ case "$1" in
                     'ip': '$ip',
                     'submask': '$submask'
                 }"
+            ;;
+            get_lte_z)
+                data=`gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom`
+
+                json=""
+                for kv in $data; do
+                    k=`echo $kv|cut -d: -f1`
+                    v=`echo $kv|cut -d: -f2`
+                    item="'$k'":"'$v'"
+                    if [[ -z $json ]]; then
+                        json="$item"
+                    else
+                        json="$json,$item"
+                    fi
+                done
+                json="{ 'type':'LTE-Z', $json }"
+                echo $json
+            ;;
+            get_lte_4g)
+                data=`gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom`
+
+                json=""
+                for kv in $data; do
+                    k=`echo $kv|cut -d: -f1`
+                    v=`echo $kv|cut -d: -f2`
+                    item="'$k'":"'$v'"
+                    if [[ -z $json ]]; then
+                        json="$item"
+                    else
+                        json="$json,$item"
+                    fi
+                done
+                json="{ 'type':'LTE-4G', $json }"
+                echo $json
+            ;;
+
         esac
     ;;
 esac

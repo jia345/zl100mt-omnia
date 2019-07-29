@@ -43,11 +43,11 @@ def get_ip(v):
 
 class GetLteZCmd():
     def implement(self, session):
-        rc = ubus.call('wan', 'get_lte_z', {})[0]
+        rc = ubus.call('zl100mt-rpcd', 'get_lte_z', {})[0]
         print rc
         return {
             'type': 'LTE-Z',
-            'connection': "on" if get_rc_data(rc,'connection_status')=="1" else "off",
+            'connection': "on" if get_rc_data(rc,'connection_status')=="2" else "off",
             'signal': get_rc_data(rc,'signal_strength'),
             'wlanIP': rc['ipaddr'] if 'ipaddr' in rc else '----',
             'defaultGwIP': rc['gw'] if 'gw' in rc else '----',
@@ -64,14 +64,14 @@ class GetLteZCmd():
 
 class GetLte4GCmd():
     def implement(self, session):
-        rc = ubus.call('wan', 'get_lte_4g', {})[0]
+        rc = ubus.call('zl100mt-rpcd', 'get_lte_4g', {})[0]
         print rc
         return {
             'type': 'LTE-4G',
             'connection': "on" if get_rc_data(rc,'connection_status')=="1" else "off",
             'signal': get_rc_data(rc,'signal_strength'),
             'wlanIP': get_ip(get_rc_data(rc,'ipaddr')),
-            'defaultGwIP': get_rc_data(rc,'gw'),
+            'defaultGwIP': get_ip(get_rc_data(rc,'gw')),
             'mDnsIP': get_ip(get_rc_data(rc,'dns1')),
             'sDnsIP': get_ip(get_rc_data(rc,'dns2')),
             'MAC': 'N/A',
@@ -86,13 +86,14 @@ class GetLte4GCmd():
 class SetWanCmd():
     def implement(self, data, session):
         msg = {
-                'ip_filter_enabled': True if data['dat']['FireWall']['ipFilter'] == 'on' else False,
-                'mac_filter_enabled': True if data['dat']['FireWall']['macFilter'] == 'on' else False,
-                'dmz_enabled': True if data['dat']['FireWall']['DMZ']['Status'] == 'on' else False,
-                'dmz_ip': data['dat']['FireWall']['DMZ']['IP']
+                'interface': data['dat']['modulType'].lower(),
+                'on': 1 if data['dat']['operation'].lower() == 'on' else 0
         }
-        res = current_state.backend.perform('firewall', 'set_firewall', msg)
-        return res
+        rc = ubus.call('zl100mt-rpcd', 'set_interface_on', msg)[0]
+        return {
+            'rc': 1,
+            'errCode': ''
+        }
 
 cmdGetLteZ = GetLteZCmd()
 cmdGetLte4G = GetLte4GCmd()

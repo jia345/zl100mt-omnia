@@ -18,7 +18,8 @@
 #define IOT_BD_SEC_REMOTE           "REMOTE"
 #define IOT_BD_SEC_PM               "PM"
 #define IOT_BD_KEY_DBG_MODE         "debug"
-#define IOT_BD_KEY_TTY              "ttypath"
+#define IOT_BD_KEY_DATA_TTY         "rdss_ttypath"
+#define IOT_BD_KEY_RNSS_TTY         "rnss_ttypath"
 #define IOT_BD_KEY_BDRATE           "baudrate"
 #define IOT_BD_KEY_NUMBER           "number"
 #define IOT_BD_KEY_DRYRUN           "dryrun"
@@ -38,8 +39,10 @@ typedef struct _tty_baud_rates {
 
 typedef struct _bd_info {
     T_IOT_CFG   *pcfg;
-    const char  *ttypath;
-    int         ttyfd;
+    const char  *rdss_ttypath;
+    const char  *rnss_ttypath;
+    int         rdss_ttyfd;
+    int         rnss_ttyfd;
     uint32_t     ttybaudrate;
     uint32_t     local_sim;
     uint32_t     target_sim;

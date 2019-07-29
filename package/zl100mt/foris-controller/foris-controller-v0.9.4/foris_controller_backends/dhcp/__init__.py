@@ -37,7 +37,6 @@ def calc_range(ip, netmask, start_ip, end_ip):
     network_int  = (network_arr[0] << 24) | (network_arr[1] << 16) | (network_arr[2] << 8) | network_arr[3]
     start_ip_int = (start_ip_arr[0] << 24) | (start_ip_arr[1] << 16) | (start_ip_arr[2] << 8) | start_ip_arr[3]
     end_ip_int   = (end_ip_arr[0] << 24) | (end_ip_arr[1] << 16) | (end_ip_arr[2] << 8) | end_ip_arr[3]
-    print 'xijia network_int %s start %s end %s' % (network_int, start_ip_int, end_ip_int)
 
     if (network_int <= start_ip_int):
         start = start_ip_int - network_int
@@ -67,7 +66,6 @@ class DhcpUciCommands(object):
             leasetime_m = leasetime_num
 
         dhcp_option = dhcp_lan['data']['dhcp_option']
-        logger.debug('xijia %s' % dhcp_option)
         lan_ip  = network_lan['data']['ipaddr']
         netmask = network_lan['data']['netmask']
         gw_ip   = ''
@@ -91,6 +89,7 @@ class DhcpUciCommands(object):
 
         dhcpCfg = {
             "ignore": int(dhcp_lan['data'].get('ignore', 0)),
+            "dynamic": int(dhcp_lan['data'].get('dynamicdhcp', 1)),
             "start_ip": start_ip,
             "end_ip": end_ip,
             "leasetime_m": leasetime_m,
@@ -107,7 +106,12 @@ class DhcpUciCommands(object):
     def get_lan_cfg(self):
         with UciBackend() as backend:
             dhcp_data = backend.read("dhcp")
-            dhcp_hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+
+            try:
+                dhcp_hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+            except:
+                dhcp_hosts = []
+
             dhcp_lan = get_section(dhcp_data, "dhcp", "lan")
             dhcp_option = dhcp_lan['data']['dhcp_option']
             netmask = ''
@@ -120,7 +124,6 @@ class DhcpUciCommands(object):
             lan_cfg = []
             port = 0
             for e in dhcp_hosts:
-                print 'xijia eeeee %s' % e
                 data = e['data']
                 if 'mac' in data and 'ip' in data:
                     port += 1
@@ -146,7 +149,6 @@ class DhcpUciCommands(object):
                         'type': type
                     })
 
-        print 'xijia xxxxxx %s %s' % (lan_cfg, access_list)
         return { 'lan_cfg': lan_cfg, 'access_list': access_list }
 
     def update_settings(self, data):
@@ -191,7 +193,6 @@ class DhcpUciCommands(object):
                 dhcp_option.append(dns_str)
 
             #dhcp_option += '3,%s' % netmask if netmask else ''
-            print 'xijia dddd %s %s' % (ip_range, dhcp_option)
             if len(ip_range) == 2:
                 start, limit = ip_range
                 backend.set_option('dhcp', 'lan', 'ignore', ignore)

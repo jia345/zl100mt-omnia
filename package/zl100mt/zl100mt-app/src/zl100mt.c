@@ -158,14 +158,15 @@ static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *o
     char tmp[64];
     blob_buf_init(&b, 0);
     blobmsg_add_string(&b, "result", "ok");
-    blobmsg_add_string(&b, "connection", g_connection_status ? "on" : "off");
+    //blobmsg_add_string(&b, "connection", g_connection_status ? "on" : "off");
+    blobmsg_add_string(&b, "connection", "on");
 
     char beam[10];
 
     int i;
     for (i = 0; i < 6; i++) {
         memset(beam, 0, sizeof(beam));
-        sprintf(beam, "beam%d", i);
+        sprintf(beam, "beam%d", i+1);
         memset(tmp, 0, sizeof(tmp));
         sprintf(tmp, "%x", g_ZJXX[4+i]);
         blobmsg_add_string(&b, beam, tmp);
@@ -492,16 +493,17 @@ static int init_bdserial(BD_INFO *pinf)
 
     termios_bdrate = get_termios_bdrate(pinf->ttybaudrate);
 
-    pinf->ttyfd = open(pinf->ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (pinf->ttyfd < 0) {
-        iot_err("Err: open %s. %s", pinf->ttypath, strerror(errno));
+    // RDSS
+    pinf->rdss_ttyfd = open(pinf->rdss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (pinf->rdss_ttyfd < 0) {
+        iot_err("Err: open %s. %s", pinf->rdss_ttypath, strerror(errno));
         goto out;
     }
-    fcntl(pinf->ttyfd, F_SETFL, 0);
+    fcntl(pinf->rdss_ttyfd, F_SETFL, 0);
 
-    tcflush(pinf->ttyfd, TCIOFLUSH);
-    if (tcgetattr(pinf->ttyfd, &tms)) {
-        iot_err("Err: tcgetattr %s. %s", pinf->ttypath, strerror(errno));
+    tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
+    if (tcgetattr(pinf->rdss_ttyfd, &tms)) {
+        iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
         goto out;
     }
 
@@ -513,8 +515,33 @@ static int init_bdserial(BD_INFO *pinf)
     cfsetispeed(&tms, termios_bdrate);
     cfsetospeed(&tms, termios_bdrate);
 
-    tcflush(pinf->ttyfd, TCIOFLUSH);
-    tcsetattr(pinf->ttyfd, TCSANOW, &tms);
+    tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
+    tcsetattr(pinf->rdss_ttyfd, TCSANOW, &tms);
+
+    // RNSS
+    pinf->rnss_ttyfd = open(pinf->rnss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (pinf->rnss_ttyfd < 0) {
+        iot_err("Err: open %s. %s", pinf->rnss_ttypath, strerror(errno));
+        goto out;
+    }
+    fcntl(pinf->rnss_ttyfd, F_SETFL, 0);
+
+    tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
+    if (tcgetattr(pinf->rnss_ttyfd, &tms)) {
+        iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
+        goto out;
+    }
+
+    tms.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXOFF | IUTF8);
+    tms.c_oflag &= ~OPOST;
+    tms.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    tms.c_cflag &= ~(CSIZE | PARENB | CRTSCTS | CSTOPB);
+    tms.c_cflag |= CS8 | CLOCAL | CREAD;
+    cfsetispeed(&tms, termios_bdrate);
+    cfsetospeed(&tms, termios_bdrate);
+
+    tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
+    tcsetattr(pinf->rnss_ttyfd, TCSANOW, &tms);
 
     ret = 0;
 out:
@@ -524,7 +551,8 @@ out:
 static void reset_cfg(BD_INFO *pinf)
 {
     if (pinf->pcfg) {
-        pinf->ttypath = NULL;
+        pinf->rdss_ttypath = NULL;
+        pinf->rnss_ttypath = NULL;
         iot_cfg_destroy(pinf->pcfg);
         pinf->pcfg = NULL;
     }
@@ -534,13 +562,15 @@ static int init_bdinf(BD_INFO *pinf)
 {
     int ret = -1;
 
-    pinf->ttyfd = -1;
+    pinf->rdss_ttyfd = -1;
+    pinf->rnss_ttyfd = -1;
     pinf->pcfg = iot_cfg_new(IOT_BD_CONF);
     if (NULL == pinf->pcfg) {
         iot_inf("Err: open %s", IOT_BD_CONF);
         goto out;
     }
-    pinf->ttypath     =          iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_TTY,    NULL);
+    pinf->rdss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DATA_TTY, NULL);
+    pinf->rnss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RNSS_TTY, NULL);
     pinf->ttybaudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_BDRATE, 0);
     pinf->debug_mode  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DBG_MODE, 0);
     pinf->target_sim  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_REMOTE,  IOT_BD_KEY_NUMBER, 0);
@@ -552,12 +582,13 @@ static int init_bdinf(BD_INFO *pinf)
     iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, 0);
     iot_cfg_sync(pinf->pcfg);
 
-    if ((NULL == pinf->ttypath) || (0 == pinf->target_sim) || (0 == pinf->ttybaudrate))
+    if ((NULL == pinf->rdss_ttypath) || (0 == pinf->target_sim) || (0 == pinf->ttybaudrate))
     {
         goto out;
     }
     iot_inf("Configuration:");
-    iot_inf("\tttypath       = %s", pinf->ttypath);
+    iot_inf("\trdss_ttypath       = %s", pinf->rdss_ttypath);
+    iot_inf("\trnss_ttypath       = %s", pinf->rnss_ttypath);
     iot_inf("\tbaudrate      = %d", pinf->ttybaudrate);
     iot_inf("\tremote number = %d", pinf->target_sim);
 
@@ -760,7 +791,7 @@ static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
     int ret = 0;
 
     while (rest) {
-        out = read(pinf->ttyfd, &(rxbuf[number - rest]), rest);
+        out = read(pinf->rdss_ttyfd, &(rxbuf[number - rest]), rest);
         if (out > 0) {
             rest -= out;
             ret  += out;
@@ -791,7 +822,7 @@ static int tx_bd_msg(BD_INFO *pinf, unsigned char* buf, size_t len)
     sprintf(tmp, "tx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
     iot_logbuf(tmp, buf, len);
 
-    int ret = write(pinf->ttyfd, buf, len);
+    int ret = write(pinf->rdss_ttyfd, buf, len);
 
     return ret;
 }
@@ -835,11 +866,11 @@ static void wait_bd_ready(BD_INFO *pinf)
     timeout.tv_sec  = 2;
     timeout.tv_usec = 0;
 
-    int ttyfd = pinf->ttyfd;
+    int rdss_ttyfd = pinf->rdss_ttyfd;
 
     fd_set fds;
     FD_ZERO(&fds);
-    FD_SET(ttyfd, &fds);
+    FD_SET(rdss_ttyfd, &fds);
 
     size_t msg_len = 0;
     size_t txlen = 0;
@@ -853,7 +884,7 @@ static void wait_bd_ready(BD_INFO *pinf)
         txlen = compose_ICJC(txbuf);
         tx_bd_msg(pinf, txbuf, txlen);
 
-        rc = select(ttyfd + 1, &fds, NULL, NULL, &timeout);
+        rc = select(rdss_ttyfd + 1, &fds, NULL, NULL, &timeout);
         if (rc < 0) {
             iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
         } else if (rc > 0) {
@@ -917,6 +948,32 @@ static int init_dpi_socket()
 
 static void bd_rnss_listener_cb(struct uloop_timeout *t)
 {
+    iot_dbg("\nrnss\n");
+        iot_dbg("xijia aaaa\n");
+
+    char buf[1024];
+    char cmd[256];
+    const char *delim = ",";
+    char *ptr = NULL;
+
+    memset(buf, 0, sizeof(buf));
+    memset(cmd, 0, sizeof(cmd));
+
+    char* line = fgets(buf, sizeof(buf), fdopen(g_bd_inf.rnss_ttyfd, "r+"));
+    iot_dbg("okok %s\n", line);
+    if (0 == strncmp(line, "$GNGGA", 6)) {
+        iot_dbg("gngga\n");
+        ptr = strtok(line, delim);
+        int i = 0;
+        while (ptr != NULL && i < 7) {
+            ptr = strtok(NULL, delim);
+            i++;
+        }
+
+        g_satellite_num = atoi(ptr);
+    }
+
+        iot_dbg("xijia bbb\n");
     uloop_timeout_set(t, 0);
 }
 
@@ -930,6 +987,7 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
     int ret = 0;
 
     if (g_is_relay_data_ready) {
+        iot_dbg("xijia 111\n");
         txlen = compose_TXSQ(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
         tx_bd_msg(&g_bd_inf, txbuf, txlen);
 
@@ -938,13 +996,17 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
 
         while (true) {
             ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+        iot_dbg("xijia 222\n");
             if (ret > 0) {
                 if (0 == memcmp(rxbuf, "$FKXX", 5)) {
+        iot_dbg("xijia 333\n");
                     if (rxbuf[10]) { // check the feedback flag
                         iot_dbg("INFO: sending fail, error code 0x%hhx\n", rxbuf[10]);
+        iot_dbg("xijia 444\n");
                         g_tx_fail++;
                         g_connection_status = 0;
                     } else {
+        iot_dbg("xijia 555\n");
                         g_tx_succ++;
                         g_connection_status = 1;
                     }
@@ -958,6 +1020,7 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
     txlen = compose_ICJC(txbuf);
     tx_bd_msg(&g_bd_inf, txbuf, txlen);
     ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+        iot_dbg("xijia 666\n");
     if (ret > 0) {
         if (0 == memcmp(rxbuf, "$ICXX", 5)) {
             memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
@@ -974,6 +1037,7 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
     // update connection status and position
     txlen = compose_DWSQ_once(txbuf);
     tx_bd_msg(&g_bd_inf, txbuf, txlen);
+        iot_dbg("xijia 777\n");
     ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
     if (ret > 0) {
         if (0 == memcmp(rxbuf, "$FKXX", 5)) {
@@ -1000,6 +1064,7 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
     }
 
     // update signal strength ($XTZJ/$ZJXX)
+        iot_dbg("xijia 888\n");
     txlen = compose_XTZJ(txbuf, 0);
     tx_bd_msg(&g_bd_inf, txbuf, txlen);
     ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
@@ -1009,24 +1074,14 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
         }
     }
 
-    // update time ($SJSC/$SJXX)
-#if 0
-    txlen = compose_SJSC(txbuf, 0);
-    tx_bd_msg(&g_bd_inf, txbuf, txlen);
-    ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
-    if (ret > 0) {
-        if (0 == memcmp(rxbuf, "$SJXX", 5)) {
-            memcpy(g_SJXX, &(rxbuf[10]), sizeof(g_SJXX));
-        }
-    }
-#endif
-
+        iot_dbg("xijia 999\n");
     uloop_timeout_set(t, 3000);
 }
 
 static void bd_relayer_cb(struct uloop_timeout *t)
 {
     //iot_dbg("beidou relay callback ... \n");
+        iot_dbg("xijia relay\n");
 
     unsigned char buf_ip[1600];
     struct iphdr* p_iphdr   = NULL;
@@ -1048,9 +1103,9 @@ static void bd_relayer_cb(struct uloop_timeout *t)
 
     fd_set fds;
     FD_ZERO(&fds);
-    //FD_SET(g_bd_inf.ttyfd, &fds);
+    //FD_SET(g_bd_inf.rdss_ttyfd, &fds);
     FD_SET(g_sock, &fds);
-    //fd_max = (g_sock > g_bd_inf.ttyfd) ? g_sock : g_bd_inf.ttyfd;
+    //fd_max = (g_sock > g_bd_inf.rdss_ttyfd) ? g_sock : g_bd_inf.rdss_ttyfd;
 
     int ret = select(fd_max + 1, &fds, NULL, NULL, &timeout);
     if (ret < 0) {
@@ -1109,15 +1164,15 @@ static void bd_relayer_cb(struct uloop_timeout *t)
 }
 
 #if 0
-            if (ret == pinf->ttyfd) {
+            if (ret == pinf->rdss_ttyfd) {
                 rx_nbytes(pinf, rxbuf, 22);
                 iot_logbuf("received: ", rxbuf, 22);
 
                 sleep(1);
-                tcflush(pinf->ttyfd, TCIOFLUSH);
+                tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
 
                 txlen = compose_TXSQ(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
-                write(pinf->ttyfd, txbuf, txlen);
+                write(pinf->rdss_ttyfd, txbuf, txlen);
                 rx_nbytes(pinf, rxbuf, 16);
                 iot_logbuf("received: ", rxbuf, 16);
                 rx_nbytes(pinf, rxbuf, 54);
@@ -1247,9 +1302,9 @@ static void add_relayer_task()
 
     //fd_set fds;
     //FD_ZERO(&fds);
-    //FD_SET(pinf->ttyfd, &fds);
+    //FD_SET(pinf->rdss_ttyfd, &fds);
     //FD_SET(s, &fds);
-    //fd_max = (s > pinf->ttyfd) ? s : pinf->ttyfd;
+    //fd_max = (s > pinf->rdss_ttyfd) ? s : pinf->rdss_ttyfd;
 
     struct sockaddr_ll socket_address;
     memset(&socket_address, 0, sizeof (socket_address));
@@ -1342,10 +1397,10 @@ int main(int argc, char **argv)
     uloop_timeout_set(&rdss_poller_timeout, 0);
 
     // RNSS: listen messages
-    //struct uloop_timeout rnss_listener_timeout = {
-    //    .cb = bd_rnss_listener_cb
-    //};
-    //uloop_timeout_set(&rnss_listener_timeout, 0);
+    struct uloop_timeout rnss_listener_timeout = {
+        .cb = bd_rnss_listener_cb
+    };
+    uloop_timeout_set(&rnss_listener_timeout, 0);
 
     uloop_run();
 

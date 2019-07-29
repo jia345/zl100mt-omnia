@@ -61,7 +61,6 @@ class RedirectUciCommands(object):
                 redirects = []
 
         port_mapping_data = [e['data'] for e in redirects if e['name'].startswith('port_mapping_')]
-        print 'xijia port %s' % port_mapping_data
 
         return { 'redirects': port_mapping_data }
 

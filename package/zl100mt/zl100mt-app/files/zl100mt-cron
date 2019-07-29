@@ -1,0 +1,4 @@
+*/1	*	*	*	*	root	/usr/bin/temperature.sh
+*/1	*	*	*	*	root	sleep 30; /usr/bin/zl100mt-temperature.sh
+*/1	*	*	*	*	root	/usr/bin/zl100mt-ntpdate.sh
+*/1	*	*	*	*	root	sleep 30; /usr/bin/zl100mt-ntpdate.sh
