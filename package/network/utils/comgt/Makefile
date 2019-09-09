@@ -69,6 +69,7 @@ define Package/comgt/install
 	$(INSTALL_DATA) ./files/3g.chat $(1)/etc/chatscripts/3g.chat
 	$(INSTALL_DATA) ./files/evdo.chat $(1)/etc/chatscripts/evdo.chat
 	$(INSTALL_DIR) $(1)/etc/gcom
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/scripts/command $(1)/etc/gcom/command
 	$(INSTALL_DATA) ./files/setpin.gcom $(1)/etc/gcom/setpin.gcom
 	$(INSTALL_DATA) ./files/setmode.gcom $(1)/etc/gcom/setmode.gcom
 	$(INSTALL_DATA) ./files/getcardinfo.gcom $(1)/etc/gcom/getcardinfo.gcom

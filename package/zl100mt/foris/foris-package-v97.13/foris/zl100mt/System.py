@@ -78,7 +78,7 @@ class GetLogLinkCmd():
                         'filePath': filepath,
                         'fileName': filename
                     })
-        else if end == "":
+        elif end == "":
             # get all the logs after start time
             start_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(start))))
             end_date = 0
@@ -91,13 +91,13 @@ class GetLogLinkCmd():
                         'filePath': filepath,
                         'fileName': filename
                     })
-        else if start == "" and end == "":
+        elif start == "" and end == "":
             # get today's log
             log_list.append({
                 'filePath': filepath,
                 'fileName': 'zl100mt.log'
             })
-        else
+        else:
             # get the logs between start and end time
             start_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(start))))
             end_date = int(time.localtime(time.strftime("%Y%m%d", time.localtime(end))))

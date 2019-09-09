@@ -34,7 +34,10 @@ class IpmacbindUciCommands(object):
 
         with UciBackend() as backend:
             dhcp_data = backend.read("dhcp")
-            hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+            try:
+                hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+            except:
+                hosts = []
 
         ipmacbinds = []
         for host in hosts:
