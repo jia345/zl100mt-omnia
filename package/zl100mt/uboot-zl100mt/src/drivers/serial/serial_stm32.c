@@ -1,168 +1,284 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2015
- * Kamil Lulko, <rev13@wp.pl>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright (C) 2016, STMicroelectronics - All Rights Reserved
+ * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
  */
 
 #include <common.h>
-#include <asm/io.h>
+#include <clk.h>
+#include <dm.h>
+#include <reset.h>
 #include <serial.h>
+#include <watchdog.h>
+#include <asm/io.h>
 #include <asm/arch/stm32.h>
+#include "serial_stm32.h"
 
-/*
- * Set up the usart port
- */
-#if (CONFIG_STM32_USART >= 1) && (CONFIG_STM32_USART <= 6)
-#define USART_PORT	(CONFIG_STM32_USART - 1)
-#else
-#define USART_PORT	0
-#endif
-/*
- * Set up the usart base address
- *
- * --STM32_USARTD_BASE means default setting
- */
-#define STM32_USART1_BASE	(STM32_APB2PERIPH_BASE + 0x1000)
-#define STM32_USART2_BASE	(STM32_APB1PERIPH_BASE + 0x4400)
-#define STM32_USART3_BASE	(STM32_APB1PERIPH_BASE + 0x4800)
-#define STM32_USART6_BASE	(STM32_APB2PERIPH_BASE + 0x1400)
-#define STM32_USARTD_BASE	STM32_USART1_BASE
-/*
- * RCC USART specific definitions
- *
- * --RCC_ENR_USARTDEN means default setting
- */
-#define RCC_ENR_USART1EN	(1 << 4)
-#define RCC_ENR_USART2EN	(1 << 17)
-#define RCC_ENR_USART3EN	(1 << 18)
-#define RCC_ENR_USART6EN	(1 <<  5)
-#define RCC_ENR_USARTDEN	RCC_ENR_USART1EN
-
-struct stm32_serial {
-	u32 sr;
-	u32 dr;
-	u32 brr;
-	u32 cr1;
-	u32 cr2;
-	u32 cr3;
-	u32 gtpr;
-};
-
-#define USART_CR1_RE		(1 << 2)
-#define USART_CR1_TE		(1 << 3)
-#define USART_CR1_UE		(1 << 13)
-
-#define USART_SR_FLAG_RXNE	(1 << 5)
-#define USART_SR_FLAG_TXE	(1 << 7)
-
-#define USART_BRR_F_MASK	0xF
-#define USART_BRR_M_SHIFT	4
-#define USART_BRR_M_MASK	0xFFF0
-
-DECLARE_GLOBAL_DATA_PTR;
-
-static const unsigned long usart_base[] = {
-	STM32_USART1_BASE,
-	STM32_USART2_BASE,
-	STM32_USART3_BASE,
-	STM32_USARTD_BASE,
-	STM32_USARTD_BASE,
-	STM32_USART6_BASE
-};
-
-static const unsigned long rcc_enr_en[] = {
-	RCC_ENR_USART1EN,
-	RCC_ENR_USART2EN,
-	RCC_ENR_USART3EN,
-	RCC_ENR_USARTDEN,
-	RCC_ENR_USARTDEN,
-	RCC_ENR_USART6EN
-};
-
-static void stm32_serial_setbrg(void)
+static void _stm32_serial_setbrg(fdt_addr_t base,
+				 struct stm32_uart_info *uart_info,
+				 u32 clock_rate,
+				 int baudrate)
 {
-	serial_init();
-}
+	bool stm32f4 = uart_info->stm32f4;
+	u32 int_div, mantissa, fraction, oversampling;
 
-static int stm32_serial_init(void)
-{
-	struct stm32_serial *usart =
-		(struct stm32_serial *)usart_base[USART_PORT];
-	u32 clock, int_div, frac_div, tmp;
+	int_div = DIV_ROUND_CLOSEST(clock_rate, baudrate);
 
-	if ((usart_base[USART_PORT] & STM32_BUS_MASK) ==
-			STM32_APB1PERIPH_BASE) {
-		setbits_le32(&STM32_RCC->apb1enr, rcc_enr_en[USART_PORT]);
-		clock = clock_get(CLOCK_APB1);
-	} else if ((usart_base[USART_PORT] & STM32_BUS_MASK) ==
-			STM32_APB2PERIPH_BASE) {
-		setbits_le32(&STM32_RCC->apb2enr, rcc_enr_en[USART_PORT]);
-		clock = clock_get(CLOCK_APB2);
+	if (int_div < 16) {
+		oversampling = 8;
+		setbits_le32(base + CR1_OFFSET(stm32f4), USART_CR1_OVER8);
 	} else {
-		return -1;
+		oversampling = 16;
+		clrbits_le32(base + CR1_OFFSET(stm32f4), USART_CR1_OVER8);
 	}
 
-	int_div = (25 * clock) / (4 * gd->baudrate);
-	tmp = ((int_div / 100) << USART_BRR_M_SHIFT) & USART_BRR_M_MASK;
-	frac_div = int_div - (100 * (tmp >> USART_BRR_M_SHIFT));
-	tmp |= (((frac_div * 16) + 50) / 100) & USART_BRR_F_MASK;
+	mantissa = (int_div / oversampling) << USART_BRR_M_SHIFT;
+	fraction = int_div % oversampling;
 
-	writel(tmp, &usart->brr);
-	setbits_le32(&usart->cr1, USART_CR1_RE | USART_CR1_TE | USART_CR1_UE);
+	writel(mantissa | fraction, base + BRR_OFFSET(stm32f4));
+}
+
+static int stm32_serial_setbrg(struct udevice *dev, int baudrate)
+{
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+
+	_stm32_serial_setbrg(plat->base, plat->uart_info,
+			     plat->clock_rate, baudrate);
 
 	return 0;
 }
 
-static int stm32_serial_getc(void)
+static int stm32_serial_setconfig(struct udevice *dev, uint serial_config)
 {
-	struct stm32_serial *usart =
-		(struct stm32_serial *)usart_base[USART_PORT];
-	while ((readl(&usart->sr) & USART_SR_FLAG_RXNE) == 0)
-		;
-	return readl(&usart->dr);
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+	bool stm32f4 = plat->uart_info->stm32f4;
+	u8 uart_enable_bit = plat->uart_info->uart_enable_bit;
+	u32 cr1 = plat->base + CR1_OFFSET(stm32f4);
+	u32 config = 0;
+	uint parity = SERIAL_GET_PARITY(serial_config);
+	uint bits = SERIAL_GET_BITS(serial_config);
+	uint stop = SERIAL_GET_STOP(serial_config);
+
+	/*
+	 * only parity config is implemented, check if other serial settings
+	 * are the default one.
+	 * (STM32F4 serial IP didn't support parity setting)
+	 */
+	if (bits != SERIAL_8_BITS || stop != SERIAL_ONE_STOP || stm32f4)
+		return -ENOTSUPP; /* not supported in driver*/
+
+	clrbits_le32(cr1, USART_CR1_RE | USART_CR1_TE | BIT(uart_enable_bit));
+	/* update usart configuration (uart need to be disable)
+	 * PCE: parity check enable
+	 * PS : '0' : Even / '1' : Odd
+	 * M[1:0] = '00' : 8 Data bits
+	 * M[1:0] = '01' : 9 Data bits with parity
+	 */
+	switch (parity) {
+	default:
+	case SERIAL_PAR_NONE:
+		config = 0;
+		break;
+	case SERIAL_PAR_ODD:
+		config = USART_CR1_PCE | USART_CR1_PS | USART_CR1_M0;
+		break;
+	case SERIAL_PAR_EVEN:
+		config = USART_CR1_PCE | USART_CR1_M0;
+		break;
+	}
+
+	clrsetbits_le32(cr1,
+			USART_CR1_PCE | USART_CR1_PS | USART_CR1_M1 |
+			USART_CR1_M0,
+			config);
+	setbits_le32(cr1, USART_CR1_RE | USART_CR1_TE | BIT(uart_enable_bit));
+
+	return 0;
 }
 
-static void stm32_serial_putc(const char c)
+static int stm32_serial_getc(struct udevice *dev)
 {
-	struct stm32_serial *usart =
-		(struct stm32_serial *)usart_base[USART_PORT];
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+	bool stm32f4 = plat->uart_info->stm32f4;
+	fdt_addr_t base = plat->base;
+	u32 isr = readl(base + ISR_OFFSET(stm32f4));
 
-	if (c == '\n')
-		stm32_serial_putc('\r');
+	if ((isr & USART_ISR_RXNE) == 0)
+		return -EAGAIN;
 
-	while ((readl(&usart->sr) & USART_SR_FLAG_TXE) == 0)
-		;
-	writel(c, &usart->dr);
+	if (isr & (USART_ISR_PE | USART_ISR_ORE)) {
+		if (!stm32f4)
+			setbits_le32(base + ICR_OFFSET,
+				     USART_ICR_PCECF | USART_ICR_ORECF);
+		else
+			readl(base + RDR_OFFSET(stm32f4));
+		return -EIO;
+	}
+
+	return readl(base + RDR_OFFSET(stm32f4));
 }
 
-static int stm32_serial_tstc(void)
+static int _stm32_serial_putc(fdt_addr_t base,
+			      struct stm32_uart_info *uart_info,
+			      const char c)
 {
-	struct stm32_serial *usart =
-		(struct stm32_serial *)usart_base[USART_PORT];
-	u8 ret;
+	bool stm32f4 = uart_info->stm32f4;
 
-	ret = readl(&usart->sr) & USART_SR_FLAG_RXNE;
-	return ret;
+	if ((readl(base + ISR_OFFSET(stm32f4)) & USART_ISR_TXE) == 0)
+		return -EAGAIN;
+
+	writel(c, base + TDR_OFFSET(stm32f4));
+
+	return 0;
 }
 
-static struct serial_device stm32_serial_drv = {
-	.name	= "stm32_serial",
-	.start	= stm32_serial_init,
-	.stop	= NULL,
-	.setbrg	= stm32_serial_setbrg,
-	.putc	= stm32_serial_putc,
-	.puts	= default_serial_puts,
-	.getc	= stm32_serial_getc,
-	.tstc	= stm32_serial_tstc,
+static int stm32_serial_putc(struct udevice *dev, const char c)
+{
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+
+	return _stm32_serial_putc(plat->base, plat->uart_info, c);
+}
+
+static int stm32_serial_pending(struct udevice *dev, bool input)
+{
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+	bool stm32f4 = plat->uart_info->stm32f4;
+	fdt_addr_t base = plat->base;
+
+	if (input)
+		return readl(base + ISR_OFFSET(stm32f4)) &
+			USART_ISR_RXNE ? 1 : 0;
+	else
+		return readl(base + ISR_OFFSET(stm32f4)) &
+			USART_ISR_TXE ? 0 : 1;
+}
+
+static void _stm32_serial_init(fdt_addr_t base,
+			       struct stm32_uart_info *uart_info)
+{
+	bool stm32f4 = uart_info->stm32f4;
+	u8 uart_enable_bit = uart_info->uart_enable_bit;
+
+	/* Disable uart-> enable fifo -> enable uart */
+	clrbits_le32(base + CR1_OFFSET(stm32f4), USART_CR1_RE | USART_CR1_TE |
+		     BIT(uart_enable_bit));
+	if (uart_info->has_fifo)
+		setbits_le32(base + CR1_OFFSET(stm32f4), USART_CR1_FIFOEN);
+	setbits_le32(base + CR1_OFFSET(stm32f4), USART_CR1_RE | USART_CR1_TE |
+		     BIT(uart_enable_bit));
+}
+
+static int stm32_serial_probe(struct udevice *dev)
+{
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+	struct clk clk;
+	struct reset_ctl reset;
+	int ret;
+
+	plat->uart_info = (struct stm32_uart_info *)dev_get_driver_data(dev);
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret < 0)
+		return ret;
+
+	ret = clk_enable(&clk);
+	if (ret) {
+		dev_err(dev, "failed to enable clock\n");
+		return ret;
+	}
+
+	ret = reset_get_by_index(dev, 0, &reset);
+	if (!ret) {
+		reset_assert(&reset);
+		udelay(2);
+		reset_deassert(&reset);
+	}
+
+	plat->clock_rate = clk_get_rate(&clk);
+	if (plat->clock_rate < 0) {
+		clk_disable(&clk);
+		return plat->clock_rate;
+	};
+
+	_stm32_serial_init(plat->base, plat->uart_info);
+
+	return 0;
+}
+
+static const struct udevice_id stm32_serial_id[] = {
+	{ .compatible = "st,stm32-uart", .data = (ulong)&stm32f4_info},
+	{ .compatible = "st,stm32f7-uart", .data = (ulong)&stm32f7_info},
+	{ .compatible = "st,stm32h7-uart", .data = (ulong)&stm32h7_info},
+	{}
 };
 
-void stm32_serial_initialize(void)
+static int stm32_serial_ofdata_to_platdata(struct udevice *dev)
 {
-	serial_register(&stm32_serial_drv);
+	struct stm32x7_serial_platdata *plat = dev_get_platdata(dev);
+
+	plat->base = devfdt_get_addr(dev);
+	if (plat->base == FDT_ADDR_T_NONE)
+		return -EINVAL;
+
+	return 0;
 }
 
-__weak struct serial_device *default_serial_console(void)
+static const struct dm_serial_ops stm32_serial_ops = {
+	.putc = stm32_serial_putc,
+	.pending = stm32_serial_pending,
+	.getc = stm32_serial_getc,
+	.setbrg = stm32_serial_setbrg,
+	.setconfig = stm32_serial_setconfig
+};
+
+U_BOOT_DRIVER(serial_stm32) = {
+	.name = "serial_stm32",
+	.id = UCLASS_SERIAL,
+	.of_match = of_match_ptr(stm32_serial_id),
+	.ofdata_to_platdata = of_match_ptr(stm32_serial_ofdata_to_platdata),
+	.platdata_auto_alloc_size = sizeof(struct stm32x7_serial_platdata),
+	.ops = &stm32_serial_ops,
+	.probe = stm32_serial_probe,
+#if !CONFIG_IS_ENABLED(OF_CONTROL)
+	.flags = DM_FLAG_PRE_RELOC,
+#endif
+};
+
+#ifdef CONFIG_DEBUG_UART_STM32
+#include <debug_uart.h>
+static inline struct stm32_uart_info *_debug_uart_info(void)
 {
-	return &stm32_serial_drv;
+	struct stm32_uart_info *uart_info;
+
+#if defined(CONFIG_STM32F4)
+	uart_info = &stm32f4_info;
+#elif defined(CONFIG_STM32F7)
+	uart_info = &stm32f7_info;
+#else
+	uart_info = &stm32h7_info;
+#endif
+	return uart_info;
 }
+
+static inline void _debug_uart_init(void)
+{
+	fdt_addr_t base = CONFIG_DEBUG_UART_BASE;
+	struct stm32_uart_info *uart_info = _debug_uart_info();
+
+	_stm32_serial_init(base, uart_info);
+	_stm32_serial_setbrg(base, uart_info,
+			     CONFIG_DEBUG_UART_CLOCK,
+			     CONFIG_BAUDRATE);
+}
+
+static inline void _debug_uart_putc(int c)
+{
+	fdt_addr_t base = CONFIG_DEBUG_UART_BASE;
+	struct stm32_uart_info *uart_info = _debug_uart_info();
+
+	while (_stm32_serial_putc(base, uart_info, c) == -EAGAIN)
+		;
+}
+
+DEBUG_UART_FUNCS
+#endif

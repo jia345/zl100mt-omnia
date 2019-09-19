@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * i2c driver for Freescale i.MX series
  *
@@ -10,19 +11,18 @@
  *  Copyright (C) 2007 RightHand Technologies, Inc.
  *  Copyright (C) 2008 Darius Augulis <darius.augulis at teltonika.lt>
  *
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/errno.h>
-#include <asm/imx-common/mxc_i2c.h>
+#include <linux/errno.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #include <asm/io.h>
 #include <i2c.h>
 #include <watchdog.h>
 #include <dm.h>
+#include <dm/pinctrl.h>
 #include <fdtdec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -31,6 +31,14 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define IMX_I2C_REGSHIFT	2
 #define VF610_I2C_REGSHIFT	0
+
+#define I2C_EARLY_INIT_INDEX		0
+#ifdef CONFIG_SYS_I2C_IFDR_DIV
+#define I2C_IFDR_DIV_CONSERVATIVE	CONFIG_SYS_I2C_IFDR_DIV
+#else
+#define I2C_IFDR_DIV_CONSERVATIVE	0x7e
+#endif
+
 /* Register index */
 #define IADR	0
 #define IFDR	1
@@ -58,10 +66,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define I2CR_IEN	(1 << 7)
 #define I2CR_IDIS	(0 << 7)
 #define I2SR_IIF_CLEAR	(0 << 1)
-#endif
-
-#if defined(CONFIG_HARD_I2C) && !defined(CONFIG_SYS_I2C_BASE)
-#error "define CONFIG_SYS_I2C_BASE to use the mxc_i2c driver"
 #endif
 
 #ifdef I2C_QUIRK_REG
@@ -171,7 +175,7 @@ static int bus_i2c_set_bus_speed(struct mxc_i2c_bus *i2c_bus, int speed)
 	int reg_shift = quirk ? VF610_I2C_REGSHIFT : IMX_I2C_REGSHIFT;
 
 	if (!base)
-		return -ENODEV;
+		return -EINVAL;
 
 	/* Store divider value */
 	writeb(idx, base + (IFDR << reg_shift));
@@ -234,7 +238,7 @@ static int tx_byte(struct mxc_i2c_bus *i2c_bus, u8 byte)
 	if (ret < 0)
 		return ret;
 	if (ret & I2SR_RX_NO_AK)
-		return -ENODEV;
+		return -EREMOTEIO;
 	return 0;
 }
 
@@ -312,16 +316,19 @@ static int i2c_init_transfer_(struct mxc_i2c_bus *i2c_bus, u8 chip,
 	temp |= I2CR_MTX | I2CR_TX_NO_AK;
 	writeb(temp, base + (I2CR << reg_shift));
 
-	/* write slave address */
-	ret = tx_byte(i2c_bus, chip << 1);
-	if (ret < 0)
-		return ret;
-
-	while (alen--) {
-		ret = tx_byte(i2c_bus, (addr >> (alen * 8)) & 0xff);
+	if (alen >= 0)	{
+		/* write slave address */
+		ret = tx_byte(i2c_bus, chip << 1);
 		if (ret < 0)
 			return ret;
+
+		while (alen--) {
+			ret = tx_byte(i2c_bus, (addr >> (alen * 8)) & 0xff);
+			if (ret < 0)
+				return ret;
+		}
 	}
+
 	return 0;
 }
 
@@ -334,17 +341,89 @@ int i2c_idle_bus(struct mxc_i2c_bus *i2c_bus)
 }
 #else
 /*
- * Since pinmux is not supported, implement a weak function here.
- * You can implement your i2c_bus_idle in board file. When pinctrl
- * is supported, this can be removed.
+ * See Linux Documentation/devicetree/bindings/i2c/i2c-imx.txt
+ * "
+ *  scl-gpios: specify the gpio related to SCL pin
+ *  sda-gpios: specify the gpio related to SDA pin
+ *  add pinctrl to configure i2c pins to gpio function for i2c
+ *  bus recovery, call it "gpio" state
+ * "
+ *
+ * The i2c_idle_bus is an implementation following Linux Kernel.
  */
-int __i2c_idle_bus(struct mxc_i2c_bus *i2c_bus)
-{
-	return 0;
-}
-
 int i2c_idle_bus(struct mxc_i2c_bus *i2c_bus)
-	__attribute__((weak, alias("__i2c_idle_bus")));
+{
+	struct udevice *bus = i2c_bus->bus;
+	struct dm_i2c_bus *i2c = dev_get_uclass_priv(bus);
+	struct gpio_desc *scl_gpio = &i2c_bus->scl_gpio;
+	struct gpio_desc *sda_gpio = &i2c_bus->sda_gpio;
+	int sda, scl, idle_sclks;
+	int i, ret = 0;
+	ulong elapsed, start_time;
+
+	if (pinctrl_select_state(bus, "gpio")) {
+		dev_dbg(bus, "Can not to switch to use gpio pinmux\n");
+		/*
+		 * GPIO pinctrl for i2c force idle is not a must,
+		 * but it is strongly recommended to be used.
+		 * Because it can help you to recover from bad
+		 * i2c bus state. Do not return failure, because
+		 * it is not a must.
+		 */
+		return 0;
+	}
+
+	dm_gpio_set_dir_flags(scl_gpio, GPIOD_IS_IN);
+	dm_gpio_set_dir_flags(sda_gpio, GPIOD_IS_IN);
+	scl = dm_gpio_get_value(scl_gpio);
+	sda = dm_gpio_get_value(sda_gpio);
+
+	if ((sda & scl) == 1)
+		goto exit;		/* Bus is idle already */
+
+	/*
+	 * In most cases it is just enough to generate 8 + 1 SCLK
+	 * clocks to recover I2C slave device from 'stuck' state
+	 * (when for example SW reset was performed, in the middle of
+	 * I2C transmission).
+	 *
+	 * However, there are devices which send data in packets of
+	 * N bytes (N > 1). In such case we do need N * 8 + 1 SCLK
+	 * clocks.
+	 */
+	idle_sclks = 8 + 1;
+
+	if (i2c->max_transaction_bytes > 0)
+		idle_sclks = i2c->max_transaction_bytes * 8 + 1;
+	/* Send high and low on the SCL line */
+	for (i = 0; i < idle_sclks; i++) {
+		dm_gpio_set_dir_flags(scl_gpio, GPIOD_IS_OUT);
+		dm_gpio_set_value(scl_gpio, 0);
+		udelay(50);
+		dm_gpio_set_dir_flags(scl_gpio, GPIOD_IS_IN);
+		udelay(50);
+	}
+	start_time = get_timer(0);
+	for (;;) {
+		dm_gpio_set_dir_flags(scl_gpio, GPIOD_IS_IN);
+		dm_gpio_set_dir_flags(sda_gpio, GPIOD_IS_IN);
+		scl = dm_gpio_get_value(scl_gpio);
+		sda = dm_gpio_get_value(sda_gpio);
+		if ((sda & scl) == 1)
+			break;
+		WATCHDOG_RESET();
+		elapsed = get_timer(start_time);
+		if (elapsed > (CONFIG_SYS_HZ / 5)) {	/* .2 seconds */
+			ret = -EBUSY;
+			printf("%s: failed to clear bus, sda=%d scl=%d\n", __func__, sda, scl);
+			break;
+		}
+	}
+
+exit:
+	pinctrl_select_state(bus, "default");
+	return ret;
+}
 #endif
 
 static int i2c_init_transfer(struct mxc_i2c_bus *i2c_bus, u8 chip,
@@ -356,14 +435,14 @@ static int i2c_init_transfer(struct mxc_i2c_bus *i2c_bus, u8 chip,
 			VF610_I2C_REGSHIFT : IMX_I2C_REGSHIFT;
 
 	if (!i2c_bus->base)
-		return -ENODEV;
+		return -EINVAL;
 
 	for (retry = 0; retry < 3; retry++) {
 		ret = i2c_init_transfer_(i2c_bus, chip, addr, alen);
 		if (ret >= 0)
 			return 0;
 		i2c_imx_stop(i2c_bus);
-		if (ret == -ENODEV)
+		if (ret == -EREMOTEIO)
 			return ret;
 
 		printf("%s: failed for chip 0x%x retry=%d\n", __func__, chip,
@@ -403,8 +482,13 @@ static int i2c_write_data(struct mxc_i2c_bus *i2c_bus, u8 chip, const u8 *buf,
 	return ret;
 }
 
+/* Will generate a STOP after the last byte if "last" is true, i.e. this is the
+ * final message of a transaction.  If not, it switches the bus back to TX mode
+ * and does not send a STOP, leaving the bus in a state where a repeated start
+ * and address can be sent for another message.
+ */
 static int i2c_read_data(struct mxc_i2c_bus *i2c_bus, uchar chip, uchar *buf,
-			 int len)
+			 int len, bool last)
 {
 	int ret;
 	unsigned int temp;
@@ -434,17 +518,31 @@ static int i2c_read_data(struct mxc_i2c_bus *i2c_bus, uchar chip, uchar *buf,
 			return ret;
 		}
 
-		/*
-		 * It must generate STOP before read I2DR to prevent
-		 * controller from generating another clock cycle
-		 */
 		if (i == (len - 1)) {
-			i2c_imx_stop(i2c_bus);
+			/* Final byte has already been received by master!  When
+			 * we read it from I2DR, the master will start another
+			 * cycle.  We must program it first to send a STOP or
+			 * switch to TX to avoid this.
+			 */
+			if (last) {
+				i2c_imx_stop(i2c_bus);
+			} else {
+				/* Final read, no stop, switch back to tx */
+				temp = readb(base + (I2CR << reg_shift));
+				temp |= I2CR_MTX | I2CR_TX_NO_AK;
+				writeb(temp, base + (I2CR << reg_shift));
+			}
 		} else if (i == (len - 2)) {
+			/* Master has already recevied penultimate byte.  When
+			 * we read it from I2DR, master will start RX of final
+			 * byte.  We must set TX_NO_AK now so it does not ACK
+			 * that final byte.
+			 */
 			temp = readb(base + (I2CR << reg_shift));
 			temp |= I2CR_TX_NO_AK;
 			writeb(temp, base + (I2CR << reg_shift));
 		}
+
 		writeb(I2SR_IIF_CLEAR, base + (I2SR << reg_shift));
 		buf[i] = readb(base + (I2DR << reg_shift));
 	}
@@ -454,13 +552,34 @@ static int i2c_read_data(struct mxc_i2c_bus *i2c_bus, uchar chip, uchar *buf,
 		debug(" 0x%02x", buf[ret]);
 	debug("\n");
 
-	i2c_imx_stop(i2c_bus);
+	/* It is not clear to me that this is necessary */
+	if (last)
+		i2c_imx_stop(i2c_bus);
 	return 0;
 }
 
 #ifndef CONFIG_DM_I2C
 /*
  * Read data from I2C device
+ *
+ * The transactions use the syntax defined in the Linux kernel I2C docs.
+ *
+ * If alen is > 0, then this function will send a transaction of the form:
+ *     S Chip Wr [A] Addr [A] S Chip Rd [A] [data] A ... NA P
+ * This is a normal I2C register read: writing the register address, then doing
+ * a repeated start and reading the data.
+ *
+ * If alen == 0, then we get this transaction:
+ *     S Chip Wr [A] S Chip Rd [A] [data] A ... NA P
+ * This is somewhat unusual, though valid, transaction.  It addresses the chip
+ * in write mode, but doesn't actually write any register address or data, then
+ * does a repeated start and reads data.
+ *
+ * If alen < 0, then we get this transaction:
+ *     S Chip Rd [A] [data] A ... NA P
+ * The chip is addressed in read mode and then data is read.  No register
+ * address is written first.  This is perfectly valid on most devices and
+ * required on some (usually those that don't act like an array of registers).
  */
 static int bus_i2c_read(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 			int alen, u8 *buf, int len)
@@ -475,9 +594,11 @@ static int bus_i2c_read(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 	if (ret < 0)
 		return ret;
 
-	temp = readb(base + (I2CR << reg_shift));
-	temp |= I2CR_RSTA;
-	writeb(temp, base + (I2CR << reg_shift));
+	if (alen >= 0) {
+		temp = readb(base + (I2CR << reg_shift));
+		temp |= I2CR_RSTA;
+		writeb(temp, base + (I2CR << reg_shift));
+	}
 
 	ret = tx_byte(i2c_bus, (chip << 1) | 1);
 	if (ret < 0) {
@@ -485,7 +606,7 @@ static int bus_i2c_read(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 		return ret;
 	}
 
-	ret = i2c_read_data(i2c_bus, chip, buf, len);
+	ret = i2c_read_data(i2c_bus, chip, buf, len, true);
 
 	i2c_imx_stop(i2c_bus);
 	return ret;
@@ -493,6 +614,20 @@ static int bus_i2c_read(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 
 /*
  * Write data to I2C device
+ *
+ * If alen > 0, we get this transaction:
+ *    S Chip Wr [A] addr [A] data [A] ... [A] P
+ * An ordinary write register command.
+ *
+ * If alen == 0, then we get this:
+ *    S Chip Wr [A] data [A] ... [A] P
+ * This is a simple I2C write.
+ *
+ * If alen < 0, then we get this:
+ *    S data [A] ... [A] P
+ * This is most likely NOT something that should be used.  It doesn't send the
+ * chip address first, so in effect, the first byte of data will be used as the
+ * address.
  */
 static int bus_i2c_write(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 			 int alen, const u8 *buf, int len)
@@ -522,18 +657,42 @@ static int bus_i2c_write(struct mxc_i2c_bus *i2c_bus, u8 chip, u32 addr,
 #define I2C4_BASE_ADDR	0
 #endif
 
+#if !defined(I2C5_BASE_ADDR)
+#define I2C5_BASE_ADDR 0
+#endif
+
+#if !defined(I2C6_BASE_ADDR)
+#define I2C6_BASE_ADDR 0
+#endif
+
+#if !defined(I2C7_BASE_ADDR)
+#define I2C7_BASE_ADDR 0
+#endif
+
+#if !defined(I2C8_BASE_ADDR)
+#define I2C8_BASE_ADDR 0
+#endif
+
 static struct mxc_i2c_bus mxc_i2c_buses[] = {
-#if defined(CONFIG_LS102XA) || defined(CONFIG_FSL_LSCH3) || \
-		defined(CONFIG_VF610)
+#if defined(CONFIG_ARCH_LS1021A) || defined(CONFIG_VF610) || \
+	defined(CONFIG_FSL_LAYERSCAPE)
 	{ 0, I2C1_BASE_ADDR, I2C_QUIRK_FLAG },
 	{ 1, I2C2_BASE_ADDR, I2C_QUIRK_FLAG },
 	{ 2, I2C3_BASE_ADDR, I2C_QUIRK_FLAG },
 	{ 3, I2C4_BASE_ADDR, I2C_QUIRK_FLAG },
+	{ 4, I2C5_BASE_ADDR, I2C_QUIRK_FLAG },
+	{ 5, I2C6_BASE_ADDR, I2C_QUIRK_FLAG },
+	{ 6, I2C7_BASE_ADDR, I2C_QUIRK_FLAG },
+	{ 7, I2C8_BASE_ADDR, I2C_QUIRK_FLAG },
 #else
 	{ 0, I2C1_BASE_ADDR, 0 },
 	{ 1, I2C2_BASE_ADDR, 0 },
 	{ 2, I2C3_BASE_ADDR, 0 },
 	{ 3, I2C4_BASE_ADDR, 0 },
+	{ 4, I2C5_BASE_ADDR, 0 },
+	{ 5, I2C6_BASE_ADDR, 0 },
+	{ 6, I2C7_BASE_ADDR, 0 },
+	{ 7, I2C8_BASE_ADDR, 0 },
 #endif
 };
 
@@ -581,8 +740,16 @@ void bus_i2c_init(int index, int speed, int unused,
 		return;
 	}
 
-	mxc_i2c_buses[index].idle_bus_fn = idle_bus_fn;
-	mxc_i2c_buses[index].idle_bus_data = idle_bus_data;
+	/*
+	 * Warning: Be careful to allow the assignment to a static
+	 * variable here. This function could be called while U-Boot is
+	 * still running in flash memory. So such assignment is equal
+	 * to write data to flash without erasing.
+	 */
+	if (idle_bus_fn)
+		mxc_i2c_buses[index].idle_bus_fn = idle_bus_fn;
+	if (idle_bus_data)
+		mxc_i2c_buses[index].idle_bus_data = idle_bus_data;
 
 	ret = enable_i2c_clk(1, index);
 	if (ret < 0) {
@@ -591,6 +758,25 @@ void bus_i2c_init(int index, int speed, int unused,
 	}
 
 	bus_i2c_set_bus_speed(&mxc_i2c_buses[index], speed);
+}
+
+/*
+ * Early init I2C for prepare read the clk through I2C.
+ */
+void i2c_early_init_f(void)
+{
+	ulong base = mxc_i2c_buses[I2C_EARLY_INIT_INDEX].base;
+	bool quirk = mxc_i2c_buses[I2C_EARLY_INIT_INDEX].driver_data
+					& I2C_QUIRK_FLAG ? true : false;
+	int reg_shift = quirk ? VF610_I2C_REGSHIFT : IMX_I2C_REGSHIFT;
+
+	/* Set I2C divider value */
+	writeb(I2C_IFDR_DIV_CONSERVATIVE, base + (IFDR << reg_shift));
+	/* Reset module */
+	writeb(I2CR_IDIS, base + (I2CR << reg_shift));
+	writeb(0, base + (I2SR << reg_shift));
+	/* Enable I2C */
+	writeb(I2CR_IEN, base + (I2CR << reg_shift));
 }
 
 /*
@@ -612,16 +798,22 @@ static u32 mxc_i2c_set_bus_speed(struct i2c_adapter *adap, uint speed)
 /*
  * Register mxc i2c adapters
  */
+#ifdef CONFIG_SYS_I2C_MXC_I2C1
 U_BOOT_I2C_ADAP_COMPLETE(mxc0, mxc_i2c_init, mxc_i2c_probe,
 			 mxc_i2c_read, mxc_i2c_write,
 			 mxc_i2c_set_bus_speed,
 			 CONFIG_SYS_MXC_I2C1_SPEED,
 			 CONFIG_SYS_MXC_I2C1_SLAVE, 0)
+#endif
+
+#ifdef CONFIG_SYS_I2C_MXC_I2C2
 U_BOOT_I2C_ADAP_COMPLETE(mxc1, mxc_i2c_init, mxc_i2c_probe,
 			 mxc_i2c_read, mxc_i2c_write,
 			 mxc_i2c_set_bus_speed,
 			 CONFIG_SYS_MXC_I2C2_SPEED,
 			 CONFIG_SYS_MXC_I2C2_SLAVE, 1)
+#endif
+
 #ifdef CONFIG_SYS_I2C_MXC_I2C3
 U_BOOT_I2C_ADAP_COMPLETE(mxc2, mxc_i2c_init, mxc_i2c_probe,
 			 mxc_i2c_read, mxc_i2c_write,
@@ -638,6 +830,38 @@ U_BOOT_I2C_ADAP_COMPLETE(mxc3, mxc_i2c_init, mxc_i2c_probe,
 			 CONFIG_SYS_MXC_I2C4_SLAVE, 3)
 #endif
 
+#ifdef CONFIG_SYS_I2C_MXC_I2C5
+U_BOOT_I2C_ADAP_COMPLETE(mxc4, mxc_i2c_init, mxc_i2c_probe,
+			 mxc_i2c_read, mxc_i2c_write,
+			 mxc_i2c_set_bus_speed,
+			 CONFIG_SYS_MXC_I2C5_SPEED,
+			 CONFIG_SYS_MXC_I2C5_SLAVE, 4)
+#endif
+
+#ifdef CONFIG_SYS_I2C_MXC_I2C6
+U_BOOT_I2C_ADAP_COMPLETE(mxc5, mxc_i2c_init, mxc_i2c_probe,
+			 mxc_i2c_read, mxc_i2c_write,
+			 mxc_i2c_set_bus_speed,
+			 CONFIG_SYS_MXC_I2C6_SPEED,
+			 CONFIG_SYS_MXC_I2C6_SLAVE, 5)
+#endif
+
+#ifdef CONFIG_SYS_I2C_MXC_I2C7
+U_BOOT_I2C_ADAP_COMPLETE(mxc6, mxc_i2c_init, mxc_i2c_probe,
+			 mxc_i2c_read, mxc_i2c_write,
+			 mxc_i2c_set_bus_speed,
+			 CONFIG_SYS_MXC_I2C7_SPEED,
+			 CONFIG_SYS_MXC_I2C7_SLAVE, 6)
+#endif
+
+#ifdef CONFIG_SYS_I2C_MXC_I2C8
+U_BOOT_I2C_ADAP_COMPLETE(mxc7, mxc_i2c_init, mxc_i2c_probe,
+			 mxc_i2c_read, mxc_i2c_write,
+			 mxc_i2c_set_bus_speed,
+			 CONFIG_SYS_MXC_I2C8_SPEED,
+			 CONFIG_SYS_MXC_I2C8_SLAVE, 7)
+#endif
+
 #else
 
 static int mxc_i2c_set_bus_speed(struct udevice *bus, unsigned int speed)
@@ -650,22 +874,47 @@ static int mxc_i2c_set_bus_speed(struct udevice *bus, unsigned int speed)
 static int mxc_i2c_probe(struct udevice *bus)
 {
 	struct mxc_i2c_bus *i2c_bus = dev_get_priv(bus);
+	const void *fdt = gd->fdt_blob;
+	int node = dev_of_offset(bus);
 	fdt_addr_t addr;
-	int ret;
+	int ret, ret2;
 
 	i2c_bus->driver_data = dev_get_driver_data(bus);
 
-	addr = dev_get_addr(bus);
+	addr = devfdt_get_addr(bus);
 	if (addr == FDT_ADDR_T_NONE)
-		return -ENODEV;
+		return -EINVAL;
 
 	i2c_bus->base = addr;
 	i2c_bus->index = bus->seq;
+	i2c_bus->bus = bus;
 
 	/* Enable clk */
 	ret = enable_i2c_clk(1, bus->seq);
 	if (ret < 0)
 		return ret;
+
+	/*
+	 * See Documentation/devicetree/bindings/i2c/i2c-imx.txt
+	 * Use gpio to force bus idle when necessary.
+	 */
+	ret = fdt_stringlist_search(fdt, node, "pinctrl-names", "gpio");
+	if (ret < 0) {
+		debug("i2c bus %d at 0x%2lx, no gpio pinctrl state.\n", bus->seq, i2c_bus->base);
+	} else {
+		ret = gpio_request_by_name_nodev(offset_to_ofnode(node),
+				"scl-gpios", 0, &i2c_bus->scl_gpio,
+				GPIOD_IS_OUT);
+		ret2 = gpio_request_by_name_nodev(offset_to_ofnode(node),
+				"sda-gpios", 0, &i2c_bus->sda_gpio,
+				GPIOD_IS_OUT);
+		if (!dm_gpio_is_valid(&i2c_bus->sda_gpio) ||
+		    !dm_gpio_is_valid(&i2c_bus->scl_gpio) ||
+		    ret || ret2) {
+			dev_err(dev, "i2c bus %d at %lu, fail to request scl/sda gpio\n", bus->seq, i2c_bus->base);
+			return -EINVAL;
+		}
+	}
 
 	ret = i2c_idle_bus(i2c_bus);
 	if (ret < 0) {
@@ -686,6 +935,7 @@ static int mxc_i2c_probe(struct udevice *bus)
 	return 0;
 }
 
+/* Sends: S Addr Wr [A|NA] P */
 static int mxc_i2c_probe_chip(struct udevice *bus, u32 chip_addr,
 			      u32 chip_flags)
 {
@@ -710,42 +960,54 @@ static int mxc_i2c_xfer(struct udevice *bus, struct i2c_msg *msg, int nmsgs)
 	ulong base = i2c_bus->base;
 	int reg_shift = i2c_bus->driver_data & I2C_QUIRK_FLAG ?
 		VF610_I2C_REGSHIFT : IMX_I2C_REGSHIFT;
+	int read_mode;
 
-	/*
-	 * Here the 3rd parameter addr and the 4th one alen are set to 0,
-	 * because here we only want to send out chip address. The register
-	 * address is wrapped in msg.
+	/* Here address len is set to -1 to not send any address at first.
+	 * Otherwise i2c_init_transfer will send the chip address with write
+	 * mode set.  This is wrong if the 1st message is read.
 	 */
-	ret = i2c_init_transfer(i2c_bus, msg->addr, 0, 0);
+	ret = i2c_init_transfer(i2c_bus, msg->addr, 0, -1);
 	if (ret < 0) {
 		debug("i2c_init_transfer error: %d\n", ret);
 		return ret;
 	}
 
+	read_mode = -1; /* So it's always different on the first message */
 	for (; nmsgs > 0; nmsgs--, msg++) {
-		bool next_is_read = nmsgs > 1 && (msg[1].flags & I2C_M_RD);
-		debug("i2c_xfer: chip=0x%x, len=0x%x\n", msg->addr, msg->len);
-		if (msg->flags & I2C_M_RD)
-			ret = i2c_read_data(i2c_bus, msg->addr, msg->buf,
-					    msg->len);
-		else {
-			ret = i2c_write_data(i2c_bus, msg->addr, msg->buf,
-					     msg->len);
-			if (ret)
-				break;
-			if (next_is_read) {
-				/* Reuse ret */
+		const int msg_is_read = !!(msg->flags & I2C_M_RD);
+
+		debug("i2c_xfer: chip=0x%x, len=0x%x, dir=%c\n", msg->addr,
+		      msg->len, msg_is_read ? 'R' : 'W');
+
+		if (msg_is_read != read_mode) {
+			/* Send repeated start if not 1st message */
+			if (read_mode != -1) {
+				debug("i2c_xfer: [RSTART]\n");
 				ret = readb(base + (I2CR << reg_shift));
 				ret |= I2CR_RSTA;
 				writeb(ret, base + (I2CR << reg_shift));
-
-				ret = tx_byte(i2c_bus, (msg->addr << 1) | 1);
-				if (ret < 0) {
-					i2c_imx_stop(i2c_bus);
-					break;
-				}
 			}
+			debug("i2c_xfer: [ADDR %02x | %c]\n", msg->addr,
+			      msg_is_read ? 'R' : 'W');
+			ret = tx_byte(i2c_bus, (msg->addr << 1) | msg_is_read);
+			if (ret < 0) {
+				debug("i2c_xfer: [STOP]\n");
+				i2c_imx_stop(i2c_bus);
+				break;
+			}
+			read_mode = msg_is_read;
 		}
+
+		if (msg->flags & I2C_M_RD)
+			ret = i2c_read_data(i2c_bus, msg->addr, msg->buf,
+					    msg->len, nmsgs == 1 ||
+						      (msg->flags & I2C_M_STOP));
+		else
+			ret = i2c_write_data(i2c_bus, msg->addr, msg->buf,
+					     msg->len);
+
+		if (ret < 0)
+			break;
 	}
 
 	if (ret)

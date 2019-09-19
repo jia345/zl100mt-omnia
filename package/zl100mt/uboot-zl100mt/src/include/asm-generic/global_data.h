@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_GENERIC_GBL_DATA_H
@@ -21,44 +20,44 @@
  */
 
 #ifndef __ASSEMBLY__
+#include <fdtdec.h>
+#include <membuff.h>
 #include <linux/list.h>
 
 typedef struct global_data {
 	bd_t *bd;
 	unsigned long flags;
 	unsigned int baudrate;
-	unsigned long cpu_clk;	/* CPU clock in Hz!		*/
+	unsigned long cpu_clk;		/* CPU clock in Hz!		*/
 	unsigned long bus_clk;
 	/* We cannot bracket this with CONFIG_PCI due to mpc5xxx */
 	unsigned long pci_clk;
 	unsigned long mem_clk;
 #if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
-	unsigned long fb_base;	/* Base address of framebuffer mem */
+	unsigned long fb_base;		/* Base address of framebuffer mem */
 #endif
-#if defined(CONFIG_POST) || defined(CONFIG_LOGBUFFER)
-	unsigned long post_log_word;  /* Record POST activities */
-	unsigned long post_log_res; /* success of POST test */
-	unsigned long post_init_f_time;  /* When post_init_f started */
+#if defined(CONFIG_POST)
+	unsigned long post_log_word;	/* Record POST activities */
+	unsigned long post_log_res;	/* success of POST test */
+	unsigned long post_init_f_time;	/* When post_init_f started */
 #endif
 #ifdef CONFIG_BOARD_TYPES
 	unsigned long board_type;
 #endif
 	unsigned long have_console;	/* serial_init() was called */
-#ifdef CONFIG_PRE_CONSOLE_BUFFER
+#if CONFIG_IS_ENABLED(PRE_CONSOLE_BUFFER)
 	unsigned long precon_buf_idx;	/* Pre-Console buffer index */
 #endif
-#ifdef CONFIG_MODEM_SUPPORT
-	unsigned long do_mdm_init;
-	unsigned long be_quiet;
-#endif
-	unsigned long env_addr;	/* Address  of Environment struct */
-	unsigned long env_valid;	/* Checksum of Environment valid? */
+	unsigned long env_addr;		/* Address  of Environment struct */
+	unsigned long env_valid;	/* Environment valid? enum env_valid */
+	unsigned long env_has_init;	/* Bitmask of boolean of struct env_location offsets */
+	int env_load_prio;		/* Priority of the loaded environment */
 
-	unsigned long ram_top;	/* Top address of RAM used by U-Boot */
-
+	unsigned long ram_base;		/* Base address of RAM used by U-Boot */
+	unsigned long ram_top;		/* Top address of RAM used by U-Boot */
 	unsigned long relocaddr;	/* Start address of U-Boot in RAM */
-	phys_size_t ram_size;	/* RAM size */
-	unsigned long mon_len;	/* monitor len */
+	phys_size_t ram_size;		/* RAM size */
+	unsigned long mon_len;		/* monitor len */
 	unsigned long irq_sp;		/* irq stack pointer */
 	unsigned long start_addr_sp;	/* start_addr_stackpointer */
 	unsigned long reloc_off;
@@ -69,12 +68,22 @@ typedef struct global_data {
 	struct udevice	*dm_root_f;	/* Pre-relocation root instance */
 	struct list_head uclass_root;	/* Head of core tree */
 #endif
+#ifdef CONFIG_TIMER
+	struct udevice	*timer;		/* Timer instance for Driver Model */
+#endif
 
-	const void *fdt_blob;	/* Our device tree, NULL if none */
-	void *new_fdt;		/* Relocated FDT */
-	unsigned long fdt_size;	/* Space reserved for relocated FDT */
+	const void *fdt_blob;		/* Our device tree, NULL if none */
+	void *new_fdt;			/* Relocated FDT */
+	unsigned long fdt_size;		/* Space reserved for relocated FDT */
+#ifdef CONFIG_OF_LIVE
+	struct device_node *of_root;
+#endif
+
+#if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
+	const void *multi_dtb_fit;	/* uncompressed multi-dtb FIT image */
+#endif
 	struct jt_funcs *jt;		/* jump table */
-	char env_buf[32];	/* buffer for getenv() before reloc. */
+	char env_buf[32];		/* buffer for env_get() before reloc. */
 #ifdef CONFIG_TRACE
 	void		*trace_buff;	/* The trace buffer */
 #endif
@@ -84,9 +93,9 @@ typedef struct global_data {
 #ifdef CONFIG_SYS_I2C_MXC
 	void *srdata[10];
 #endif
-	unsigned long timebase_h;
-	unsigned long timebase_l;
-#ifdef CONFIG_SYS_MALLOC_F_LEN
+	unsigned int timebase_h;
+	unsigned int timebase_l;
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	unsigned long malloc_base;	/* base address of early malloc() */
 	unsigned long malloc_limit;	/* limit address */
 	unsigned long malloc_ptr;	/* current address */
@@ -100,7 +109,44 @@ typedef struct global_data {
 #endif
 	struct udevice *cur_serial_dev;	/* current serial device */
 	struct arch_global_data arch;	/* architecture-specific data */
+#ifdef CONFIG_CONSOLE_RECORD
+	struct membuff console_out;	/* console output */
+	struct membuff console_in;	/* console input */
+#endif
+#ifdef CONFIG_DM_VIDEO
+	ulong video_top;		/* Top of video frame buffer area */
+	ulong video_bottom;		/* Bottom of video frame buffer area */
+#endif
+#ifdef CONFIG_BOOTSTAGE
+	struct bootstage_data *bootstage;	/* Bootstage information */
+	struct bootstage_data *new_bootstage;	/* Relocated bootstage info */
+#endif
+#ifdef CONFIG_LOG
+	int log_drop_count;		/* Number of dropped log messages */
+	int default_log_level;		/* For devices with no filters */
+	struct list_head log_head;	/* List of struct log_device */
+	int log_fmt;			/* Mask containing log format info */
+#endif
+#if CONFIG_IS_ENABLED(BLOBLIST)
+	struct bloblist_hdr *bloblist;	/* Bloblist information */
+	struct bloblist_hdr *new_bloblist;	/* Relocated blolist info */
+# ifdef CONFIG_SPL
+	struct spl_handoff *spl_handoff;
+# endif
+#endif
+#if defined(CONFIG_TRANSLATION_OFFSET)
+	fdt_addr_t translation_offset;	/* optional translation offset */
+#endif
+#if defined(CONFIG_WDT)
+	struct udevice *watchdog_dev;
+#endif
 } gd_t;
+#endif
+
+#ifdef CONFIG_BOARD_TYPES
+#define gd_board_type()		gd->board_type
+#else
+#define gd_board_type()		0
 #endif
 
 /*
@@ -117,6 +163,11 @@ typedef struct global_data {
 #define GD_FLG_SERIAL_READY	0x00100	/* Pre-reloc serial console ready  */
 #define GD_FLG_FULL_MALLOC_INIT	0x00200	/* Full malloc() is ready	   */
 #define GD_FLG_SPL_INIT		0x00400	/* spl_init() has been called	   */
-#define GD_FLG_SKIP_RELOC	0x00800	/* Don't relocate */
+#define GD_FLG_SKIP_RELOC	0x00800	/* Don't relocate		   */
+#define GD_FLG_RECORD		0x01000	/* Record console		   */
+#define GD_FLG_ENV_DEFAULT	0x02000 /* Default variable flag	   */
+#define GD_FLG_SPL_EARLY_INIT	0x04000 /* Early SPL init is done	   */
+#define GD_FLG_LOG_READY	0x08000 /* Log system is ready for use	   */
+#define GD_FLG_WDT_READY	0x10000 /* Watchdog is ready for use	   */
 
 #endif /* __ASM_GENERIC_GBL_DATA_H */

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Operating System Interface
  *
@@ -5,7 +6,6 @@
  * They are kept in a separate file so we can include system headers.
  *
  * Copyright (c) 2011 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __OS_H__
@@ -25,16 +25,6 @@ struct sandbox_state;
  * \return number of bytes read, or -1 on error
  */
 ssize_t os_read(int fd, void *buf, size_t count);
-
-/**
- * Access to the OS read() system call with non-blocking access
- *
- * \param fd	File descriptor as returned by os_open()
- * \param buf	Buffer to place data
- * \param count	Number of bytes to read
- * \return number of bytes read, or -1 on error
- */
-ssize_t os_read_no_block(int fd, void *buf, size_t count);
 
 /**
  * Access to the OS write() system call
@@ -75,6 +65,7 @@ int os_open(const char *pathname, int flags);
 #define OS_O_RDWR	2
 #define OS_O_MASK	3	/* Mask for read/write flags */
 #define OS_O_CREAT	0100
+#define OS_O_TRUNC	01000
 
 /**
  * Access to the OS close() system call
@@ -215,9 +206,18 @@ struct os_dirent_node {
 int os_dirent_ls(const char *dirname, struct os_dirent_node **headp);
 
 /**
+ * Free directory list
+ *
+ * This frees a linked list containing a directory listing.
+ *
+ * @param node		Pointer to head of linked list
+ */
+void os_dirent_free(struct os_dirent_node *node);
+
+/**
  * Get the name of a directory entry type
  *
- * @param type		Type to cehck
+ * @param type		Type to check
  * @return string containing the name of that type, or "???" if none/invalid
  */
 const char *os_dirent_get_typename(enum os_dirent_t type);
@@ -287,6 +287,31 @@ int os_read_ram_buf(const char *fname);
 int os_jump_to_image(const void *dest, int size);
 
 /**
+ * os_find_u_boot() - Determine the path to U-Boot proper
+ *
+ * This function is intended to be called from within sandbox SPL. It uses
+ * a few heuristics to find U-Boot proper. Normally it is either in the same
+ * directory, or the directory above (since u-boot-spl is normally in an
+ * spl/ subdirectory when built).
+ *
+ * @fname:	Place to put full path to U-Boot
+ * @maxlen:	Maximum size of @fname
+ * @return 0 if OK, -NOSPC if the filename is too large, -ENOENT if not found
+ */
+int os_find_u_boot(char *fname, int maxlen);
+
+/**
+ * os_spl_to_uboot() - Run U-Boot proper
+ *
+ * When called from SPL, this runs U-Boot proper. The filename is obtained by
+ * calling os_find_u_boot().
+ *
+ * @fname:	Full pathname to U-Boot executable
+ * @return 0 if OK, -ve on error
+ */
+int os_spl_to_uboot(const char *fname);
+
+/**
  * Read the current system time
  *
  * This reads the current Local Time and places it into the provided
@@ -295,5 +320,59 @@ int os_jump_to_image(const void *dest, int size);
  * @param rt		Place to put system time
  */
 void os_localtime(struct rtc_time *rt);
+
+/**
+ * os_abort() - Raise SIGABRT to exit sandbox (e.g. to debugger)
+ */
+void os_abort(void);
+
+/**
+ * os_mprotect_allow() - Remove write-protection on a region of memory
+ *
+ * The start and length will be page-aligned before use.
+ *
+ * @start:	Region start
+ * @len:	Region length in bytes
+ * @return 0 if OK, -1 on error from mprotect()
+ */
+int os_mprotect_allow(void *start, size_t len);
+
+/**
+ * os_write_file() - Write a file to the host filesystem
+ *
+ * This can be useful when debugging for writing data out of sandbox for
+ * inspection by external tools.
+ *
+ * @name:	File path to write to
+ * @buf:	Data to write
+ * @size:	Size of data to write
+ * @return 0 if OK, -ve on error
+ */
+int os_write_file(const char *name, const void *buf, int size);
+
+/**
+ * os_read_file() - Read a file from the host filesystem
+ *
+ * This can be useful when reading test data into sandbox for use by test
+ * routines. The data is allocated using os_malloc() and should be freed by
+ * the caller.
+ *
+ * @name:	File path to read from
+ * @bufp:	Returns buffer containing data read
+ * @sizep:	Returns size of data
+ * @return 0 if OK, -ve on error
+ */
+int os_read_file(const char *name, void **bufp, int *sizep);
+
+/*
+ * os_find_text_base() - Find the text section in this running process
+ *
+ * This tries to find the address of the text section in this running process.
+ * It can be useful to map the address of functions to the address listed in
+ * the u-boot.map file.
+ *
+ * @return address if found, else NULL
+ */
+void *os_find_text_base(void);
 
 #endif

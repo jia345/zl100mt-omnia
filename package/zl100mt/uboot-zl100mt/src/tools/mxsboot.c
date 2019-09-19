@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 image generator
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <fcntl.h>
@@ -556,15 +555,15 @@ static int mx28_create_sd_image(int infd, int outfd)
 
 	cb = (struct mx28_sd_config_block *)buf;
 
-	cb->signature = 0x00112233;
-	cb->primary_boot_tag = 0x1;
-	cb->secondary_boot_tag = 0x1;
-	cb->num_copies = 1;
-	cb->drv_info[0].chip_num = 0x0;
-	cb->drv_info[0].drive_type = 0x0;
-	cb->drv_info[0].tag = 0x1;
-	cb->drv_info[0].first_sector_number = sd_sector + 4;
-	cb->drv_info[0].sector_count = (size - 4) / 512;
+	cb->signature = cpu_to_le32(0x00112233);
+	cb->primary_boot_tag = cpu_to_le32(0x1);
+	cb->secondary_boot_tag = cpu_to_le32(0x1);
+	cb->num_copies = cpu_to_le32(1);
+	cb->drv_info[0].chip_num = cpu_to_le32(0x0);
+	cb->drv_info[0].drive_type = cpu_to_le32(0x0);
+	cb->drv_info[0].tag = cpu_to_le32(0x1);
+	cb->drv_info[0].first_sector_number = cpu_to_le32(sd_sector + 4);
+	cb->drv_info[0].sector_count = cpu_to_le32((size - 4) / 512);
 
 	wr_size = write(outfd, buf, size);
 	if (wr_size != size) {

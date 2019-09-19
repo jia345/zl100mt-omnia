@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 SAMSUNG Electronics
  * Rajeshwari Shinde <rajeshwari.s@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,6 +26,8 @@
 #include <usb.h>
 #include <dwc3-uboot.h>
 #include <samsung/misc.h>
+#include <dm/pinctrl.h>
+#include <dm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -97,7 +98,7 @@ int board_init(void)
 int dram_init(void)
 {
 	unsigned int i;
-	u32 addr;
+	unsigned long addr;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		addr = CONFIG_SYS_SDRAM_BASE + (i * SDRAM_BANK_SIZE);
@@ -106,10 +107,10 @@ int dram_init(void)
 	return 0;
 }
 
-void dram_init_banksize(void)
+int dram_init_banksize(void)
 {
 	unsigned int i;
-	u32 addr, size;
+	unsigned long addr, size;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		addr = CONFIG_SYS_SDRAM_BASE + (i * SDRAM_BANK_SIZE);
@@ -118,10 +119,13 @@ void dram_init_banksize(void)
 		gd->bd->bi_dram[i].start = addr;
 		gd->bd->bi_dram[i].size = size;
 	}
+
+	return 0;
 }
 
 static int board_uart_init(void)
 {
+#ifndef CONFIG_PINCTRL_EXYNOS
 	int err, uart_id, ret = 0;
 
 	for (uart_id = PERIPH_ID_UART0; uart_id <= PERIPH_ID_UART3; uart_id++) {
@@ -133,6 +137,9 @@ static int board_uart_init(void)
 		}
 	}
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 #ifdef CONFIG_BOARD_EARLY_INIT_F
@@ -150,21 +157,6 @@ int board_early_init_f(void)
 
 #ifdef CONFIG_SYS_I2C_INIT_BOARD
 	board_i2c_init(gd->fdt_blob);
-#endif
-
-#if defined(CONFIG_EXYNOS_FB)
-	/*
-	 * board_init_f(arch/arm/lib/board.c) calls lcd_setmem() which needs
-	 * panel_info.vl_col, panel_info.vl_row and panel_info.vl_bpix,
-	 * to reserve frame-buffer memory at a very early stage. So, we need
-	 * to fill panel_info.vl_col, panel_info.vl_row and panel_info.vl_bpix
-	 * before lcd_setmem() is called.
-	 */
-	err = exynos_lcd_early_init(gd->fdt_blob);
-	if (err) {
-		debug("LCD early init failed\n");
-		return err;
-	}
 #endif
 
 	return exynos_early_init_f();
@@ -257,56 +249,27 @@ int board_eth_init(bd_t *bis)
 	return 0;
 }
 
-#ifdef CONFIG_GENERIC_MMC
-static int init_mmc(void)
-{
-#ifdef CONFIG_SDHCI
-	return exynos_mmc_init(gd->fdt_blob);
-#else
-	return 0;
-#endif
-}
-
-static int init_dwmmc(void)
-{
-#ifdef CONFIG_DWMMC
-	return exynos_dwmmc_init(gd->fdt_blob);
-#else
-	return 0;
-#endif
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	int ret;
-
-	if (get_boot_mode() == BOOT_MODE_SD) {
-		ret = init_mmc();
-		ret |= init_dwmmc();
-	} else {
-		ret = init_dwmmc();
-		ret |= init_mmc();
-	}
-
-	if (ret)
-		debug("mmc init failed\n");
-
-	return ret;
-}
-#endif
-
-#ifdef CONFIG_DISPLAY_BOARDINFO
+#if defined(CONFIG_DISPLAY_BOARDINFO) || defined(CONFIG_DISPLAY_BOARDINFO_LATE)
 int checkboard(void)
 {
-	const char *board_info;
+	if (IS_ENABLED(CONFIG_BOARD_TYPES)) {
+		const char *board_info;
 
-	board_info = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
-	printf("Board: %s\n", board_info ? board_info : "unknown");
-#ifdef CONFIG_BOARD_TYPES
-	board_info = get_board_type();
+		if (IS_ENABLED(CONFIG_DISPLAY_BOARDINFO_LATE)) {
+			/*
+			 * Printing type requires having revision, although
+			 * this will succeed only if done late.
+			 * Otherwise revision will be set in misc_init_r().
+			 */
+			set_board_revision();
+		}
 
-	printf("Model: %s\n", board_info ? board_info : "unknown");
-#endif
+		board_info = get_board_type();
+
+		if (board_info)
+			printf("Type:  %s\n", board_info);
+	}
+
 	return 0;
 }
 #endif
@@ -314,14 +277,16 @@ int checkboard(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-	stdio_print_current_devices();
+	struct udevice *dev;
+	int ret;
 
-	if (cros_ec_get_error()) {
+	stdio_print_current_devices();
+	ret = uclass_first_device_err(UCLASS_CROS_EC, &dev);
+	if (ret && ret != -ENODEV) {
 		/* Force console on */
 		gd->flags &= ~GD_FLG_SILENT;
 
-		printf("cros-ec communications failure %d\n",
-		       cros_ec_get_error());
+		printf("cros-ec communications failure %d\n", ret);
 		puts("\nPlease reset with Power+Refresh\n\n");
 		panic("Cannot init cros-ec device");
 		return -1;
@@ -333,6 +298,16 @@ int board_late_init(void)
 #ifdef CONFIG_MISC_INIT_R
 int misc_init_r(void)
 {
+	if (IS_ENABLED(CONFIG_BOARD_TYPES) &&
+	    !IS_ENABLED(CONFIG_DISPLAY_BOARDINFO_LATE)) {
+		/*
+		 * If revision was not set by late display boardinfo,
+		 * set it here. At this point regulators should be already
+		 * available.
+		 */
+		set_board_revision();
+	}
+
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	set_board_info();
 #endif
@@ -358,8 +333,8 @@ void reset_misc(void)
 	if (node < 0)
 		return;
 
-	gpio_request_by_name_nodev(gd->fdt_blob, node, "reset-gpio", 0, &gpio,
-				   GPIOD_IS_OUT);
+	gpio_request_by_name_nodev(offset_to_ofnode(node), "reset-gpio", 0,
+				   &gpio, GPIOD_IS_OUT);
 
 	if (dm_gpio_is_valid(&gpio)) {
 		/*

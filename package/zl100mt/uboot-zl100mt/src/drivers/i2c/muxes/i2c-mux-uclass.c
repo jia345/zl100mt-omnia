@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,8 +10,6 @@
 #include <i2c.h>
 #include <dm/lists.h>
 #include <dm/root.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * struct i2c_mux: Information the uclass stores about an I2C mux
@@ -40,7 +37,7 @@ static int i2c_mux_child_post_bind(struct udevice *dev)
 	struct i2c_mux_bus *plat = dev_get_parent_platdata(dev);
 	int channel;
 
-	channel = fdtdec_get_int(gd->fdt_blob, dev->of_offset, "reg", -1);
+	channel = dev_read_u32_default(dev, "reg", -1);
 	if (channel < 0)
 		return -EINVAL;
 	plat->channel = channel;
@@ -51,25 +48,45 @@ static int i2c_mux_child_post_bind(struct udevice *dev)
 /* Find the I2C buses selected by this mux */
 static int i2c_mux_post_bind(struct udevice *mux)
 {
-	const void *blob = gd->fdt_blob;
+	ofnode node;
 	int ret;
-	int offset;
 
 	debug("%s: %s\n", __func__, mux->name);
 	/*
 	 * There is no compatible string in the sub-nodes, so we must manually
 	 * bind these
 	 */
-	for (offset = fdt_first_subnode(blob, mux->of_offset);
-	     offset > 0;
-	     offset = fdt_next_subnode(blob, offset)) {
+	dev_for_each_subnode(node, mux) {
 		struct udevice *dev;
 		const char *name;
+		const char *arrow = "->";
+		char *full_name;
+		int parent_name_len, arrow_len, mux_name_len, name_len;
 
-		name = fdt_get_name(blob, offset, NULL);
-		ret = device_bind_driver_to_node(mux, "i2c_mux_bus_drv", name,
-						 offset, &dev);
-		debug("   - bind ret=%d, %s\n", ret, dev ? dev->name : NULL);
+		name = ofnode_get_name(node);
+
+		/* Calculate lenghts of strings */
+		parent_name_len = strlen(mux->parent->name);
+		arrow_len = strlen(arrow);
+		mux_name_len = strlen(mux->name);
+		name_len = strlen(name);
+
+		full_name = calloc(1, parent_name_len + arrow_len +
+				   mux_name_len + arrow_len + name_len + 1);
+		if (!full_name)
+			return -ENOMEM;
+
+		/* Compose bus name */
+		strcat(full_name, mux->parent->name);
+		strcat(full_name, arrow);
+		strcat(full_name, mux->name);
+		strcat(full_name, arrow);
+		strcat(full_name, name);
+
+		ret = device_bind_driver_to_node(mux, "i2c_mux_bus_drv",
+						 full_name, node, &dev);
+		debug("   - bind ret=%d, %s, req_seq %d\n", ret,
+		      dev ? dev->name : NULL, dev->req_seq);
 		if (ret)
 			return ret;
 	}
@@ -85,6 +102,16 @@ static int i2c_mux_post_probe(struct udevice *mux)
 
 	debug("%s: %s\n", __func__, mux->name);
 	priv->selected = -1;
+
+	/* if parent is of i2c uclass already, we'll take that, otherwise
+	 * look if we find an i2c-parent phandle
+	 */
+	if (UCLASS_I2C == device_get_uclass_id(mux->parent)) {
+		priv->i2c_bus = dev_get_parent(mux);
+		debug("%s: bus=%p/%s\n", __func__, priv->i2c_bus,
+		      priv->i2c_bus->name);
+		return 0;
+	}
 
 	ret = uclass_get_device_by_phandle(UCLASS_I2C, mux, "i2c-parent",
 					   &priv->i2c_bus);
@@ -183,7 +210,6 @@ static const struct dm_i2c_ops i2c_mux_bus_ops = {
 U_BOOT_DRIVER(i2c_mux_bus) = {
 	.name		= "i2c_mux_bus_drv",
 	.id		= UCLASS_I2C,
-	.per_child_auto_alloc_size = sizeof(struct dm_i2c_chip),
 	.ops	= &i2c_mux_bus_ops,
 };
 

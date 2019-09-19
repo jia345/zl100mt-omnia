@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /**
  * Copyright 2013 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file provides support for the ngPIXIS, a board-specific FPGA used on
  * some Freescale reference boards.
@@ -21,7 +20,7 @@ struct cpld_data {
 	u8 int_status;		/* 0x12 - Interrupt status Register */
 	u8 flash_ctl_status;	/* 0x13 - Flash control and status register */
 	u8 fan_ctl_status;	/* 0x14 - Fan control and status register  */
-#if defined(CONFIG_T104XD4RDB)
+#if defined(CONFIG_TARGET_T1040D4RDB) || defined(CONFIG_TARGET_T1042D4RDB)
 	u8 int_mask;		/* 0x15 - Interrupt mask Register */
 #else
 	u8 led_ctl_status;	/* 0x15 - LED control and status register */
@@ -44,3 +43,4 @@ void cpld_write(unsigned int reg, u8 value);
 		cpld_write(offsetof(struct cpld_data, reg), value)
 #define MISC_CTL_SG_SEL		0x80
 #define MISC_CTL_AURORA_SEL	0x02
+#define MISC_MUX_QE_TDM		0xc0

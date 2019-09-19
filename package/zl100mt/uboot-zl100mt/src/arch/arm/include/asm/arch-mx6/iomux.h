@@ -1,6 +1,4 @@
-/*
- * SPDX-License-Identifier:	GPL-2.0+
- */
+/* SPDX-License-Identifier: GPL-2.0+ */
 
 #ifndef __ASM_ARCH_IOMUX_H__
 #define __ASM_ARCH_IOMUX_H__
@@ -17,6 +15,8 @@
 #define IOMUXC_GPR1_OTG_ID_MASK		(1<<13)
 #define IOMUXC_GPR1_REF_SSP_EN			(1 << 16)
 #define IOMUXC_GPR1_TEST_POWERDOWN		(1 << 18)
+
+#define IOMUXC_GPR1_PCIE_SW_RST		(1 << 29)
 
 /*
  * IOMUXC_GPR5 bit fields
@@ -176,4 +176,17 @@
 				|IOMUXC_GPR13_SATA_PHY_3_MASK \
 				|IOMUXC_GPR13_SATA_PHY_2_MASK \
 				|IOMUXC_GPR13_SATA_PHY_1_MASK)
+
+/*
+ * Setup RGMII voltage levels on iMX6 SoC - the
+ *
+ * IOMUXC_SW_PAD_CTL_GRP_DDR_TYPE_RGMII - register
+ *
+ * 1P2V_IO - USB_HSIC, MIPI_HSI
+ * 1P5V_IO - ENET pins
+ */
+#define IOMUXC_SW_PAD_CTL_GRP_DDR_TYPE_RGMII	0x020e0790
+#define DDR_SEL_1P2V_IO (0x2 << 18)
+#define DDR_SEL_1P5V_IO (0x3 << 18)
+
 #endif	/* __ASM_ARCH_IOMUX_H__ */

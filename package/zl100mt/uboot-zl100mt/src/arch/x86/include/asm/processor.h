@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, daniel@omicron.se
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_PROCESSOR_H_
@@ -36,18 +35,13 @@
  *
  * The naming follows Intel's naming.
  */
-#define PORT_RESET		0xcf9
+#define IO_PORT_RESET		0xcf9
 
 enum {
 	SYS_RST		= 1 << 1,	/* 0 for soft reset, 1 for hard reset */
 	RST_CPU		= 1 << 2,	/* initiate reset */
 	FULL_RST	= 1 << 3,	/* full power cycle */
 };
-
-/**
- * x86_full_reset() - reset everything: perform a full power cycle
- */
-void x86_full_reset(void);
 
 static inline __attribute__((always_inline)) void cpu_hlt(void)
 {

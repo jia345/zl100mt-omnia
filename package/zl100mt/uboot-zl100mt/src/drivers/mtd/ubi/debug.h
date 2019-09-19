@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) International Business Machines Corp., 2006
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Author: Artem Bityutskiy (Битюцкий Артём)
  */
@@ -17,6 +16,9 @@ void ubi_dump_vid_hdr(const struct ubi_vid_hdr *vid_hdr);
 #include <linux/random.h>
 #endif
 
+#include <hexdump.h>
+
+#ifndef __UBOOT__
 #define ubi_assert(expr)  do {                                               \
 	if (unlikely(!(expr))) {                                             \
 		pr_crit("UBI assert failed in %s at %u (pid %d)\n",          \
@@ -24,9 +26,18 @@ void ubi_dump_vid_hdr(const struct ubi_vid_hdr *vid_hdr);
 		dump_stack();                                                \
 	}                                                                    \
 } while (0)
+#else
+#define ubi_assert(expr)  do {                                               \
+	if (unlikely(!(expr))) {                                             \
+		pr_debug("UBI assert failed in %s at %u\n",                  \
+		       __func__, __LINE__);                                  \
+		dump_stack();                                                \
+	}                                                                    \
+} while (0)
+#endif
 
-#define ubi_dbg_print_hex_dump(l, ps, pt, r, g, b, len, a)                   \
-		print_hex_dump(l, ps, pt, r, g, b, len, a)
+#define ubi_dbg_print_hex_dump(ps, pt, r, g, b, len, a)                      \
+		print_hex_dump(ps, pt, r, g, b, len, a)
 
 #define ubi_dbg_msg(type, fmt, ...) \
 	pr_debug("UBI DBG " type " (pid %d): " fmt "\n", current->pid,       \
@@ -117,4 +128,16 @@ static inline int ubi_dbg_chk_gen(const struct ubi_device *ubi)
 {
 	return ubi->dbg.chk_gen;
 }
+
+static inline int ubi_dbg_chk_fastmap(const struct ubi_device *ubi)
+{
+	return ubi->dbg.chk_fastmap;
+}
+
+static inline void ubi_enable_dbg_chk_fastmap(struct ubi_device *ubi)
+{
+	ubi->dbg.chk_fastmap = 1;
+}
+
+int ubi_dbg_power_cut(struct ubi_device *ubi, int caller);
 #endif /* !__UBI_DEBUG_H__ */

@@ -1,19 +1,19 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*-
  * Copyright (c) 2007-2008, Juniper Networks, Inc.
  * Copyright (c) 2008, Michael Trimarchi <trimarchimichael@yahoo.it>
  * All rights reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef USB_EHCI_H
 #define USB_EHCI_H
 
+#include <stdbool.h>
 #include <usb.h>
+#include <generic-phy.h>
 
-#if !defined(CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS)
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	2
-#endif
+/* Section 2.2.3 - N_PORTS */
+#define MAX_HC_PORTS		15
 
 /*
  * Register Space.
@@ -62,11 +62,13 @@ struct ehci_hcor {
 	uint32_t _reserved_1_[6];
 	uint32_t or_configflag;
 #define FLAG_CF		(1 << 0)	/* true:  we'll support "high speed" */
-	uint32_t or_portsc[CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS];
+	uint32_t or_portsc[MAX_HC_PORTS];
 #define PORTSC_PSPD(x)		(((x) >> 26) & 0x3)
 #define PORTSC_PSPD_FS			0x0
 #define PORTSC_PSPD_LS			0x1
 #define PORTSC_PSPD_HS			0x2
+#define PORTSC_FSL_PFSC		BIT(24) /* PFSC bit to disable HS chirping */
+
 	uint32_t or_systune;
 } __attribute__ ((packed, aligned(4)));
 
@@ -102,12 +104,11 @@ struct usb_linux_config_descriptor {
 } __attribute__ ((packed));
 
 #if defined CONFIG_EHCI_DESC_BIG_ENDIAN
-#define	ehci_readl(x)		(*((volatile u32 *)(x)))
-#define ehci_writel(a, b)	(*((volatile u32 *)(a)) = ((volatile u32)b))
+#define ehci_readl(x)		be32_to_cpu(__raw_readl(x))
+#define ehci_writel(a, b)	__raw_writel(cpu_to_be32(b), a)
 #else
-#define ehci_readl(x)		cpu_to_le32((*((volatile u32 *)(x))))
-#define ehci_writel(a, b)	(*((volatile u32 *)(a)) = \
-					cpu_to_le32(((volatile u32)b)))
+#define ehci_readl(x)		readl(x)
+#define ehci_writel(a, b)	writel(b, a)
 #endif
 
 #if defined CONFIG_EHCI_MMIO_BIG_ENDIAN
@@ -239,9 +240,11 @@ struct ehci_ops {
 	void (*powerup_fixup)(struct ehci_ctrl *ctrl, uint32_t *status_reg,
 			      uint32_t *reg);
 	uint32_t *(*get_portsc_register)(struct ehci_ctrl *ctrl, int port);
+	int (*init_after_reset)(struct ehci_ctrl *ctrl);
 };
 
 struct ehci_ctrl {
+	enum usb_init_type init;
 	struct ehci_hccr *hccr;	/* R/O registers, not need for volatile */
 	struct ehci_hcor *hcor;
 	int rootdev;
@@ -251,6 +254,7 @@ struct ehci_ctrl {
 	uint32_t *periodic_list;
 	int periodic_schedules;
 	int ntds;
+	bool has_fsl_erratum_a005275;	/* Freescale HS silicon quirk */
 	struct ehci_ops ops;
 	void *priv;	/* client's private data */
 };
@@ -288,5 +292,9 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
 		  uint tweaks, enum usb_init_type init);
 int ehci_deregister(struct udevice *dev);
 extern struct dm_usb_ops ehci_usb_ops;
+
+/* EHCI PHY functions */
+int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index);
+int ehci_shutdown_phy(struct udevice *dev, struct phy *phy);
 
 #endif /* USB_EHCI_H */

@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Multicore Navigator driver for TI Keystone 2 devices.
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 #include <common.h>
 #include <asm/io.h>
@@ -54,7 +53,7 @@ int _qm_init(struct qm_config *cfg)
 	qm_cfg = cfg;
 
 	qm_cfg->mngr_cfg->link_ram_base0	= qm_cfg->i_lram;
-	qm_cfg->mngr_cfg->link_ram_size0	= HDESC_NUM * 8;
+	qm_cfg->mngr_cfg->link_ram_size0	= HDESC_NUM * 8 - 1;
 	qm_cfg->mngr_cfg->link_ram_base1	= 0;
 	qm_cfg->mngr_cfg->link_ram_size1	= 0;
 	qm_cfg->mngr_cfg->link_ram_base2	= 0;

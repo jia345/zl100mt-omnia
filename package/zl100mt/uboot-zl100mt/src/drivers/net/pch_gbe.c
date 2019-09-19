@@ -1,16 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
  *
  * Intel Platform Controller Hub EG20T (codename Topcliff) GMAC Driver
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <dm.h>
 #include <errno.h>
 #include <asm/io.h>
 #include <pci.h>
-#include <malloc.h>
 #include <miiphy.h>
 #include "pch_gbe.h"
 
@@ -19,7 +18,7 @@
 #endif
 
 static struct pci_device_id supported[] = {
-	{ PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_TCF_GBE },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_TCF_GBE) },
 	{ }
 };
 
@@ -62,9 +61,10 @@ static int pch_gbe_mac_write(struct pch_gbe_regs *mac_regs, u8 *addr)
 	return -ETIME;
 }
 
-static int pch_gbe_reset(struct eth_device *dev)
+static int pch_gbe_reset(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
+	struct eth_pdata *plat = dev_get_platdata(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
 	ulong start;
 
@@ -97,7 +97,7 @@ static int pch_gbe_reset(struct eth_device *dev)
 			 * so we have to reload MAC address here in order to
 			 * make linux pch_gbe driver happy.
 			 */
-			return pch_gbe_mac_write(mac_regs, dev->enetaddr);
+			return pch_gbe_mac_write(mac_regs, plat->enetaddr);
 		}
 
 		udelay(10);
@@ -107,40 +107,44 @@ static int pch_gbe_reset(struct eth_device *dev)
 	return -ETIME;
 }
 
-static void pch_gbe_rx_descs_init(struct eth_device *dev)
+static void pch_gbe_rx_descs_init(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
 	struct pch_gbe_rx_desc *rx_desc = &priv->rx_desc[0];
 	int i;
 
 	memset(rx_desc, 0, sizeof(struct pch_gbe_rx_desc) * PCH_GBE_DESC_NUM);
 	for (i = 0; i < PCH_GBE_DESC_NUM; i++)
-		rx_desc->buffer_addr = pci_phys_to_mem(priv->bdf,
-			(u32)(priv->rx_buff[i]));
+		rx_desc[i].buffer_addr = dm_pci_virt_to_mem(priv->dev,
+			priv->rx_buff[i]);
 
-	writel(pci_phys_to_mem(priv->bdf, (u32)rx_desc),
+	flush_dcache_range((ulong)rx_desc, (ulong)&rx_desc[PCH_GBE_DESC_NUM]);
+
+	writel(dm_pci_virt_to_mem(priv->dev, rx_desc),
 	       &mac_regs->rx_dsc_base);
 	writel(sizeof(struct pch_gbe_rx_desc) * (PCH_GBE_DESC_NUM - 1),
 	       &mac_regs->rx_dsc_size);
 
-	writel(pci_phys_to_mem(priv->bdf, (u32)(rx_desc + 1)),
+	writel(dm_pci_virt_to_mem(priv->dev, rx_desc + 1),
 	       &mac_regs->rx_dsc_sw_p);
 }
 
-static void pch_gbe_tx_descs_init(struct eth_device *dev)
+static void pch_gbe_tx_descs_init(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
 	struct pch_gbe_tx_desc *tx_desc = &priv->tx_desc[0];
 
 	memset(tx_desc, 0, sizeof(struct pch_gbe_tx_desc) * PCH_GBE_DESC_NUM);
 
-	writel(pci_phys_to_mem(priv->bdf, (u32)tx_desc),
+	flush_dcache_range((ulong)tx_desc, (ulong)&tx_desc[PCH_GBE_DESC_NUM]);
+
+	writel(dm_pci_virt_to_mem(priv->dev, tx_desc),
 	       &mac_regs->tx_dsc_base);
 	writel(sizeof(struct pch_gbe_tx_desc) * (PCH_GBE_DESC_NUM - 1),
 	       &mac_regs->tx_dsc_size);
-	writel(pci_phys_to_mem(priv->bdf, (u32)(tx_desc + 1)),
+	writel(dm_pci_virt_to_mem(priv->dev, tx_desc + 1),
 	       &mac_regs->tx_dsc_sw_p);
 }
 
@@ -183,9 +187,9 @@ static void pch_gbe_adjust_link(struct pch_gbe_regs *mac_regs,
 	return;
 }
 
-static int pch_gbe_init(struct eth_device *dev, bd_t *bis)
+static int pch_gbe_start(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
 
 	if (pch_gbe_reset(dev))
@@ -226,23 +230,25 @@ static int pch_gbe_init(struct eth_device *dev, bd_t *bis)
 	return 0;
 }
 
-static void pch_gbe_halt(struct eth_device *dev)
+static void pch_gbe_stop(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 
 	pch_gbe_reset(dev);
 
 	phy_shutdown(priv->phydev);
 }
 
-static int pch_gbe_send(struct eth_device *dev, void *packet, int length)
+static int pch_gbe_send(struct udevice *dev, void *packet, int length)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
 	struct pch_gbe_tx_desc *tx_head, *tx_desc;
 	u16 frame_ctrl = 0;
 	u32 int_st;
 	ulong start;
+
+	flush_dcache_range((ulong)packet, (ulong)packet + length);
 
 	tx_head = &priv->tx_desc[0];
 	tx_desc = &priv->tx_desc[priv->tx_idx];
@@ -250,18 +256,20 @@ static int pch_gbe_send(struct eth_device *dev, void *packet, int length)
 	if (length < 64)
 		frame_ctrl |= PCH_GBE_TXD_CTRL_APAD;
 
-	tx_desc->buffer_addr = pci_phys_to_mem(priv->bdf, (u32)packet);
+	tx_desc->buffer_addr = dm_pci_virt_to_mem(priv->dev, packet);
 	tx_desc->length = length;
 	tx_desc->tx_words_eob = length + 3;
 	tx_desc->tx_frame_ctrl = frame_ctrl;
 	tx_desc->dma_status = 0;
 	tx_desc->gbec_status = 0;
 
+	flush_dcache_range((ulong)tx_desc, (ulong)&tx_desc[1]);
+
 	/* Test the wrap-around condition */
 	if (++priv->tx_idx >= PCH_GBE_DESC_NUM)
 		priv->tx_idx = 0;
 
-	writel(pci_phys_to_mem(priv->bdf, (u32)(tx_head + priv->tx_idx)),
+	writel(dm_pci_virt_to_mem(priv->dev, tx_head + priv->tx_idx),
 	       &mac_regs->tx_dsc_sw_p);
 
 	start = get_timer(0);
@@ -277,27 +285,40 @@ static int pch_gbe_send(struct eth_device *dev, void *packet, int length)
 	return -ETIME;
 }
 
-static int pch_gbe_recv(struct eth_device *dev)
+static int pch_gbe_recv(struct udevice *dev, int flags, uchar **packetp)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
 	struct pch_gbe_regs *mac_regs = priv->mac_regs;
-	struct pch_gbe_rx_desc *rx_head, *rx_desc;
-	u32 hw_desc, buffer_addr, length;
-	int rx_swp;
+	struct pch_gbe_rx_desc *rx_desc;
+	ulong hw_desc, length;
+	void *buffer;
 
-	rx_head = &priv->rx_desc[0];
 	rx_desc = &priv->rx_desc[priv->rx_idx];
 
 	readl(&mac_regs->int_st);
 	hw_desc = readl(&mac_regs->rx_dsc_hw_p_hld);
 
 	/* Just return if not receiving any packet */
-	if ((u32)rx_desc == hw_desc)
-		return 0;
+	if (virt_to_phys(rx_desc) == hw_desc)
+		return -EAGAIN;
 
-	buffer_addr = pci_mem_to_phys(priv->bdf, rx_desc->buffer_addr);
+	/* Invalidate the descriptor */
+	invalidate_dcache_range((ulong)rx_desc, (ulong)&rx_desc[1]);
+
 	length = rx_desc->rx_words_eob - 3 - ETH_FCS_LEN;
-	net_process_received_packet((uchar *)buffer_addr, length);
+	buffer = dm_pci_mem_to_virt(priv->dev, rx_desc->buffer_addr, length, 0);
+	invalidate_dcache_range((ulong)buffer, (ulong)buffer + length);
+	*packetp = (uchar *)buffer;
+
+	return length;
+}
+
+static int pch_gbe_free_pkt(struct udevice *dev, uchar *packet, int length)
+{
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
+	struct pch_gbe_regs *mac_regs = priv->mac_regs;
+	struct pch_gbe_rx_desc *rx_head = &priv->rx_desc[0];
+	int rx_swp;
 
 	/* Test the wrap-around condition */
 	if (++priv->rx_idx >= PCH_GBE_DESC_NUM)
@@ -306,10 +327,10 @@ static int pch_gbe_recv(struct eth_device *dev)
 	if (++rx_swp >= PCH_GBE_DESC_NUM)
 		rx_swp = 0;
 
-	writel(pci_phys_to_mem(priv->bdf, (u32)(rx_head + rx_swp)),
+	writel(dm_pci_virt_to_mem(priv->dev, rx_head + rx_swp),
 	       &mac_regs->rx_dsc_sw_p);
 
-	return length;
+	return 0;
 }
 
 static int pch_gbe_mdio_ready(struct pch_gbe_regs *mac_regs)
@@ -365,7 +386,7 @@ static int pch_gbe_mdio_write(struct mii_dev *bus, int addr, int devad,
 		return 0;
 }
 
-static int pch_gbe_mdio_init(char *name, struct pch_gbe_regs *mac_regs)
+static int pch_gbe_mdio_init(const char *name, struct pch_gbe_regs *mac_regs)
 {
 	struct mii_dev *bus;
 
@@ -377,20 +398,21 @@ static int pch_gbe_mdio_init(char *name, struct pch_gbe_regs *mac_regs)
 
 	bus->read = pch_gbe_mdio_read;
 	bus->write = pch_gbe_mdio_write;
-	sprintf(bus->name, name);
+	strcpy(bus->name, name);
 
 	bus->priv = (void *)mac_regs;
 
 	return mdio_register(bus);
 }
 
-static int pch_gbe_phy_init(struct eth_device *dev)
+static int pch_gbe_phy_init(struct udevice *dev)
 {
-	struct pch_gbe_priv *priv = dev->priv;
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
+	struct eth_pdata *plat = dev_get_platdata(dev);
 	struct phy_device *phydev;
 	int mask = 0xffffffff;
 
-	phydev = phy_find_by_mask(priv->bus, mask, priv->interface);
+	phydev = phy_find_by_mask(priv->bus, mask, plat->phy_interface);
 	if (!phydev) {
 		printf("pch_gbe: cannot find the phy\n");
 		return -1;
@@ -404,63 +426,78 @@ static int pch_gbe_phy_init(struct eth_device *dev)
 	priv->phydev = phydev;
 	phy_config(phydev);
 
-	return 1;
+	return 0;
 }
 
-int pch_gbe_register(bd_t *bis)
+static int pch_gbe_probe(struct udevice *dev)
 {
-	struct eth_device *dev;
 	struct pch_gbe_priv *priv;
-	pci_dev_t devno;
-	u32 iobase;
-
-	devno = pci_find_devices(supported, 0);
-	if (devno == -1)
-		return -ENODEV;
-
-	dev = (struct eth_device *)malloc(sizeof(*dev));
-	if (!dev)
-		return -ENOMEM;
-	memset(dev, 0, sizeof(*dev));
+	struct eth_pdata *plat = dev_get_platdata(dev);
+	void *iobase;
+	int err;
 
 	/*
 	 * The priv structure contains the descriptors and frame buffers which
-	 * need a strict buswidth alignment (64 bytes)
+	 * need a strict buswidth alignment (64 bytes). This is guaranteed by
+	 * DM_FLAG_ALLOC_PRIV_DMA flag in the U_BOOT_DRIVER.
 	 */
-	priv = (struct pch_gbe_priv *)memalign(PCH_GBE_ALIGN_SIZE,
-					       sizeof(*priv));
-	if (!priv) {
-		free(dev);
-		return -ENOMEM;
-	}
-	memset(priv, 0, sizeof(*priv));
+	priv = dev_get_priv(dev);
 
-	dev->priv = priv;
 	priv->dev = dev;
-	priv->bdf = devno;
 
-	pci_read_config_dword(devno, PCI_BASE_ADDRESS_1, &iobase);
-	iobase &= PCI_BASE_ADDRESS_MEM_MASK;
-	iobase = pci_mem_to_phys(devno, iobase);
+	iobase = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_1, PCI_REGION_MEM);
 
-	dev->iobase = iobase;
+	plat->iobase = (ulong)iobase;
 	priv->mac_regs = (struct pch_gbe_regs *)iobase;
 
-	sprintf(dev->name, "pch_gbe");
-
 	/* Read MAC address from SROM and initialize dev->enetaddr with it */
-	pch_gbe_mac_read(priv->mac_regs, dev->enetaddr);
+	pch_gbe_mac_read(priv->mac_regs, plat->enetaddr);
 
-	dev->init = pch_gbe_init;
-	dev->halt = pch_gbe_halt;
-	dev->send = pch_gbe_send;
-	dev->recv = pch_gbe_recv;
-
-	eth_register(dev);
-
-	priv->interface = PHY_INTERFACE_MODE_RGMII;
+	plat->phy_interface = PHY_INTERFACE_MODE_RGMII;
 	pch_gbe_mdio_init(dev->name, priv->mac_regs);
 	priv->bus = miiphy_get_dev_by_name(dev->name);
 
+	err = pch_gbe_reset(dev);
+	if (err)
+		return err;
+
 	return pch_gbe_phy_init(dev);
 }
+
+static int pch_gbe_remove(struct udevice *dev)
+{
+	struct pch_gbe_priv *priv = dev_get_priv(dev);
+
+	free(priv->phydev);
+	mdio_unregister(priv->bus);
+	mdio_free(priv->bus);
+
+	return 0;
+}
+
+static const struct eth_ops pch_gbe_ops = {
+	.start = pch_gbe_start,
+	.send = pch_gbe_send,
+	.recv = pch_gbe_recv,
+	.free_pkt = pch_gbe_free_pkt,
+	.stop = pch_gbe_stop,
+};
+
+static const struct udevice_id pch_gbe_ids[] = {
+	{ .compatible = "intel,pch-gbe" },
+	{ }
+};
+
+U_BOOT_DRIVER(eth_pch_gbe) = {
+	.name = "pch_gbe",
+	.id = UCLASS_ETH,
+	.of_match = pch_gbe_ids,
+	.probe = pch_gbe_probe,
+	.remove = pch_gbe_remove,
+	.ops = &pch_gbe_ops,
+	.priv_auto_alloc_size = sizeof(struct pch_gbe_priv),
+	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
+	.flags = DM_FLAG_ALLOC_PRIV_DMA,
+};
+
+U_BOOT_PCI_DEVICE(eth_pch_gbe, supported);

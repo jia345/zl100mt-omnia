@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <config.h>
@@ -15,8 +14,6 @@
 #include <malloc.h>
 #include <spi_flash.h>
 #include <mmc.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_SPL_LIBCOMMON_SUPPORT
 void puts(const char *str)
@@ -34,32 +31,38 @@ void putc(char c)
 }
 #endif /* CONFIG_SPL_LIBCOMMON_SUPPORT */
 
-void spl_board_init(void)
+void board_init_f(ulong dummy)
 {
-#ifdef CONFIG_SOC_DM365
-	dm36x_lowlevel_init(0);
-#endif
-#ifdef CONFIG_SOC_DA8XX
 	arch_cpu_init();
-#endif
-	preloader_console_init();
-}
 
-u32 spl_boot_mode(void)
-{
-	return MMCSD_MODE_RAW;
+	spl_early_init();
+
+	preloader_console_init();
 }
 
 u32 spl_boot_device(void)
 {
-#ifdef CONFIG_SPL_NAND_SIMPLE
-	return BOOT_DEVICE_NAND;
-#elif defined(CONFIG_SPL_SPI_LOAD)
-	return BOOT_DEVICE_SPI;
-#elif defined(CONFIG_SPL_MMC_LOAD)
-	return BOOT_DEVICE_MMC1;
-#else
-	puts("Unknown boot device\n");
-	hang();
+	switch (davinci_syscfg_regs->bootcfg) {
+#ifdef CONFIG_SPL_NAND_SUPPORT
+	case DAVINCI_NAND8_BOOT:
+	case DAVINCI_NAND16_BOOT:
+		return BOOT_DEVICE_NAND;
 #endif
+
+#ifdef CONFIG_SPL_MMC_SUPPORT
+	case DAVINCI_SD_OR_MMC_BOOT:
+	case DAVINCI_MMC_ONLY_BOOT:
+		return BOOT_DEVICE_MMC1;
+#endif
+
+#ifdef CONFIG_SPL_SPI_FLASH_SUPPORT
+	case DAVINCI_SPI0_FLASH_BOOT:
+	case DAVINCI_SPI1_FLASH_BOOT:
+		return BOOT_DEVICE_SPI;
+#endif
+
+	default:
+		puts("Unknown boot device\n");
+		hang();
+	}
 }

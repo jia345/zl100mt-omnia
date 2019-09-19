@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) International Business Machines Corp., 2006
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Authors: Artem Bityutskiy (Битюцкий Артём)
  *          Thomas Gleixner
@@ -394,8 +393,6 @@ struct ubi_vtbl_record {
  * UBI_FM_MAX_POOL_SIZE */
 #define UBI_FM_MIN_POOL_SIZE	8
 #define UBI_FM_MAX_POOL_SIZE	256
-
-#define UBI_FM_WL_POOL_SIZE	25
 
 /**
  * struct ubi_fm_sb - UBI fastmap super block

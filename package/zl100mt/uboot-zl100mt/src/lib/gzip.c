@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Lei Wen <leiwen@marvell.com>, Marvell Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +9,7 @@
 #include <command.h>
 #include <image.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <u-boot/zlib.h>
 #include "zlib/zutil.h"
 

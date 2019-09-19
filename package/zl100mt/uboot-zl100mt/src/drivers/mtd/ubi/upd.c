@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) International Business Machines Corp., 2006
  * Copyright (c) Nokia Corporation, 2006
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Author: Artem Bityutskiy (Битюцкий Артём)
  *
@@ -127,6 +126,10 @@ int ubi_start_update(struct ubi_device *ubi, struct ubi_volume *vol,
 	ubi_assert(!vol->updating && !vol->changing_leb);
 	vol->updating = 1;
 
+	vol->upd_buf = vmalloc(ubi->leb_size);
+	if (!vol->upd_buf)
+		return -ENOMEM;
+
 	err = set_update_marker(ubi, vol);
 	if (err)
 		return err;
@@ -146,13 +149,11 @@ int ubi_start_update(struct ubi_device *ubi, struct ubi_volume *vol,
 		err = clear_update_marker(ubi, vol, 0);
 		if (err)
 			return err;
+
+		vfree(vol->upd_buf);
 		vol->updating = 0;
 		return 0;
 	}
-
-	vol->upd_buf = vmalloc(ubi->leb_size);
-	if (!vol->upd_buf)
-		return -ENOMEM;
 
 	vol->upd_ebs = div_u64(bytes + vol->usable_leb_size - 1,
 			       vol->usable_leb_size);

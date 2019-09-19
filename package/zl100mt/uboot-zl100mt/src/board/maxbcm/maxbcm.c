@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -96,7 +95,7 @@ MV_DRAM_MODES *ddr3_get_static_ddr_mode(void)
 	return &maxbcm_ddr_modes[0];
 }
 
-MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	return &maxbcm_serdes_cfg[0];
 }
@@ -138,17 +137,15 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_RESET_PHY_R
 /* Configure and enable MV88E6185 switch */
-void reset_phy(void)
+int board_phy_config(struct phy_device *phydev)
 {
-	char *name = "neta0";
-
-	if (miiphy_set_current_dev(name))
-		return;
-
-	/* todo: fill this with the real setup / config code */
-
-	printf("88E6185 Initialized on %s\n", name);
+	/*
+	 * todo:
+	 * Fill this with the real setup / config code.
+	 * Please see board/Marvell/db-mv784mp-gp/db-mv784mp-gp.c
+	 * for details.
+	 */
+	printf("88E6185 Initialized\n");
+	return 0;
 }
-#endif /* CONFIG_RESET_PHY_R */

@@ -1,15 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
- * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
  */
 
 #include <common.h>
 #include <hwconfig.h>
 #include <i2c.h>
 #include <spi.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <pci.h>
 #include <mpc83xx.h>
@@ -22,76 +21,25 @@
 
 #include <gdsys_fpga.h>
 
+#include "../common/ioep-fpga.h"
 #include "../common/osd.h"
 #include "../common/mclink.h"
 #include "../common/phy.h"
+#include "../common/fanctrl.h"
 
 #include <pca953x.h>
 #include <pca9698.h>
 
 #include <miiphy.h>
 
-DECLARE_GLOBAL_DATA_PTR;
-
 #define MAX_MUX_CHANNELS 2
 
 enum {
-	UNITTYPE_MAIN_SERVER = 0,
-	UNITTYPE_MAIN_USER = 1,
-	UNITTYPE_VIDEO_SERVER = 2,
-	UNITTYPE_VIDEO_USER = 3,
-};
-
-enum {
-	UNITTYPEPCB_DVI = 0,
-	UNITTYPEPCB_DP_165 = 1,
-	UNITTYPEPCB_DP_300 = 2,
-	UNITTYPEPCB_HDMI = 3,
-};
-
-enum {
-	HWVER_100 = 0,
-	HWVER_110 = 1,
-};
-
-enum {
-	FPGA_HWVER_200 = 0,
-	FPGA_HWVER_210 = 1,
-};
-
-enum {
-	COMPRESSION_NONE = 0,
-	COMPRESSION_TYPE1_DELTA = 1,
-	COMPRESSION_TYPE1_TYPE2_DELTA = 3,
-};
-
-enum {
-	AUDIO_NONE = 0,
-	AUDIO_TX = 1,
-	AUDIO_RX = 2,
-	AUDIO_RXTX = 3,
-};
-
-enum {
-	SYSCLK_147456 = 0,
-};
-
-enum {
-	RAM_DDR2_32 = 0,
-	RAM_DDR3_32 = 1,
-};
-
-enum {
-	CARRIER_SPEED_1G = 0,
-	CARRIER_SPEED_2_5G = 1,
-};
-
-enum {
-	MCFPGA_DONE = 1 << 0,
-	MCFPGA_INIT_N = 1 << 1,
-	MCFPGA_PROGRAM_N = 1 << 2,
-	MCFPGA_UPDATE_ENABLE_N = 1 << 3,
-	MCFPGA_RESET_N = 1 << 4,
+	MCFPGA_DONE = BIT(0),
+	MCFPGA_INIT_N = BIT(1),
+	MCFPGA_PROGRAM_N = BIT(2),
+	MCFPGA_UPDATE_ENABLE_N = BIT(3),
+	MCFPGA_RESET_N = BIT(4),
 };
 
 enum {
@@ -99,8 +47,13 @@ enum {
 	GPIO_MDIO = 1 << 15,
 };
 
-unsigned int mclink_fpgacount;
+uint mclink_fpgacount;
 struct ihs_fpga *fpga_ptr[] = CONFIG_SYS_FPGA_PTR;
+
+struct {
+	u8 bus;
+	u8 addr;
+} hrcon_fans[] = CONFIG_HRCON_FANS;
 
 int fpga_set_reg(u32 fpga, u16 *reg, off_t regoff, u16 data)
 {
@@ -147,14 +100,14 @@ int fpga_get_reg(u32 fpga, u16 *reg, off_t regoff, u16 *data)
 
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char *s = env_get("serial#");
 	bool hw_type_cat = pca9698_get_value(0x20, 20);
 
 	puts("Board: ");
 
 	printf("HRCon %s", hw_type_cat ? "CAT" : "Fiber");
 
-	if (s != NULL) {
+	if (s) {
 		puts(", serial# ");
 		puts(s);
 	}
@@ -164,228 +117,60 @@ int checkboard(void)
 	return 0;
 }
 
-static void print_fpga_info(unsigned int fpga, bool rgmii2_present)
-{
-	u16 versions;
-	u16 fpga_version;
-	u16 fpga_features;
-	unsigned unit_type;
-	unsigned unit_type_pcb_video;
-	unsigned hardware_version;
-	unsigned feature_compression;
-	unsigned feature_osd;
-	unsigned feature_audio;
-	unsigned feature_sysclock;
-	unsigned feature_ramconfig;
-	unsigned feature_carrier_speed;
-	unsigned feature_carriers;
-	unsigned feature_video_channels;
-
-	FPGA_GET_REG(fpga, versions, &versions);
-	FPGA_GET_REG(fpga, fpga_version, &fpga_version);
-	FPGA_GET_REG(fpga, fpga_features, &fpga_features);
-
-	unit_type = (versions & 0xf000) >> 12;
-	unit_type_pcb_video = (versions & 0x01c0) >> 6;
-	feature_compression = (fpga_features & 0xe000) >> 13;
-	feature_osd = fpga_features & (1<<11);
-	feature_audio = (fpga_features & 0x0600) >> 9;
-	feature_sysclock = (fpga_features & 0x0180) >> 7;
-	feature_ramconfig = (fpga_features & 0x0060) >> 5;
-	feature_carrier_speed = fpga_features & (1<<4);
-	feature_carriers = (fpga_features & 0x000c) >> 2;
-	feature_video_channels = fpga_features & 0x0003;
-
-	switch (unit_type) {
-	case UNITTYPE_MAIN_USER:
-		printf("Mainchannel");
-		break;
-
-	case UNITTYPE_VIDEO_USER:
-		printf("Videochannel");
-		break;
-
-	default:
-		printf("UnitType %d(not supported)", unit_type);
-		break;
-	}
-
-	if (unit_type == UNITTYPE_MAIN_USER) {
-		hardware_version =
-			  (!!pca9698_get_value(0x20, 24) << 0)
-			| (!!pca9698_get_value(0x20, 25) << 1)
-			| (!!pca9698_get_value(0x20, 26) << 2)
-			| (!!pca9698_get_value(0x20, 27) << 3)
-			| (!!pca9698_get_value(0x20, 28) << 4);
-		switch (hardware_version) {
-		case HWVER_100:
-			printf(" HW-Ver 1.00,");
-			break;
-
-		case HWVER_110:
-			printf(" HW-Ver 1.10,");
-			break;
-
-		default:
-			printf(" HW-Ver %d(not supported),",
-			       hardware_version);
-			break;
-		}
-		if (rgmii2_present)
-			printf(" RGMII2,");
-	}
-
-	if (unit_type == UNITTYPE_VIDEO_USER) {
-		hardware_version = versions & 0x000f;
-		switch (hardware_version) {
-		case FPGA_HWVER_200:
-			printf(" HW-Ver 2.00,");
-			break;
-
-		case FPGA_HWVER_210:
-			printf(" HW-Ver 2.10,");
-			break;
-
-		default:
-			printf(" HW-Ver %d(not supported),",
-			       hardware_version);
-			break;
-		}
-	}
-
-	switch (unit_type_pcb_video) {
-	case UNITTYPEPCB_DVI:
-		printf(" DVI,");
-		break;
-
-	case UNITTYPEPCB_DP_165:
-		printf(" DP 165MPix/s,");
-		break;
-
-	case UNITTYPEPCB_DP_300:
-		printf(" DP 300MPix/s,");
-		break;
-
-	case UNITTYPEPCB_HDMI:
-		printf(" HDMI,");
-		break;
-	}
-
-	printf(" FPGA V %d.%02d\n       features:",
-	       fpga_version / 100, fpga_version % 100);
-
-
-	switch (feature_compression) {
-	case COMPRESSION_NONE:
-		printf(" no compression");
-		break;
-
-	case COMPRESSION_TYPE1_DELTA:
-		printf(" type1-deltacompression");
-		break;
-
-	case COMPRESSION_TYPE1_TYPE2_DELTA:
-		printf(" type1-deltacompression, type2-inlinecompression");
-		break;
-
-	default:
-		printf(" compression %d(not supported)", feature_compression);
-		break;
-	}
-
-	printf(", %sosd", feature_osd ? "" : "no ");
-
-	switch (feature_audio) {
-	case AUDIO_NONE:
-		printf(", no audio");
-		break;
-
-	case AUDIO_TX:
-		printf(", audio tx");
-		break;
-
-	case AUDIO_RX:
-		printf(", audio rx");
-		break;
-
-	case AUDIO_RXTX:
-		printf(", audio rx+tx");
-		break;
-
-	default:
-		printf(", audio %d(not supported)", feature_audio);
-		break;
-	}
-
-	puts(",\n       ");
-
-	switch (feature_sysclock) {
-	case SYSCLK_147456:
-		printf("clock 147.456 MHz");
-		break;
-
-	default:
-		printf("clock %d(not supported)", feature_sysclock);
-		break;
-	}
-
-	switch (feature_ramconfig) {
-	case RAM_DDR2_32:
-		printf(", RAM 32 bit DDR2");
-		break;
-
-	case RAM_DDR3_32:
-		printf(", RAM 32 bit DDR3");
-		break;
-
-	default:
-		printf(", RAM %d(not supported)", feature_ramconfig);
-		break;
-	}
-
-	printf(", %d carrier(s) %s", feature_carriers,
-	       feature_carrier_speed ? "2.5Gbit/s" : "1Gbit/s");
-
-	printf(", %d video channel(s)\n", feature_video_channels);
-}
-
 int last_stage_init(void)
 {
 	int slaves;
-	unsigned int k;
-	unsigned int mux_ch;
-	unsigned char mclink_controllers[] = { 0x24, 0x25, 0x26 };
+	uint k;
+	uchar mclink_controllers[] = { 0x3c, 0x3d, 0x3e };
 	u16 fpga_features;
 	bool hw_type_cat = pca9698_get_value(0x20, 20);
-	bool ch0_rgmii2_present = false;
+	bool ch0_rgmii2_present;
 
 	FPGA_GET_REG(0, fpga_features, &fpga_features);
 
 	/* Turn on Parade DP501 */
 	pca9698_direction_output(0x20, 10, 1);
+	pca9698_direction_output(0x20, 11, 1);
 
 	ch0_rgmii2_present = !pca9698_get_value(0x20, 30);
 
-	/* wait for FPGA done */
+	/* wait for FPGA done, then reset FPGA */
 	for (k = 0; k < ARRAY_SIZE(mclink_controllers); ++k) {
-		unsigned int ctr = 0;
+		uint ctr = 0;
 
 		if (i2c_probe(mclink_controllers[k]))
 			continue;
 
 		while (!(pca953x_get_val(mclink_controllers[k])
 		       & MCFPGA_DONE)) {
-			udelay(100000);
+			mdelay(100);
 			if (ctr++ > 5) {
-				printf("no done for mclink_controller %d\n", k);
+				printf("no done for mclink_controller %u\n", k);
 				break;
 			}
 		}
+
+		pca953x_set_dir(mclink_controllers[k], MCFPGA_RESET_N, 0);
+		pca953x_set_val(mclink_controllers[k], MCFPGA_RESET_N, 0);
+		udelay(10);
+		pca953x_set_val(mclink_controllers[k], MCFPGA_RESET_N,
+				MCFPGA_RESET_N);
 	}
 
 	if (hw_type_cat) {
-		miiphy_register(bb_miiphy_buses[0].name, bb_miiphy_read,
-				bb_miiphy_write);
+		uint mux_ch;
+		int retval;
+		struct mii_dev *mdiodev = mdio_alloc();
+
+		if (!mdiodev)
+			return -ENOMEM;
+		strncpy(mdiodev->name, bb_miiphy_buses[0].name, MDIO_NAME_LEN);
+		mdiodev->read = bb_miiphy_read;
+		mdiodev->write = bb_miiphy_write;
+
+		retval = mdio_register(mdiodev);
+		if (retval < 0)
+			return retval;
 		for (mux_ch = 0; mux_ch < MAX_MUX_CHANNELS; ++mux_ch) {
 			if ((mux_ch == 1) && !ch0_rgmii2_present)
 				continue;
@@ -395,14 +180,17 @@ int last_stage_init(void)
 	}
 
 	/* give slave-PLLs and Parade DP501 some time to be up and running */
-	udelay(500000);
+	mdelay(500);
 
 	mclink_fpgacount = CONFIG_SYS_MCLINK_MAX;
 	slaves = mclink_probe();
 	mclink_fpgacount = 0;
 
-	print_fpga_info(0, ch0_rgmii2_present);
+	ioep_fpga_print_info(0);
 	osd_probe(0);
+#ifdef CONFIG_SYS_OSD_DH
+	osd_probe(4);
+#endif
 
 	if (slaves <= 0)
 		return 0;
@@ -412,39 +200,74 @@ int last_stage_init(void)
 	for (k = 1; k <= slaves; ++k) {
 		FPGA_GET_REG(k, fpga_features, &fpga_features);
 
-		print_fpga_info(k, false);
+		ioep_fpga_print_info(k);
 		osd_probe(k);
+#ifdef CONFIG_SYS_OSD_DH
+		osd_probe(k + 4);
+#endif
 		if (hw_type_cat) {
-			miiphy_register(bb_miiphy_buses[k].name,
-					bb_miiphy_read, bb_miiphy_write);
+			int retval;
+			struct mii_dev *mdiodev = mdio_alloc();
+
+			if (!mdiodev)
+				return -ENOMEM;
+			strncpy(mdiodev->name, bb_miiphy_buses[k].name,
+				MDIO_NAME_LEN);
+			mdiodev->read = bb_miiphy_read;
+			mdiodev->write = bb_miiphy_write;
+
+			retval = mdio_register(mdiodev);
+			if (retval < 0)
+				return retval;
 			setup_88e1514(bb_miiphy_buses[k].name, 0);
 		}
+	}
+
+	for (k = 0; k < ARRAY_SIZE(hrcon_fans); ++k) {
+		i2c_set_bus_num(hrcon_fans[k].bus);
+		init_fan_controller(hrcon_fans[k].addr);
 	}
 
 	return 0;
 }
 
 /*
- * provide access to fpga gpios (for I2C bitbang)
+ * provide access to fpga gpios and controls (for I2C bitbang)
  * (these may look all too simple but make iocon.h much more readable)
  */
-void fpga_gpio_set(unsigned int bus, int pin)
+void fpga_gpio_set(uint bus, int pin)
 {
-	FPGA_SET_REG(bus, gpio.set, pin);
+	FPGA_SET_REG(bus >= 4 ? (bus - 4) : bus, gpio.set, pin);
 }
 
-void fpga_gpio_clear(unsigned int bus, int pin)
+void fpga_gpio_clear(uint bus, int pin)
 {
-	FPGA_SET_REG(bus, gpio.clear, pin);
+	FPGA_SET_REG(bus >= 4 ? (bus - 4) : bus, gpio.clear, pin);
 }
 
-int fpga_gpio_get(unsigned int bus, int pin)
+int fpga_gpio_get(uint bus, int pin)
 {
 	u16 val;
 
-	FPGA_GET_REG(bus, gpio.read, &val);
+	FPGA_GET_REG(bus >= 4 ? (bus - 4) : bus, gpio.read, &val);
 
 	return val & pin;
+}
+
+void fpga_control_set(uint bus, int pin)
+{
+	u16 val;
+
+	FPGA_GET_REG(bus >= 4 ? (bus - 4) : bus, control, &val);
+	FPGA_SET_REG(bus >= 4 ? (bus - 4) : bus, control, val | pin);
+}
+
+void fpga_control_clear(uint bus, int pin)
+{
+	u16 val;
+
+	FPGA_GET_REG(bus >= 4 ? (bus - 4) : bus, control, &val);
+	FPGA_SET_REG(bus >= 4 ? (bus - 4) : bus, control, val & ~pin);
 }
 
 void mpc8308_init(void)
@@ -452,7 +275,7 @@ void mpc8308_init(void)
 	pca9698_direction_output(0x20, 4, 1);
 }
 
-void mpc8308_set_fpga_reset(unsigned state)
+void mpc8308_set_fpga_reset(uint state)
 {
 	pca9698_set_value(0x20, 4, state ? 0 : 1);
 }
@@ -464,11 +287,11 @@ void mpc8308_setup_hw(void)
 	/*
 	 * set "startup-finished"-gpios
 	 */
-	setbits_be32(&immr->gpio[0].dir, (1 << (31-11)) | (1 << (31-12)));
-	setbits_be32(&immr->gpio[0].dat, 1 << (31-12));
+	setbits_be32(&immr->gpio[0].dir, BIT(31 - 11) | BIT(31 - 12));
+	setbits_gpio0_out(BIT(31 - 12));
 }
 
-int mpc8308_get_fpga_done(unsigned fpga)
+int mpc8308_get_fpga_done(uint fpga)
 {
 	return pca9698_get_value(0x20, 19);
 }
@@ -534,7 +357,7 @@ ulong board_flash_get_legacy(ulong base, int banknum, flash_info_t *info)
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 	fdt_fixup_esdhc(blob, bd);
 
 	return 0;
@@ -546,7 +369,7 @@ int ft_board_setup(void *blob, bd_t *bd)
  */
 
 struct fpga_mii {
-	unsigned fpga;
+	uint fpga;
 	int mdio;
 } fpga_mii[] = {
 	{ 0, 1},
@@ -673,5 +496,4 @@ struct bb_miiphy_bus bb_miiphy_buses[] = {
 	},
 };
 
-int bb_miiphy_buses_num = sizeof(bb_miiphy_buses) /
-			  sizeof(bb_miiphy_buses[0]);
+int bb_miiphy_buses_num = ARRAY_SIZE(bb_miiphy_buses);

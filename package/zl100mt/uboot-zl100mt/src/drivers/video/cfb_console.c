@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002 ELTEC Elektronik AG
  * Frank Gottschling <fgottschling@eltec.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -15,8 +14,10 @@
  * logo can be placed in the upper left corner and additional board
  * information strings (that normally goes to serial port) can be drawn.
  *
- * The console driver can use the standard PC keyboard interface (i8042)
- * for character input. Character output goes to a memory mapped video
+ * The console driver can use a keyboard interface for character input
+ * but this is deprecated. Only rk51 uses it.
+ *
+ * Character output goes to a memory-mapped video
  * framebuffer with little or big-endian organisation.
  * With environment setting 'console=serial' the console i/o can be
  * forced to serial port.
@@ -25,7 +26,6 @@
  *
  * (for SMI LynxE graphic chip)
  *
- * CONFIG_VIDEO_SMI_LYNXEM    - use graphic driver for SMI 710,712,810
  * VIDEO_FB_LITTLE_ENDIAN     - framebuffer organisation default: big endian
  * VIDEO_HW_RECTFILL	      - graphic driver supports hardware rectangle fill
  * VIDEO_HW_BITBLT	      - graphic driver supports hardware bit blt
@@ -38,18 +38,10 @@
  * VIDEO_DATA_FORMAT	      - graphical data format GDF
  * VIDEO_FB_ADRS	      - start of video memory
  *
- * CONFIG_I8042_KBD	      - AT Keyboard driver for i8042
  * VIDEO_KBD_INIT_FCT	      - init function for keyboard
  * VIDEO_TSTC_FCT	      - keyboard_tstc function
  * VIDEO_GETC_FCT	      - keyboard_getc function
  *
- * CONFIG_CONSOLE_CURSOR      - on/off drawing cursor is done with
- *				delay loop in VIDEO_TSTC_FCT (i8042)
- *
- * CONFIG_SYS_CONSOLE_BLINK_COUNT - value for delay loop - blink rate
- * CONFIG_CONSOLE_TIME	      - display time/date in upper right
- *				corner, needs CONFIG_CMD_DATE and
- *				CONFIG_CONSOLE_CURSOR
  * CONFIG_VIDEO_LOGO	      - display Linux Logo in upper left corner.
  *				Use CONFIG_SPLASH_SCREEN_ALIGN with
  *				environment variable "splashpos" to place
@@ -65,65 +57,21 @@
  *					info);
  *				that fills a info buffer at i=row.
  *				s.a: board/eltec/bab7xx.
- * CONFIG_VGA_AS_SINGLE_DEVICE - If set the framebuffer device will be
- *				initialized as an output only device.
- *				The Keyboard driver will not be
- *				set-up.  This may be used, if you have
- *				no or more than one Keyboard devices
- *				(USB Keyboard, AT Keyboard).
  *
  * CONFIG_VIDEO_SW_CURSOR:    - Draws a cursor after the last
  *				character. No blinking is provided.
  *				Uses the macros CURSOR_SET and
  *				CURSOR_OFF.
- *
- * CONFIG_VIDEO_HW_CURSOR:    - Uses the hardware cursor capability
- *				of the graphic chip. Uses the macro
- *				CURSOR_SET. ATTENTION: If booting an
- *				OS, the display driver must disable
- *				the hardware register of the graphic
- *				chip. Otherwise a blinking field is
- *				displayed.
  */
 
 #include <common.h>
 #include <fdtdec.h>
 #include <version.h>
 #include <malloc.h>
+#include <video.h>
 #include <linux/compiler.h>
 
-/*
- * Console device defines with SMI graphic
- * Any other graphic must change this section
- */
-
-#ifdef	CONFIG_VIDEO_SMI_LYNXEM
-
-#define VIDEO_FB_LITTLE_ENDIAN
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
-#endif
-
-/*
- * Defines for the CT69000 driver
- */
-#ifdef	CONFIG_VIDEO_CT69000
-
-#define VIDEO_FB_LITTLE_ENDIAN
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
-#endif
-
-/*
- * Defines for the SED13806 driver
- */
-#ifdef CONFIG_VIDEO_SED13806
-#define VIDEO_FB_LITTLE_ENDIAN
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
-#endif
-
-#ifdef CONFIG_VIDEO_MXS
+#if defined(CONFIG_VIDEO_MXS)
 #define VIDEO_FB_16BPP_WORD_SWAP
 #endif
 
@@ -165,19 +113,6 @@
 #define VIDEO_FB_ADRS		(pGD->frameAdrs)
 
 /*
- * Console device defines with i8042 keyboard controller
- * Any other keyboard controller must change this section
- */
-
-#ifdef	CONFIG_I8042_KBD
-#include <i8042.h>
-
-#define VIDEO_KBD_INIT_FCT	i8042_kbd_init()
-#define VIDEO_TSTC_FCT		i8042_tstc
-#define VIDEO_GETC_FCT		i8042_getc
-#endif
-
-/*
  * Console device
  */
 
@@ -196,62 +131,20 @@
 #include <splash.h>
 #endif
 
-/*
- * Cursor definition:
- * CONFIG_CONSOLE_CURSOR:  Uses a timer function (see drivers/input/i8042.c)
- *			   to let the cursor blink. Uses the macros
- *			   CURSOR_OFF and CURSOR_ON.
- * CONFIG_VIDEO_SW_CURSOR: Draws a cursor after the last character. No
- *			   blinking is provided. Uses the macros CURSOR_SET
- *			   and CURSOR_OFF.
- * CONFIG_VIDEO_HW_CURSOR: Uses the hardware cursor capability of the
- *			   graphic chip. Uses the macro CURSOR_SET.
- *			   ATTENTION: If booting an OS, the display driver
- *			   must disable the hardware register of the graphic
- *			   chip. Otherwise a blinking field is displayed
- */
-#if !defined(CONFIG_CONSOLE_CURSOR) && \
-    !defined(CONFIG_VIDEO_SW_CURSOR) && \
-    !defined(CONFIG_VIDEO_HW_CURSOR)
+#if !defined(CONFIG_VIDEO_SW_CURSOR)
 /* no Cursor defined */
 #define CURSOR_ON
 #define CURSOR_OFF
 #define CURSOR_SET
 #endif
 
-#if defined(CONFIG_CONSOLE_CURSOR) || defined(CONFIG_VIDEO_SW_CURSOR)
-#if defined(CURSOR_ON) || \
-	(defined(CONFIG_CONSOLE_CURSOR) && defined(CONFIG_VIDEO_SW_CURSOR))
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
-#endif
+#if defined(CONFIG_VIDEO_SW_CURSOR)
 void console_cursor(int state);
 
 #define CURSOR_ON  console_cursor(1)
 #define CURSOR_OFF console_cursor(0)
 #define CURSOR_SET video_set_cursor()
-#endif /* CONFIG_CONSOLE_CURSOR || CONFIG_VIDEO_SW_CURSOR */
-
-#ifdef	CONFIG_CONSOLE_CURSOR
-#ifndef	CONFIG_CONSOLE_TIME
-#error	CONFIG_CONSOLE_CURSOR must be defined for CONFIG_CONSOLE_TIME
-#endif
-#ifndef CONFIG_I8042_KBD
-#warning Cursor drawing on/off needs timer function s.a. drivers/input/i8042.c
-#endif
-#endif /* CONFIG_CONSOLE_CURSOR */
-
-
-#ifdef CONFIG_VIDEO_HW_CURSOR
-#ifdef	CURSOR_ON
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
-#endif
-#define CURSOR_ON
-#define CURSOR_OFF
-#define CURSOR_SET video_set_hw_cursor(console_col * VIDEO_FONT_WIDTH, \
-		  (console_row * VIDEO_FONT_HEIGHT) + video_logo_height)
-#endif /* CONFIG_VIDEO_HW_CURSOR */
+#endif /* CONFIG_VIDEO_SW_CURSOR */
 
 #ifdef	CONFIG_VIDEO_LOGO
 #ifdef	CONFIG_VIDEO_BMP_LOGO
@@ -330,16 +223,6 @@ void console_cursor(int state);
 #else
 #define SHORTSWAP32(x)		(x)
 #endif
-#endif
-
-#ifdef CONFIG_CONSOLE_EXTRA_INFO
-/*
- * setup a board string: type, speed, etc.
- *
- * line_number:	location to place info string beside logo
- * info:	buffer for info string
- */
-extern void video_get_info_str(int line_number,	char *info);
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -626,7 +509,7 @@ static void video_putchar(int xx, int yy, unsigned char c)
 	video_drawchars(xx, yy + video_logo_height, &c, 1);
 }
 
-#if defined(CONFIG_CONSOLE_CURSOR) || defined(CONFIG_VIDEO_SW_CURSOR)
+#if defined(CONFIG_VIDEO_SW_CURSOR)
 static void video_set_cursor(void)
 {
 	if (cursor_state)
@@ -651,27 +534,6 @@ static void video_invertchar(int xx, int yy)
 
 void console_cursor(int state)
 {
-#ifdef CONFIG_CONSOLE_TIME
-	struct rtc_time tm;
-	char info[16];
-
-	/* time update only if cursor is on (faster scroll) */
-	if (state) {
-		rtc_get(&tm);
-
-		sprintf(info, " %02d:%02d:%02d ", tm.tm_hour, tm.tm_min,
-			tm.tm_sec);
-		video_drawstring(VIDEO_VISIBLE_COLS - 10 * VIDEO_FONT_WIDTH,
-				 VIDEO_INFO_Y, (uchar *) info);
-
-		sprintf(info, "%02d.%02d.%04d", tm.tm_mday, tm.tm_mon,
-			tm.tm_year);
-		video_drawstring(VIDEO_VISIBLE_COLS - 10 * VIDEO_FONT_WIDTH,
-				 VIDEO_INFO_Y + 1 * VIDEO_FONT_HEIGHT,
-				 (uchar *) info);
-	}
-#endif
-
 	if (cursor_state != state) {
 		if (cursor_state) {
 			/* turn off the cursor */
@@ -905,7 +767,7 @@ static void parse_putc(const char c)
 		break;
 
 	case '\n':		/* next line */
-		if (console_col || (!console_col && nl))
+		if (console_col || nl)
 			console_newline(1);
 		nl = 1;
 		break;
@@ -941,7 +803,7 @@ static void parse_putc(const char c)
 		CURSOR_SET;
 }
 
-static void video_putc(struct stdio_dev *dev, const char c)
+static void cfb_video_putc(struct stdio_dev *dev, const char c)
 {
 #ifdef CONFIG_CFB_CONSOLE_ANSI
 	int i;
@@ -1155,7 +1017,7 @@ static void video_putc(struct stdio_dev *dev, const char c)
 		flush_cache(VIDEO_FB_ADRS, VIDEO_SIZE);
 }
 
-static void video_puts(struct stdio_dev *dev, const char *s)
+static void cfb_video_puts(struct stdio_dev *dev, const char *s)
 {
 	int flush = cfb_do_flush_cache;
 	int count = strlen(s);
@@ -1164,7 +1026,7 @@ static void video_puts(struct stdio_dev *dev, const char *s)
 	cfb_do_flush_cache = 0;
 
 	while (count--)
-		video_putc(dev, *s++);
+		cfb_video_putc(dev, *s++);
 
 	if (flush) {
 		cfb_do_flush_cache = flush;
@@ -1206,8 +1068,8 @@ __weak void video_set_lut(unsigned int index, unsigned char r,
 }
 
 #define FILL_32BIT_X888RGB(r,g,b) {			\
-	*(unsigned long *)fb =				\
-		SWAP32((unsigned long)(((r<<16) |	\
+	*(u32 *)fb =				\
+		SWAP32((unsigned int)(((r<<16) |	\
 					(g<<8)  |	\
 					 b)));		\
 	fb += 4;					\
@@ -1288,7 +1150,7 @@ static void draw_bitmap(uchar **fb, uchar *bm, struct palette *p,
 		break;
 	case GDF_32BIT_X888RGB:
 		for (i = 0; i < cnt; i++) {
-			*(unsigned long *) addr = p[bm[*off]].ce.dw;
+			*(u32 *) addr = p[bm[*off]].ce.dw;
 			addr += 4;
 		}
 		break;
@@ -1435,6 +1297,10 @@ next_run:
 			break;
 		}
 	}
+
+	if (cfb_do_flush_cache)
+		flush_cache(VIDEO_FB_ADRS, VIDEO_SIZE);
+
 	return 0;
 error:
 	printf("Error: Too much encoded pixel data, validate your bitmap\n");
@@ -1952,8 +1818,8 @@ static void plot_logo_or_black(void *screen, int x, int y, int black)
 							 (b >> 3)));
 				break;
 			case GDF_32BIT_X888RGB:
-				*(unsigned long *) dest =
-					SWAP32((unsigned long) (
+				*(u32 *) dest =
+					SWAP32((u32) (
 							(r << 16) |
 							(g <<  8) |
 							 b));
@@ -1985,17 +1851,19 @@ static void plot_logo_or_black(void *screen, int x, int y, int black)
 static void *video_logo(void)
 {
 	char info[128];
-	int space, len;
 	__maybe_unused int y_off = 0;
 	__maybe_unused ulong addr;
 	__maybe_unused char *s;
+	__maybe_unused int len, ret, space;
 
 	splash_get_pos(&video_logo_xpos, &video_logo_ypos);
 
 #ifdef CONFIG_SPLASH_SCREEN
-	s = getenv("splashimage");
+	s = env_get("splashimage");
 	if (s != NULL) {
-		splash_screen_prepare();
+		ret = splash_screen_prepare();
+		if (ret < 0)
+			return video_fb_address;
 		addr = simple_strtoul(s, NULL, 16);
 
 		if (video_display_bitmap(addr,
@@ -2034,16 +1902,33 @@ static void *video_logo(void)
 
 	sprintf(info, " %s", version_string);
 
-	space = (VIDEO_LINE_LEN / 2 - VIDEO_INFO_X) / VIDEO_FONT_WIDTH;
+#ifndef CONFIG_HIDE_LOGO_VERSION
+	space = (VIDEO_COLS - VIDEO_INFO_X) / VIDEO_FONT_WIDTH;
 	len = strlen(info);
 
 	if (len > space) {
-		video_drawchars(VIDEO_INFO_X, VIDEO_INFO_Y,
-				(uchar *) info, space);
-		video_drawchars(VIDEO_INFO_X + VIDEO_FONT_WIDTH,
-				VIDEO_INFO_Y + VIDEO_FONT_HEIGHT,
-				(uchar *) info + space, len - space);
-		y_off = 1;
+		int xx = VIDEO_INFO_X, yy = VIDEO_INFO_Y;
+		uchar *p = (uchar *) info;
+
+		while (len) {
+			if (len > space) {
+				video_drawchars(xx, yy, p, space);
+				len -= space;
+
+				p = (uchar *)p + space;
+
+				if (!y_off) {
+					xx += VIDEO_FONT_WIDTH;
+					space--;
+				}
+				yy += VIDEO_FONT_HEIGHT;
+
+				y_off++;
+			} else {
+				video_drawchars(xx, yy, p, len);
+				len = 0;
+			}
+		}
 	} else
 		video_drawstring(VIDEO_INFO_X, VIDEO_INFO_Y, (uchar *) info);
 
@@ -2083,6 +1968,7 @@ static void *video_logo(void)
 		}
 	}
 #endif
+#endif
 
 	return (video_fb_address + video_logo_height * VIDEO_LINE_LEN);
 }
@@ -2091,7 +1977,7 @@ static void *video_logo(void)
 static int cfb_fb_is_in_dram(void)
 {
 	bd_t *bd = gd->bd;
-#if defined(CONFIG_ARM) || defined(CONFIG_AVR32) || defined(COFNIG_NDS32) || \
+#if defined(CONFIG_ARM) || defined(CONFIG_NDS32) || \
 defined(CONFIG_SANDBOX) || defined(CONFIG_X86)
 	ulong start, end;
 	int i;
@@ -2129,7 +2015,7 @@ void video_clear(void)
 #endif
 }
 
-static int video_init(void)
+static int cfg_video_init(void)
 {
 	unsigned char color8;
 
@@ -2138,84 +2024,84 @@ static int video_init(void)
 		return -1;
 
 	video_fb_address = (void *) VIDEO_FB_ADRS;
-#ifdef CONFIG_VIDEO_HW_CURSOR
-	video_init_hw_cursor(VIDEO_FONT_WIDTH, VIDEO_FONT_HEIGHT);
-#endif
 
 	cfb_do_flush_cache = cfb_fb_is_in_dram() && dcache_status();
 
 	/* Init drawing pats */
 	switch (VIDEO_DATA_FORMAT) {
 	case GDF__8BIT_INDEX:
-		video_set_lut(0x01, CONSOLE_FG_COL, CONSOLE_FG_COL,
-			      CONSOLE_FG_COL);
-		video_set_lut(0x00, CONSOLE_BG_COL, CONSOLE_BG_COL,
-			      CONSOLE_BG_COL);
+		video_set_lut(0x01, CONFIG_SYS_CONSOLE_FG_COL,
+			      CONFIG_SYS_CONSOLE_FG_COL,
+			      CONFIG_SYS_CONSOLE_FG_COL);
+		video_set_lut(0x00, CONFIG_SYS_CONSOLE_BG_COL,
+			      CONFIG_SYS_CONSOLE_BG_COL,
+			      CONFIG_SYS_CONSOLE_BG_COL);
 		fgx = 0x01010101;
 		bgx = 0x00000000;
 		break;
 	case GDF__8BIT_332RGB:
-		color8 = ((CONSOLE_FG_COL & 0xe0) |
-			  ((CONSOLE_FG_COL >> 3) & 0x1c) |
-			  CONSOLE_FG_COL >> 6);
+		color8 = ((CONFIG_SYS_CONSOLE_FG_COL & 0xe0) |
+			  ((CONFIG_SYS_CONSOLE_FG_COL >> 3) & 0x1c) |
+			  CONFIG_SYS_CONSOLE_FG_COL >> 6);
 		fgx = (color8 << 24) | (color8 << 16) | (color8 << 8) |
 			color8;
-		color8 = ((CONSOLE_BG_COL & 0xe0) |
-			  ((CONSOLE_BG_COL >> 3) & 0x1c) |
-			  CONSOLE_BG_COL >> 6);
+		color8 = ((CONFIG_SYS_CONSOLE_BG_COL & 0xe0) |
+			  ((CONFIG_SYS_CONSOLE_BG_COL >> 3) & 0x1c) |
+			  CONFIG_SYS_CONSOLE_BG_COL >> 6);
 		bgx = (color8 << 24) | (color8 << 16) | (color8 << 8) |
 			color8;
 		break;
 	case GDF_15BIT_555RGB:
-		fgx = (((CONSOLE_FG_COL >> 3) << 26) |
-		       ((CONSOLE_FG_COL >> 3) << 21) |
-		       ((CONSOLE_FG_COL >> 3) << 16) |
-		       ((CONSOLE_FG_COL >> 3) << 10) |
-		       ((CONSOLE_FG_COL >> 3) <<  5) |
-			(CONSOLE_FG_COL >> 3));
-		bgx = (((CONSOLE_BG_COL >> 3) << 26) |
-		       ((CONSOLE_BG_COL >> 3) << 21) |
-		       ((CONSOLE_BG_COL >> 3) << 16) |
-		       ((CONSOLE_BG_COL >> 3) << 10) |
-		       ((CONSOLE_BG_COL >> 3) <<  5) |
-			(CONSOLE_BG_COL >> 3));
+		fgx = (((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 26) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 21) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 16) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 10) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) <<  5) |
+			(CONFIG_SYS_CONSOLE_FG_COL >> 3));
+		bgx = (((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 26) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 21) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 16) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 10) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) <<  5) |
+			(CONFIG_SYS_CONSOLE_BG_COL >> 3));
 		break;
 	case GDF_16BIT_565RGB:
-		fgx = (((CONSOLE_FG_COL >> 3) << 27) |
-		       ((CONSOLE_FG_COL >> 2) << 21) |
-		       ((CONSOLE_FG_COL >> 3) << 16) |
-		       ((CONSOLE_FG_COL >> 3) << 11) |
-		       ((CONSOLE_FG_COL >> 2) <<  5) |
-			(CONSOLE_FG_COL >> 3));
-		bgx = (((CONSOLE_BG_COL >> 3) << 27) |
-		       ((CONSOLE_BG_COL >> 2) << 21) |
-		       ((CONSOLE_BG_COL >> 3) << 16) |
-		       ((CONSOLE_BG_COL >> 3) << 11) |
-		       ((CONSOLE_BG_COL >> 2) <<  5) |
-			(CONSOLE_BG_COL >> 3));
+		fgx = (((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 27) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 2) << 21) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 16) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 3) << 11) |
+		       ((CONFIG_SYS_CONSOLE_FG_COL >> 2) <<  5) |
+			(CONFIG_SYS_CONSOLE_FG_COL >> 3));
+		bgx = (((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 27) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 2) << 21) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 16) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 3) << 11) |
+		       ((CONFIG_SYS_CONSOLE_BG_COL >> 2) <<  5) |
+			(CONFIG_SYS_CONSOLE_BG_COL >> 3));
 		break;
 	case GDF_32BIT_X888RGB:
-		fgx =	(CONSOLE_FG_COL << 16) |
-			(CONSOLE_FG_COL <<  8) |
-			 CONSOLE_FG_COL;
-		bgx =	(CONSOLE_BG_COL << 16) |
-			(CONSOLE_BG_COL <<  8) |
-			 CONSOLE_BG_COL;
+		fgx =	(CONFIG_SYS_CONSOLE_FG_COL << 16) |
+			(CONFIG_SYS_CONSOLE_FG_COL <<  8) |
+			 CONFIG_SYS_CONSOLE_FG_COL;
+		bgx =	(CONFIG_SYS_CONSOLE_BG_COL << 16) |
+			(CONFIG_SYS_CONSOLE_BG_COL <<  8) |
+			 CONFIG_SYS_CONSOLE_BG_COL;
 		break;
 	case GDF_24BIT_888RGB:
-		fgx =	(CONSOLE_FG_COL << 24) |
-			(CONSOLE_FG_COL << 16) |
-			(CONSOLE_FG_COL <<  8) |
-			 CONSOLE_FG_COL;
-		bgx =	(CONSOLE_BG_COL << 24) |
-			(CONSOLE_BG_COL << 16) |
-			(CONSOLE_BG_COL <<  8) |
-			 CONSOLE_BG_COL;
+		fgx =	(CONFIG_SYS_CONSOLE_FG_COL << 24) |
+			(CONFIG_SYS_CONSOLE_FG_COL << 16) |
+			(CONFIG_SYS_CONSOLE_FG_COL <<  8) |
+			 CONFIG_SYS_CONSOLE_FG_COL;
+		bgx =	(CONFIG_SYS_CONSOLE_BG_COL << 24) |
+			(CONFIG_SYS_CONSOLE_BG_COL << 16) |
+			(CONFIG_SYS_CONSOLE_BG_COL <<  8) |
+			 CONFIG_SYS_CONSOLE_BG_COL;
 		break;
 	}
 	eorx = fgx ^ bgx;
 
-	video_clear();
+	if (!CONFIG_IS_ENABLED(NO_FB_CLEAR))
+		video_clear();
 
 #ifdef CONFIG_VIDEO_LOGO
 	/* Plot the logo and get start point of console */
@@ -2256,7 +2142,7 @@ int drv_video_init(void)
 		return 0;
 
 	/* Init video chip - returns with framebuffer cleared */
-	if (video_init() == -1)
+	if (cfg_video_init() == -1)
 		return 0;
 
 	if (board_cfb_skip())
@@ -2280,10 +2166,9 @@ int drv_video_init(void)
 	/* Init vga device */
 	memset(&console_dev, 0, sizeof(console_dev));
 	strcpy(console_dev.name, "vga");
-	console_dev.ext = DEV_EXT_VIDEO;	/* Video extensions */
-	console_dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_SYSTEM;
-	console_dev.putc = video_putc;	/* 'putc' function */
-	console_dev.puts = video_puts;	/* 'puts' function */
+	console_dev.flags = DEV_FLAGS_OUTPUT;
+	console_dev.putc = cfb_video_putc;	/* 'putc' function */
+	console_dev.puts = cfb_video_puts;	/* 'puts' function */
 
 #if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
 	if (have_keyboard && keyboard_ok) {

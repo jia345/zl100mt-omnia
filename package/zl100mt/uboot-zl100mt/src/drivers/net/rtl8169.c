@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * rtl8169.c : U-Boot driver for the RealTek RTL8169
  *
@@ -10,8 +11,6 @@
 /**************************************************************************
 *    r8169.c: Etherboot device driver for the RealTek RTL-8169 Gigabit
 *    Written 2003 by Timothy Legge <tlegge@rogers.com>
-*
- * SPDX-License-Identifier:	GPL-2.0+
 *
 *    Portions of this code based on:
 *	r8169.c: A RealTek RTL-8169 Gigabit Ethernet driver
@@ -44,6 +43,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <net.h>
 #ifndef CONFIG_DM_ETH
 #include <netdev.h>
@@ -101,10 +101,6 @@ static int media[MAX_UNITS] = { -1, -1, -1, -1, -1, -1, -1, -1 };
 #define RTL_R8(reg)		readb(ioaddr + (reg))
 #define RTL_R16(reg)		readw(ioaddr + (reg))
 #define RTL_R32(reg)		readl(ioaddr + (reg))
-
-#define ETH_FRAME_LEN	MAX_ETH_FRAME_SIZE
-#define ETH_ALEN	MAC_ADDR_LEN
-#define ETH_ZLEN	60
 
 #define bus_to_phys(a)	pci_mem_to_phys((pci_dev_t)(unsigned long)dev->priv, \
 	(pci_addr_t)(unsigned long)a)
@@ -261,6 +257,7 @@ static struct {
 	{"RTL-8168/8111g",	0x4c, 0xff7e1880,},
 	{"RTL-8101e",		0x34, 0xff7e1880,},
 	{"RTL-8100e",		0x32, 0xff7e1880,},
+	{"RTL-8168h/8111h",	0x54, 0xff7e1880,},
 };
 
 enum _DescStatusBit {
@@ -305,7 +302,7 @@ static unsigned char rxdata[RX_BUF_LEN];
  */
 #if RTL8169_DESC_SIZE < ARCH_DMA_MINALIGN
 #if !defined(CONFIG_SYS_NONCACHED_MEMORY) && \
-	!defined(CONFIG_SYS_DCACHE_OFF) && !defined(CONFIG_X86)
+	!CONFIG_IS_ENABLED(SYS_DCACHE_OFF) && !defined(CONFIG_X86)
 #warning cache-line size is larger than descriptor size
 #endif
 #endif
@@ -338,9 +335,6 @@ struct rtl8169_private {
 
 static struct rtl8169_private *tpc;
 
-static const u16 rtl8169_intr_mask =
-    SYSErr | PCSTimeout | RxUnderrun | RxOverflow | RxFIFOOver | TxErr |
-    TxOK | RxErr | RxOK;
 static const unsigned int rtl8169_rx_config =
     (RX_FIFO_THRESH << RxCfgFIFOShift) | (RX_DMA_BURST << RxCfgDMAShift);
 
@@ -512,8 +506,13 @@ static void rtl_flush_buffer(void *buf, size_t size)
 /**************************************************************************
 RECV - Receive a frame
 ***************************************************************************/
-static int rtl_recv_common(pci_dev_t bdf, unsigned long dev_iobase,
+#ifdef CONFIG_DM_ETH
+static int rtl_recv_common(struct udevice *dev, unsigned long dev_iobase,
 			   uchar **packetp)
+#else
+static int rtl_recv_common(pci_dev_t dev, unsigned long dev_iobase,
+			   uchar **packetp)
+#endif
 {
 	/* return true if there's an ethernet packet ready to read */
 	/* nic->packet should contain data on return */
@@ -544,9 +543,16 @@ static int rtl_recv_common(pci_dev_t bdf, unsigned long dev_iobase,
 			else
 				tpc->RxDescArray[cur_rx].status =
 					cpu_to_le32(OWNbit + RX_BUF_SIZE);
+#ifdef CONFIG_DM_ETH
 			tpc->RxDescArray[cur_rx].buf_addr = cpu_to_le32(
-				pci_mem_to_phys(bdf, (pci_addr_t)(unsigned long)
+				dm_pci_mem_to_phys(dev,
+					(pci_addr_t)(unsigned long)
+					tpc->RxBufferRing[cur_rx]));
+#else
+			tpc->RxDescArray[cur_rx].buf_addr = cpu_to_le32(
+				pci_mem_to_phys(dev, (pci_addr_t)(unsigned long)
 				tpc->RxBufferRing[cur_rx]));
+#endif
 			rtl_flush_rx_desc(&tpc->RxDescArray[cur_rx]);
 #ifdef CONFIG_DM_ETH
 			*packetp = rxdata;
@@ -575,12 +581,13 @@ int rtl8169_eth_recv(struct udevice *dev, int flags, uchar **packetp)
 {
 	struct rtl8169_private *priv = dev_get_priv(dev);
 
-	return rtl_recv_common(pci_get_bdf(dev), priv->iobase, packetp);
+	return rtl_recv_common(dev, priv->iobase, packetp);
 }
 #else
 static int rtl_recv(struct eth_device *dev)
 {
-	return rtl_recv_common((pci_dev_t)dev->priv, dev->iobase, NULL);
+	return rtl_recv_common((pci_dev_t)(unsigned long)dev->priv,
+			       dev->iobase, NULL);
 }
 #endif /* nCONFIG_DM_ETH */
 
@@ -588,8 +595,13 @@ static int rtl_recv(struct eth_device *dev)
 /**************************************************************************
 SEND - Transmit a frame
 ***************************************************************************/
-static int rtl_send_common(pci_dev_t bdf, unsigned long dev_iobase,
+#ifdef CONFIG_DM_ETH
+static int rtl_send_common(struct udevice *dev, unsigned long dev_iobase,
 			   void *packet, int length)
+#else
+static int rtl_send_common(pci_dev_t dev, unsigned long dev_iobase,
+			   void *packet, int length)
+#endif
 {
 	/* send the packet to destination */
 
@@ -610,14 +622,20 @@ static int rtl_send_common(pci_dev_t bdf, unsigned long dev_iobase,
 	/* point to the current txb incase multiple tx_rings are used */
 	ptxb = tpc->Tx_skbuff[entry * MAX_ETH_FRAME_SIZE];
 	memcpy(ptxb, (char *)packet, (int)length);
-	rtl_flush_buffer(ptxb, length);
 
 	while (len < ETH_ZLEN)
 		ptxb[len++] = '\0';
 
+	rtl_flush_buffer(ptxb, ALIGN(len, RTL8169_ALIGN));
+
 	tpc->TxDescArray[entry].buf_Haddr = 0;
+#ifdef CONFIG_DM_ETH
 	tpc->TxDescArray[entry].buf_addr = cpu_to_le32(
-		pci_mem_to_phys(bdf, (pci_addr_t)(unsigned long)ptxb));
+		dm_pci_mem_to_phys(dev, (pci_addr_t)(unsigned long)ptxb));
+#else
+	tpc->TxDescArray[entry].buf_addr = cpu_to_le32(
+		pci_mem_to_phys(dev, (pci_addr_t)(unsigned long)ptxb));
+#endif
 	if (entry != (NUM_TX_DESC - 1)) {
 		tpc->TxDescArray[entry].status =
 			cpu_to_le32((OWNbit | FSbit | LSbit) |
@@ -642,12 +660,12 @@ static int rtl_send_common(pci_dev_t bdf, unsigned long dev_iobase,
 		puts("tx timeout/error\n");
 		printf("%s elapsed time : %lu\n", __func__, currticks()-stime);
 #endif
-		ret = 0;
+		ret = -ETIMEDOUT;
 	} else {
 #ifdef DEBUG_RTL8169_TX
 		puts("tx done\n");
 #endif
-		ret = length;
+		ret = 0;
 	}
 	/* Delay to make net console (nc) work properly */
 	udelay(20);
@@ -659,14 +677,14 @@ int rtl8169_eth_send(struct udevice *dev, void *packet, int length)
 {
 	struct rtl8169_private *priv = dev_get_priv(dev);
 
-	return rtl_send_common(pci_get_bdf(dev), priv->iobase, packet, length);
+	return rtl_send_common(dev, priv->iobase, packet, length);
 }
 
 #else
 static int rtl_send(struct eth_device *dev, void *packet, int length)
 {
-	return rtl_send_common((pci_dev_t)dev->priv, dev->iobase, packet,
-			       length);
+	return rtl_send_common((pci_dev_t)(unsigned long)dev->priv,
+			       dev->iobase, packet, length);
 }
 #endif
 
@@ -693,7 +711,11 @@ static void rtl8169_set_rx_mode(void)
 	RTL_W32(MAR0 + 4, mc_filter[1]);
 }
 
-static void rtl8169_hw_start(pci_dev_t bdf)
+#ifdef CONFIG_DM_ETH
+static void rtl8169_hw_start(struct udevice *dev)
+#else
+static void rtl8169_hw_start(pci_dev_t dev)
+#endif
 {
 	u32 i;
 
@@ -738,11 +760,21 @@ static void rtl8169_hw_start(pci_dev_t bdf)
 
 	tpc->cur_rx = 0;
 
-	RTL_W32(TxDescStartAddrLow, pci_mem_to_phys(bdf,
+#ifdef CONFIG_DM_ETH
+	RTL_W32(TxDescStartAddrLow, dm_pci_mem_to_phys(dev,
 			(pci_addr_t)(unsigned long)tpc->TxDescArray));
+#else
+	RTL_W32(TxDescStartAddrLow, pci_mem_to_phys(dev,
+			(pci_addr_t)(unsigned long)tpc->TxDescArray));
+#endif
 	RTL_W32(TxDescStartAddrHigh, (unsigned long)0);
+#ifdef CONFIG_DM_ETH
+	RTL_W32(RxDescStartAddrLow, dm_pci_mem_to_phys(
+			dev, (pci_addr_t)(unsigned long)tpc->RxDescArray));
+#else
 	RTL_W32(RxDescStartAddrLow, pci_mem_to_phys(
-			bdf, (pci_addr_t)(unsigned long)tpc->RxDescArray));
+			dev, (pci_addr_t)(unsigned long)tpc->RxDescArray));
+#endif
 	RTL_W32(RxDescStartAddrHigh, (unsigned long)0);
 
 	/* RTL-8169sc/8110sc or later version */
@@ -764,7 +796,11 @@ static void rtl8169_hw_start(pci_dev_t bdf)
 #endif
 }
 
-static void rtl8169_init_ring(pci_dev_t bdf)
+#ifdef CONFIG_DM_ETH
+static void rtl8169_init_ring(struct udevice *dev)
+#else
+static void rtl8169_init_ring(pci_dev_t dev)
+#endif
 {
 	int i;
 
@@ -792,8 +828,13 @@ static void rtl8169_init_ring(pci_dev_t bdf)
 				cpu_to_le32(OWNbit + RX_BUF_SIZE);
 
 		tpc->RxBufferRing[i] = &rxb[i * RX_BUF_SIZE];
+#ifdef CONFIG_DM_ETH
+		tpc->RxDescArray[i].buf_addr = cpu_to_le32(dm_pci_mem_to_phys(
+			dev, (pci_addr_t)(unsigned long)tpc->RxBufferRing[i]));
+#else
 		tpc->RxDescArray[i].buf_addr = cpu_to_le32(pci_mem_to_phys(
-			bdf, (pci_addr_t)(unsigned long)tpc->RxBufferRing[i]));
+			dev, (pci_addr_t)(unsigned long)tpc->RxBufferRing[i]));
+#endif
 		rtl_flush_rx_desc(&tpc->RxDescArray[i]);
 	}
 
@@ -802,7 +843,13 @@ static void rtl8169_init_ring(pci_dev_t bdf)
 #endif
 }
 
-static void rtl8169_common_start(pci_dev_t bdf, unsigned char *enetaddr)
+#ifdef CONFIG_DM_ETH
+static void rtl8169_common_start(struct udevice *dev, unsigned char *enetaddr,
+				 unsigned long dev_iobase)
+#else
+static void rtl8169_common_start(pci_dev_t dev, unsigned char *enetaddr,
+				 unsigned long dev_iobase)
+#endif
 {
 	int i;
 
@@ -811,8 +858,10 @@ static void rtl8169_common_start(pci_dev_t bdf, unsigned char *enetaddr)
 	printf ("%s\n", __FUNCTION__);
 #endif
 
-	rtl8169_init_ring(bdf);
-	rtl8169_hw_start(bdf);
+	ioaddr = dev_iobase;
+
+	rtl8169_init_ring(dev);
+	rtl8169_hw_start(dev);
 	/* Construct a perfect filter frame with the mac address as first match
 	 * and broadcast for all others */
 	for (i = 0; i < 192; i++)
@@ -834,8 +883,9 @@ static void rtl8169_common_start(pci_dev_t bdf, unsigned char *enetaddr)
 static int rtl8169_eth_start(struct udevice *dev)
 {
 	struct eth_pdata *plat = dev_get_platdata(dev);
+	struct rtl8169_private *priv = dev_get_priv(dev);
 
-	rtl8169_common_start(pci_get_bdf(dev), plat->enetaddr);
+	rtl8169_common_start(dev, plat->enetaddr, priv->iobase);
 
 	return 0;
 }
@@ -845,7 +895,8 @@ RESET - Finish setting up the ethernet interface
 ***************************************************************************/
 static int rtl_reset(struct eth_device *dev, bd_t *bis)
 {
-	rtl8169_common_start((pci_dev_t)dev->priv, dev->enetaddr);
+	rtl8169_common_start((pci_dev_t)(unsigned long)dev->priv,
+			     dev->enetaddr, dev->iobase);
 
 	return 0;
 }
@@ -888,6 +939,23 @@ HALT - Turn off ethernet interface
 static void rtl_halt(struct eth_device *dev)
 {
 	rtl_halt_common(dev->iobase);
+}
+#endif
+
+#ifdef CONFIG_DM_ETH
+static int rtl8169_write_hwaddr(struct udevice *dev)
+{
+	struct eth_pdata *plat = dev_get_platdata(dev);
+	unsigned int i;
+
+	RTL_W8(Cfg9346, Cfg9346_Unlock);
+
+	for (i = 0; i < MAC_ADDR_LEN; i++)
+		RTL_W8(MAC0 + i, plat->enetaddr[i]);
+
+	RTL_W8(Cfg9346, Cfg9346_Lock);
+
+	return 0;
 }
 #endif
 
@@ -943,7 +1011,7 @@ static int rtl_init(unsigned long dev_ioaddr, const char *name,
 		/* Force RTL8169 in 10/100/1000 Full/Half mode. */
 		if (option > 0) {
 #ifdef DEBUG_RTL8169
-			printf("%s: Force-mode Enabled.\n", dev->name);
+			printf("%s: Force-mode Enabled.\n", name);
 #endif
 			Cap10_100 = 0, Cap1000 = 0;
 			switch (option) {
@@ -975,7 +1043,7 @@ static int rtl_init(unsigned long dev_ioaddr, const char *name,
 		} else {
 #ifdef DEBUG_RTL8169
 			printf("%s: Auto-negotiation Enabled.\n",
-			       dev->name);
+			       name);
 #endif
 			/* enable 10/100 Full/Half Mode, leave PHY_AUTO_NEGO_REG bit4:0 unchanged */
 			mdio_write(PHY_AUTO_NEGO_REG,
@@ -1002,12 +1070,12 @@ static int rtl_init(unsigned long dev_ioaddr, const char *name,
 				if (option & _1000bpsF) {
 #ifdef DEBUG_RTL8169
 					printf("%s: 1000Mbps Full-duplex operation.\n",
-					     dev->name);
+					       name);
 #endif
 				} else {
 #ifdef DEBUG_RTL8169
 					printf("%s: %sMbps %s-duplex operation.\n",
-					       dev->name,
+					       name,
 					       (option & _100bps) ? "100" :
 					       "10",
 					       (option & FullDup) ? "Full" :
@@ -1025,7 +1093,7 @@ static int rtl_init(unsigned long dev_ioaddr, const char *name,
 #ifdef DEBUG_RTL8169
 		printf
 		    ("%s: 1000Mbps Full-duplex operation, TBI Link %s!\n",
-		     dev->name,
+		     name,
 		     (RTL_R32(TBICSR) & TBILinkOK) ? "OK" : "Failed");
 #endif
 	}
@@ -1127,10 +1195,9 @@ static int rtl8169_eth_probe(struct udevice *dev)
 		region = 1;
 		break;
 	}
-	pci_read_config32(pci_get_bdf(dev), PCI_BASE_ADDRESS_0 + region * 4,
-			  &iobase);
+	dm_pci_read_config32(dev, PCI_BASE_ADDRESS_0 + region * 4, &iobase);
 	iobase &= ~0xf;
-	priv->iobase = (int)pci_mem_to_phys(pci_get_bdf(dev), iobase);
+	priv->iobase = (int)dm_pci_mem_to_phys(dev, iobase);
 
 	ret = rtl_init(priv->iobase, dev->name, plat->enetaddr);
 	if (ret < 0) {
@@ -1146,6 +1213,7 @@ static const struct eth_ops rtl8169_eth_ops = {
 	.send	= rtl8169_eth_send,
 	.recv	= rtl8169_eth_recv,
 	.stop	= rtl8169_eth_stop,
+	.write_hwaddr = rtl8169_write_hwaddr,
 };
 
 static const struct udevice_id rtl8169_eth_ids[] = {

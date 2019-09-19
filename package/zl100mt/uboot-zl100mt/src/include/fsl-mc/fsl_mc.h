@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_MC_H__
@@ -12,7 +11,6 @@
 #define MC_CCSR_BASE_ADDR \
 	((struct mc_ccsr_registers __iomem *)0x8340000)
 
-#define BIT(x)			(1 << (x))
 #define GCR1_P1_STOP		BIT(31)
 #define GCR1_P2_STOP		BIT(30)
 #define GCR1_P1_DE_RST		BIT(23)
@@ -29,6 +27,9 @@
 #define SOC_MC_PORTAL_ADDR(_portal_id) \
 	((void __iomem *)((uintptr_t)SOC_MC_PORTALS_BASE_ADDR + \
 	 (_portal_id) * SOC_MC_PORTAL_STRIDE))
+
+#define MC_PORTAL_OFFSET_TO_PORTAL_ID(_portal_offset) \
+	((_portal_offset) / SOC_MC_PORTAL_STRIDE)
 
 struct mc_ccsr_registers {
 	u32 reg_gcr1;
@@ -50,8 +51,16 @@ struct mc_ccsr_registers {
 	u32 reg_error[];
 };
 
+void fdt_fsl_mc_fixup_iommu_map_entry(void *blob);
 int get_mc_boot_status(void);
+int get_dpl_apply_status(void);
+int is_lazy_dpl_addr_valid(void);
+#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+int get_aiop_apply_status(void);
+#endif
+u64 mc_get_dram_addr(void);
 unsigned long mc_get_dram_block_size(void);
 int fsl_mc_ldpaa_init(bd_t *bis);
-void fsl_mc_ldpaa_exit(bd_t *bis);
+int fsl_mc_ldpaa_exit(bd_t *bd);
+void mc_env_boot(void);
 #endif

@@ -24,15 +24,43 @@
 #include <splash.h>
 #include <lcd.h>
 
+static struct splash_location default_splash_locations[] = {
+	{
+		.name = "sf",
+		.storage = SPLASH_STORAGE_SF,
+		.flags = SPLASH_STORAGE_RAW,
+		.offset = 0x0,
+	},
+	{
+		.name = "mmc_fs",
+		.storage = SPLASH_STORAGE_MMC,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
+	},
+	{
+		.name = "usb_fs",
+		.storage = SPLASH_STORAGE_USB,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
+	},
+	{
+		.name = "sata_fs",
+		.storage = SPLASH_STORAGE_SATA,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
+	},
+};
+
 __weak int splash_screen_prepare(void)
 {
-	return 0;
+	return splash_source_load(default_splash_locations,
+				  ARRAY_SIZE(default_splash_locations));
 }
 
 #ifdef CONFIG_SPLASH_SCREEN_ALIGN
 void splash_get_pos(int *x, int *y)
 {
-	char *s = getenv("splashpos");
+	char *s = env_get("splashpos");
 
 	if (!s)
 		return;
@@ -52,11 +80,23 @@ void splash_get_pos(int *x, int *y)
 }
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
-#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_LCD)
-int lcd_splash(ulong addr)
+/*
+ * Common function to show a splash image if env("splashimage") is set.
+ * Is used for both dm_video and lcd video stacks. For additional
+ * details please refer to doc/README.splashprepare.
+ */
+#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_CMD_BMP)
+int splash_display(void)
 {
+	ulong addr;
+	char *s;
 	int x = 0, y = 0, ret;
 
+	s = env_get("splashimage");
+	if (!s)
+		return -EINVAL;
+
+	addr = simple_strtoul(s, NULL, 16);
 	ret = splash_screen_prepare();
 	if (ret)
 		return ret;

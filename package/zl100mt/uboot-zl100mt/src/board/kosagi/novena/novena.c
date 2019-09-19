@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Novena board support
  *
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <dm.h>
+#include <dm/device-internal.h>
+#include <ahci.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -16,11 +18,13 @@
 #include <asm/arch/iomux.h>
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/imx-common/boot_mode.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/sata.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/sata.h>
+#include <asm/mach-imx/video.h>
+#include <dwc_ahsata.h>
+#include <environment.h>
 #include <fsl_esdhc.h>
 #include <i2c.h>
 #include <input.h>
@@ -35,6 +39,7 @@
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 #include <stdio_dev.h>
+#include <video_console.h>
 
 #include "novena.h"
 
@@ -77,17 +82,20 @@ int drv_keyboard_init(void)
 	int error;
 	struct stdio_dev dev = {
 		.name	= "button",
-		.flags	= DEV_FLAGS_INPUT | DEV_FLAGS_SYSTEM,
+		.flags	= DEV_FLAGS_INPUT,
 		.start	= novena_gpio_button_init,
 		.getc	= novena_gpio_button_getc,
 		.tstc	= novena_gpio_button_tstc,
 	};
+
+	gpio_request(NOVENA_BUTTON_GPIO, "button");
 
 	error = input_init(&button_input, 0);
 	if (error) {
 		debug("%s: Cannot set up input\n", __func__);
 		return -1;
 	}
+	input_add_tables(&button_input, false);
 	button_input.read_keys = novena_gpio_button_read_keys;
 
 	error = input_stdio_register(&dev);
@@ -95,60 +103,6 @@ int drv_keyboard_init(void)
 		return error;
 
 	return 0;
-}
-#endif
-
-/*
- * SDHC
- */
-#ifdef CONFIG_FSL_ESDHC
-static struct fsl_esdhc_cfg usdhc_cfg[] = {
-	{ USDHC3_BASE_ADDR, 0, 4 },	/* Micro SD */
-	{ USDHC2_BASE_ADDR, 0, 4 },	/* Big SD */
-};
-
-int board_mmc_getcd(struct mmc *mmc)
-{
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-
-	/* There is no CD for a microSD card, assume always present. */
-	if (cfg->esdhc_base == USDHC3_BASE_ADDR)
-		return 1;
-	else
-		return !gpio_get_value(NOVENA_SD_CD);
-}
-
-int board_mmc_getwp(struct mmc *mmc)
-{
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-
-	/* There is no WP for a microSD card, assume always read-write. */
-	if (cfg->esdhc_base == USDHC3_BASE_ADDR)
-		return 0;
-	else
-		return gpio_get_value(NOVENA_SD_WP);
-}
-
-
-int board_mmc_init(bd_t *bis)
-{
-	s32 status = 0;
-	int index;
-
-	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
-	usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
-
-	/* Big SD write-protect and card-detect */
-	gpio_direction_input(NOVENA_SD_WP);
-	gpio_direction_input(NOVENA_SD_CD);
-
-	for (index = 0; index < ARRAY_SIZE(usdhc_cfg); index++) {
-		status = fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
-		if (status)
-			return status;
-	}
-
-	return status;
 }
 #endif
 
@@ -166,17 +120,25 @@ int board_init(void)
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-#ifdef CONFIG_CMD_SATA
-	setup_sata();
-#endif
-
 	return 0;
 }
 
 int board_late_init(void)
 {
 #if defined(CONFIG_VIDEO_IPUV3)
+	struct udevice *con;
+	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
+	int ret;
+
 	setup_display_lvds();
+
+	ret = uclass_get_device(UCLASS_VIDEO_CONSOLE, 0, &con);
+	if (ret)
+		return ret;
+
+	display_options_get_banner(false, buf, sizeof(buf));
+	vidconsole_position_cursor(con, 0, 0);
+	vidconsole_put_string(con, buf);
 #endif
 	return 0;
 }
@@ -215,7 +177,7 @@ int power_init_board(void)
 	/* Set SWBST to 5.0V and enable (for USB) */
 	pmic_reg_read(p, PFUZE100_SWBSTCON1, &reg);
 	reg &= ~(SWBST_MODE_MASK | SWBST_VOL_MASK);
-	reg |= (SWBST_5_00V | SWBST_MODE_AUTO);
+	reg |= (SWBST_5_00V | (SWBST_MODE_AUTO << SWBST_MODE_SHIFT));
 	pmic_reg_write(p, PFUZE100_SWBSTCON1, reg);
 
 	return 0;
@@ -239,7 +201,7 @@ int misc_init_r(void)
 	int ret;
 
 	/* If 'ethaddr' is already set, do nothing. */
-	if (getenv("ethaddr"))
+	if (env_get("ethaddr"))
 		return 0;
 
 	/* EEPROM is at bus 2. */
@@ -263,7 +225,7 @@ int misc_init_r(void)
 	}
 
 	/* Set ethernet address from EEPROM. */
-	eth_setenv_enetaddr("ethaddr", data.mac);
+	eth_env_set_enetaddr("ethaddr", data.mac);
 
 	return ret;
 }

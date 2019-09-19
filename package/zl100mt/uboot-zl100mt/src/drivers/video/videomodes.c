@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Pierre Aubert, Staubli Faverges , <p.aubert@staubli.com>
  * Copyright 2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************
@@ -165,7 +164,8 @@ int video_get_params (struct ctfb_res_modes *pPar, char *penv)
 	/* first search for the environment containing the real param string */
 	s = penv;
 
-	if ((p = getenv (s)) != NULL)
+	p = env_get(s);
+	if (p)
 		s = p;
 
 	/*
@@ -234,7 +234,7 @@ int video_get_params (struct ctfb_res_modes *pPar, char *penv)
 int video_get_video_mode(unsigned int *xres, unsigned int *yres,
 	unsigned int *depth, unsigned int *freq, const char **options)
 {
-	char *p = getenv("video-mode");
+	char *p = env_get("video-mode");
 	if (!p)
 		return 0;
 
@@ -396,10 +396,8 @@ int video_edid_dtd_to_ctfb_res_modes(struct edid_detailed_timing *t,
 	    EDID_DETAILED_TIMING_VERTICAL_ACTIVE(*t) == 0 ||
 	    EDID_DETAILED_TIMING_VERTICAL_BLANKING(*t) == 0 ||
 	    EDID_DETAILED_TIMING_HSYNC_OFFSET(*t) == 0 ||
-	    EDID_DETAILED_TIMING_HSYNC_PULSE_WIDTH(*t) == 0 ||
 	    EDID_DETAILED_TIMING_VSYNC_OFFSET(*t) == 0 ||
-	    EDID_DETAILED_TIMING_VSYNC_PULSE_WIDTH(*t) == 0 ||
-	    /* 3d formats are not supported*/
+	    /* 3d formats are not supported */
 	    EDID_DETAILED_TIMING_FLAG_STEREO(*t) != 0)
 		return -EINVAL;
 

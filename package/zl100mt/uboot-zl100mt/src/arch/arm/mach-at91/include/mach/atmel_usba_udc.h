@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2005-2013 Atmel Corporation
  *			   Bo Shen <voice.shen@atmel.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ATMEL_USBA_UDC_H__
@@ -31,7 +30,8 @@ static struct usba_ep_data usba_udc_ep[] = {
 	EP("ep5", 5, 1024, 3, 1, 1),
 	EP("ep6", 6, 1024, 3, 1, 1),
 };
-#elif defined(CONFIG_SAMA5D3) || defined(CONFIG_SAMA5D4)
+#elif defined(CONFIG_SAMA5D2) || defined(CONFIG_SAMA5D3) || \
+	defined(CONFIG_SAMA5D4)
 static struct usba_ep_data usba_udc_ep[] = {
 	EP("ep0", 0, 64, 1, 0, 0),
 	EP("ep1", 1, 1024, 3, 1, 0),

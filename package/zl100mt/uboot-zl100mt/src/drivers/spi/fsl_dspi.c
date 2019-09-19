@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -6,9 +7,9 @@
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  * Chao Fu (B44548@freescale.com)
  * Haikun Wang (B53464@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
+
+#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <common.h>
@@ -24,7 +25,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* fsl_dspi_platdata flags */
-#define DSPI_FLAG_REGMAP_ENDIAN_BIG	(1 << 0)
+#define DSPI_FLAG_REGMAP_ENDIAN_BIG	BIT(0)
 
 /* idle data value */
 #define DSPI_IDLE_VAL			0x0
@@ -272,7 +273,18 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 	if (len > 1) {
 		int tmp_len = len - 1;
 		while (tmp_len--) {
-			if (dout != NULL) {
+			if ((dout != NULL) && (din != NULL)) {
+				if (priv->charbit == 16) {
+					dspi_tx(priv, ctrl, *spi_wr16++);
+					*spi_rd16++ = dspi_rx(priv);
+				}
+				else {
+					dspi_tx(priv, ctrl, *spi_wr++);
+					*spi_rd++ = dspi_rx(priv);
+				}
+			}
+
+			else if (dout != NULL) {
 				if (priv->charbit == 16)
 					dspi_tx(priv, ctrl, *spi_wr16++);
 				else
@@ -280,7 +292,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 				dspi_rx(priv);
 			}
 
-			if (din != NULL) {
+			else if (din != NULL) {
 				dspi_tx(priv, ctrl, DSPI_IDLE_VAL);
 				if (priv->charbit == 16)
 					*spi_rd16++ = dspi_rx(priv);
@@ -296,7 +308,18 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 		ctrl &= ~DSPI_TFR_CONT;
 
 	if (len) {
-		if (dout != NULL) {
+		if ((dout != NULL) && (din != NULL)) {
+			if (priv->charbit == 16) {
+				dspi_tx(priv, ctrl, *spi_wr16++);
+				*spi_rd16++ = dspi_rx(priv);
+			}
+			else {
+				dspi_tx(priv, ctrl, *spi_wr++);
+				*spi_rd++ = dspi_rx(priv);
+			}
+		}
+
+		else if (dout != NULL) {
 			if (priv->charbit == 16)
 				dspi_tx(priv, ctrl, *spi_wr16);
 			else
@@ -304,7 +327,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 			dspi_rx(priv);
 		}
 
-		if (din != NULL) {
+		else if (din != NULL) {
 			dspi_tx(priv, ctrl, DSPI_IDLE_VAL);
 			if (priv->charbit == 16)
 				*spi_rd16 = dspi_rx(priv);
@@ -389,21 +412,6 @@ static int fsl_dspi_cfg_speed(struct fsl_dspi_priv *priv, uint speed)
 	return 0;
 }
 #ifndef CONFIG_DM_SPI
-void spi_init(void)
-{
-	/* Nothing to do */
-}
-
-void spi_init_f(void)
-{
-	/* Nothing to do */
-}
-
-void spi_init_r(void)
-{
-	/* Nothing to do */
-}
-
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
 	if (((cs >= 0) && (cs < 8)) && ((bus >= 0) && (bus < 8)))
@@ -594,7 +602,7 @@ static int fsl_dspi_claim_bus(struct udevice *dev)
 
 	priv = dev_get_priv(bus);
 
-	/* processor special prepartion work */
+	/* processor special preparation work */
 	cpu_dspi_claim_bus(bus->seq, slave_plat->cs);
 
 	/* configure transfer mode */
@@ -646,7 +654,7 @@ static int fsl_dspi_ofdata_to_platdata(struct udevice *bus)
 	fdt_addr_t addr;
 	struct fsl_dspi_platdata *plat = bus->platdata;
 	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
+	int node = dev_of_offset(bus);
 
 	if (fdtdec_get_bool(blob, node, "big-endian"))
 		plat->flags |= DSPI_FLAG_REGMAP_ENDIAN_BIG;
@@ -654,7 +662,7 @@ static int fsl_dspi_ofdata_to_platdata(struct udevice *bus)
 	plat->num_chipselect =
 		fdtdec_get_int(blob, node, "num-cs", FSL_DSPI_MAX_CHIPSELECT);
 
-	addr = dev_get_addr(bus);
+	addr = devfdt_get_addr(bus);
 	if (addr == FDT_ADDR_T_NONE) {
 		debug("DSPI: Can't get base address or size\n");
 		return -ENOMEM;

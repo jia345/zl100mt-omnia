@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Samsung Electronics
  * Przemyslaw Marczak <p.marczak@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,7 +18,7 @@
 #include <errno.h>
 #include <mmc.h>
 #include <usb.h>
-#include <usb/s3c_udc.h>
+#include <usb/dwc2_udc.h>
 #include <samsung/misc.h>
 #include "setup.h"
 
@@ -31,13 +30,6 @@ enum {
 	ODROID_TYPE_U3,
 	ODROID_TYPE_X2,
 	ODROID_TYPES,
-};
-
-static const char *mmc_regulators[] = {
-	"VDDQ_EMMC_1.8V",
-	"VDDQ_EMMC_2.8V",
-	"TFLASH_2.8V",
-	NULL,
 };
 
 void set_board_type(void)
@@ -62,6 +54,14 @@ void set_board_type(void)
 		gd->board_type = ODROID_TYPE_U3;
 }
 
+void set_board_revision(void)
+{
+	/*
+	 * Revision already set by set_board_type() because it can be
+	 * executed early.
+	 */
+}
+
 const char *get_board_type(void)
 {
 	const char *board_type[] = {"u3", "x2"};
@@ -73,7 +73,7 @@ const char *get_board_type(void)
 #ifdef CONFIG_SET_DFU_ALT_INFO
 char *get_dfu_alt_system(char *interface, char *devstr)
 {
-	return getenv("dfu_alt_system");
+	return env_get("dfu_alt_system");
 }
 
 char *get_dfu_alt_boot(char *interface, char *devstr)
@@ -428,8 +428,15 @@ int exynos_init(void)
 
 int exynos_power_init(void)
 {
+	const char *mmc_regulators[] = {
+		"VDDQ_EMMC_1.8V",
+		"VDDQ_EMMC_2.8V",
+		"TFLASH_2.8V",
+		NULL,
+	};
+
 	if (regulator_list_autoset(mmc_regulators, NULL, true))
-		error("Unable to init all mmc regulators");
+		pr_err("Unable to init all mmc regulators\n");
 
 	return 0;
 }
@@ -442,7 +449,7 @@ static int s5pc210_phy_control(int on)
 
 	ret = regulator_get_by_platname("VDD_UOTG_3.0V", &dev);
 	if (ret) {
-		error("Regulator get error: %d", ret);
+		pr_err("Regulator get error: %d\n", ret);
 		return ret;
 	}
 
@@ -450,10 +457,9 @@ static int s5pc210_phy_control(int on)
 		return regulator_set_mode(dev, OPMODE_ON);
 	else
 		return regulator_set_mode(dev, OPMODE_LPM);
-
 }
 
-struct s3c_plat_otg_data s5pc210_otg_data = {
+struct dwc2_plat_otg_data s5pc210_otg_data = {
 	.phy_control	= s5pc210_phy_control,
 	.regs_phy	= EXYNOS4X12_USBPHY_BASE,
 	.regs_otg	= EXYNOS4X12_USBOTG_BASE,
@@ -464,18 +470,33 @@ struct s3c_plat_otg_data s5pc210_otg_data = {
 
 #if defined(CONFIG_USB_GADGET) || defined(CONFIG_CMD_USB)
 
+static void set_usb3503_ref_clk(void)
+{
+#ifdef CONFIG_BOARD_TYPES
+	/*
+	 * gpx3-0 chooses primary (low) or secondary (high) reference clock
+	 * frequencies table.  The choice of clock is done through hard-wired
+	 * REF_SEL pins.
+	 * The Odroid Us have reference clock at 24 MHz (00 entry from secondary
+	 * table) and Odroid Xs have it at 26 MHz (01 entry from primary table).
+	 */
+	if (gd->board_type == ODROID_TYPE_U3)
+		gpio_direction_output(EXYNOS4X12_GPIO_X30, 0);
+	else
+		gpio_direction_output(EXYNOS4X12_GPIO_X30, 1);
+#else
+	/* Choose Odroid Xs frequency without board types */
+	gpio_direction_output(EXYNOS4X12_GPIO_X30, 1);
+#endif /* CONFIG_BOARD_TYPES */
+}
+
 int board_usb_init(int index, enum usb_init_type init)
 {
 #ifdef CONFIG_CMD_USB
 	struct udevice *dev;
 	int ret;
 
-	/* Set Ref freq 0 => 24MHz, 1 => 26MHz*/
-	/* Odroid Us have it at 24MHz, Odroid Xs at 26MHz */
-	if (gd->board_type == ODROID_TYPE_U3)
-		gpio_direction_output(EXYNOS4X12_GPIO_X30, 0);
-	else
-		gpio_direction_output(EXYNOS4X12_GPIO_X30, 1);
+	set_usb3503_ref_clk();
 
 	/* Disconnect, Reset, Connect */
 	gpio_direction_output(EXYNOS4X12_GPIO_X34, 0);
@@ -488,29 +509,29 @@ int board_usb_init(int index, enum usb_init_type init)
 
 	ret = regulator_get_by_platname("VCC_P3V3_2.85V", &dev);
 	if (ret) {
-		error("Regulator get error: %d", ret);
+		pr_err("Regulator get error: %d\n", ret);
 		return ret;
 	}
 
 	ret = regulator_set_enable(dev, true);
 	if (ret) {
-		error("Regulator %s enable setting error: %d", dev->name, ret);
+		pr_err("Regulator %s enable setting error: %d\n", dev->name, ret);
 		return ret;
 	}
 
 	ret = regulator_set_value(dev, 750000);
 	if (ret) {
-		error("Regulator %s value setting error: %d", dev->name, ret);
+		pr_err("Regulator %s value setting error: %d\n", dev->name, ret);
 		return ret;
 	}
 
 	ret = regulator_set_value(dev, 3300000);
 	if (ret) {
-		error("Regulator %s value setting error: %d", dev->name, ret);
+		pr_err("Regulator %s value setting error: %d\n", dev->name, ret);
 		return ret;
 	}
 #endif
 	debug("USB_udc_probe\n");
-	return s3c_udc_probe(&s5pc210_otg_data);
+	return dwc2_udc_probe(&s5pc210_otg_data);
 }
 #endif

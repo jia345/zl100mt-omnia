@@ -1,22 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Copyright (c) 2010-2019, NVIDIA CORPORATION.  All rights reserved.
  */
 
 /* Tegra SoC common clock control functions */
 
 #include <common.h>
+#include <div64.h>
+#include <dm.h>
 #include <errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -25,8 +16,6 @@
 #include <asm/arch-tegra/clk_rst.h>
 #include <asm/arch-tegra/pmc.h>
 #include <asm/arch-tegra/timer.h>
-#include <div64.h>
-#include <fdtdec.h>
 
 /*
  * This is our record of the current clock rate of each clock. We don't
@@ -216,6 +205,29 @@ int clock_ll_set_source_bits(enum periph_id periph_id, int mux_bits,
 	return 0;
 }
 
+static int clock_ll_get_source_bits(enum periph_id periph_id, int mux_bits)
+{
+	u32 *reg = get_periph_source_reg(periph_id);
+	u32 val = readl(reg);
+
+	switch (mux_bits) {
+	case MASK_BITS_31_30:
+		val >>= OUT_CLK_SOURCE_31_30_SHIFT;
+		val &= OUT_CLK_SOURCE_31_30_MASK;
+		return val;
+	case MASK_BITS_31_29:
+		val >>= OUT_CLK_SOURCE_31_29_SHIFT;
+		val &= OUT_CLK_SOURCE_31_29_MASK;
+		return val;
+	case MASK_BITS_31_28:
+		val >>= OUT_CLK_SOURCE_31_28_SHIFT;
+		val &= OUT_CLK_SOURCE_31_28_MASK;
+		return val;
+	default:
+		return -1;
+	}
+}
+
 void clock_ll_set_source(enum periph_id periph_id, unsigned source)
 {
 	clock_ll_set_source_bits(periph_id, MASK_BITS_31_30, source);
@@ -298,9 +310,46 @@ unsigned long clock_get_periph_rate(enum periph_id periph_id,
 		enum clock_id parent)
 {
 	u32 *reg = get_periph_source_reg(periph_id);
+	unsigned parent_rate = pll_rate[parent];
+	int div = (readl(reg) & OUT_CLK_DIVISOR_MASK) >> OUT_CLK_DIVISOR_SHIFT;
 
-	return get_rate_from_divider(pll_rate[parent],
-		(readl(reg) & OUT_CLK_DIVISOR_MASK) >> OUT_CLK_DIVISOR_SHIFT);
+	switch (periph_id) {
+	case PERIPH_ID_UART1:
+	case PERIPH_ID_UART2:
+	case PERIPH_ID_UART3:
+	case PERIPH_ID_UART4:
+	case PERIPH_ID_UART5:
+#ifdef CONFIG_TEGRA20
+		/* There's no divider for these clocks in this SoC. */
+		return parent_rate;
+#else
+		/*
+		 * This undoes the +2 in get_rate_from_divider() which I
+		 * believe is incorrect. Ideally we would fix
+		 * get_rate_from_divider(), but... Removing the +2 from
+		 * get_rate_from_divider() would probably require remove the -2
+		 * from the tail of clk_get_divider() since I believe that's
+		 * only there to invert get_rate_from_divider()'s +2. Observe
+		 * how find_best_divider() uses those two functions together.
+		 * However, doing so breaks other stuff, such as Seaboard's
+		 * display, likely due to clock_set_pllout()'s call to
+		 * clk_get_divider(). Attempting to fix that by making
+		 * clock_set_pllout() subtract 2 from clk_get_divider()'s
+		 * return value doesn't help. In summary this clock driver is
+		 * quite broken but I'm afraid I have no idea how to fix it
+		 * without completely replacing it.
+		 *
+		 * Be careful to avoid a divide by zero error.
+		 */
+		if (div >= 1)
+			div -= 2;
+		break;
+#endif
+	default:
+		break;
+	}
+
+	return get_rate_from_divider(parent_rate, div);
 }
 
 /**
@@ -373,6 +422,20 @@ static int adjust_periph_pll(enum periph_id periph_id, int source,
 	return 0;
 }
 
+enum clock_id clock_get_periph_parent(enum periph_id periph_id)
+{
+	int err, mux_bits, divider_bits, type;
+	int source;
+
+	err = get_periph_clock_info(periph_id, &mux_bits, &divider_bits, &type);
+	if (err)
+		return CLOCK_ID_NONE;
+
+	source = clock_ll_get_source_bits(periph_id, mux_bits);
+
+	return get_periph_clock_id(periph_id, source);
+}
+
 unsigned clock_adjust_periph_pll_div(enum periph_id periph_id,
 		enum clock_id parent, unsigned rate, int *extra_div)
 {
@@ -414,6 +477,7 @@ unsigned clock_start_periph_pll(enum periph_id periph_id,
 
 	reset_set_enable(periph_id, 1);
 	clock_enable(periph_id);
+	udelay(2);
 
 	effective_rate = clock_adjust_periph_pll_div(periph_id, parent, rate,
 						 NULL);
@@ -461,6 +525,11 @@ void reset_cmplx_set_enable(int cpu, int which, int reset)
 		writel(mask, &clkrst->crc_cpu_cmplx_clr);
 }
 
+unsigned int __weak clk_m_get_rate(unsigned int parent_rate)
+{
+	return parent_rate;
+}
+
 unsigned clock_get_rate(enum clock_id clkid)
 {
 	struct clk_pll *pll;
@@ -471,6 +540,9 @@ unsigned clock_get_rate(enum clock_id clkid)
 	parent_rate = osc_freq[clock_get_osc_freq()];
 	if (clkid == CLOCK_ID_OSC)
 		return parent_rate;
+
+	if (clkid == CLOCK_ID_CLK_M)
+		return clk_m_get_rate(parent_rate);
 
 	pll = get_pll(clkid);
 	if (!pll)
@@ -483,7 +555,16 @@ unsigned clock_get_rate(enum clock_id clkid)
 	 * PLLU uses p_mask/p_shift for VCO on all but T210,
 	 * T210 uses normal DIVP. Handled in pllinfo table.
 	 */
-	divm <<= (base >> pllinfo->p_shift) & pllinfo->p_mask;
+#ifdef CONFIG_TEGRA210
+	/*
+	 * PLLP's primary output (pllP_out0) on T210 is the VCO, and divp is
+	 * not applied. pllP_out2 does have divp applied. All other pllP_outN
+	 * are divided down from pllP_out0. We only support pllP_out0 in
+	 * U-Boot at the time of writing this comment.
+	 */
+	if (clkid != CLOCK_ID_PERIPH)
+#endif
+		divm <<= (base >> pllinfo->p_shift) & pllinfo->p_mask;
 	do_div(rate, divm);
 	return rate;
 }
@@ -503,7 +584,7 @@ unsigned clock_get_rate(enum clock_id clkid)
  * @param p post divider(DIVP)
  * @param cpcon base PLL charge pump(CPCON)
  * @return 0 if ok, -1 on error (the requested PLL is incorrect and cannot
- *		be overriden), 1 if PLL is already correct
+ *		be overridden), 1 if PLL is already correct
  */
 int clock_set_rate(enum clock_id clkid, u32 n, u32 m, u32 p, u32 cpcon)
 {
@@ -574,14 +655,13 @@ void clock_ll_start_uart(enum periph_id periph_id)
 }
 
 #if CONFIG_IS_ENABLED(OF_CONTROL)
-int clock_decode_periph_id(const void *blob, int node)
+int clock_decode_periph_id(struct udevice *dev)
 {
 	enum periph_id id;
 	u32 cell[2];
 	int err;
 
-	err = fdtdec_get_int_array(blob, node, "clocks", cell,
-				   ARRAY_SIZE(cell));
+	err = dev_read_u32_array(dev, "clocks", cell, ARRAY_SIZE(cell));
 	if (err)
 		return -1;
 	id = clk_id_to_periph_id(cell[1]);
@@ -605,6 +685,8 @@ int clock_verify(void)
 
 void clock_init(void)
 {
+	int i;
+
 	pll_rate[CLOCK_ID_CGENERAL] = clock_get_rate(CLOCK_ID_CGENERAL);
 	pll_rate[CLOCK_ID_MEMORY] = clock_get_rate(CLOCK_ID_MEMORY);
 	pll_rate[CLOCK_ID_PERIPH] = clock_get_rate(CLOCK_ID_PERIPH);
@@ -613,14 +695,29 @@ void clock_init(void)
 	pll_rate[CLOCK_ID_XCPU] = clock_get_rate(CLOCK_ID_XCPU);
 	pll_rate[CLOCK_ID_SFROM32KHZ] = 32768;
 	pll_rate[CLOCK_ID_OSC] = clock_get_rate(CLOCK_ID_OSC);
+	pll_rate[CLOCK_ID_CLK_M] = clock_get_rate(CLOCK_ID_CLK_M);
 
 	debug("Osc = %d\n", pll_rate[CLOCK_ID_OSC]);
+	debug("CLKM = %d\n", pll_rate[CLOCK_ID_CLK_M]);
 	debug("PLLC = %d\n", pll_rate[CLOCK_ID_CGENERAL]);
 	debug("PLLM = %d\n", pll_rate[CLOCK_ID_MEMORY]);
 	debug("PLLP = %d\n", pll_rate[CLOCK_ID_PERIPH]);
 	debug("PLLU = %d\n", pll_rate[CLOCK_ID_USB]);
 	debug("PLLD = %d\n", pll_rate[CLOCK_ID_DISPLAY]);
 	debug("PLLX = %d\n", pll_rate[CLOCK_ID_XCPU]);
+
+	for (i = 0; periph_clk_init_table[i].periph_id != -1; i++) {
+		enum periph_id periph_id;
+		enum clock_id parent;
+		int source, mux_bits, divider_bits;
+
+		periph_id = periph_clk_init_table[i].periph_id;
+		parent = periph_clk_init_table[i].parent_clock_id;
+
+		source = get_periph_clock_source(periph_id, parent, &mux_bits,
+						 &divider_bits);
+		clock_ll_set_source_bits(periph_id, mux_bits, source);
+	}
 }
 
 static void set_avp_clock_source(u32 src)
@@ -718,15 +815,25 @@ void tegra30_set_up_pllp(void)
 
 int clock_external_output(int clk_id)
 {
-	struct pmc_ctlr *pmc = (struct pmc_ctlr *)NV_PA_PMC_BASE;
+	u32 val;
 
 	if (clk_id >= 1 && clk_id <= 3) {
-		setbits_le32(&pmc->pmc_clk_out_cntrl,
-			     1 << (2 + (clk_id - 1) * 8));
+		val = tegra_pmc_readl(offsetof(struct pmc_ctlr,
+				      pmc_clk_out_cntrl));
+		val |= 1 << (2 + (clk_id - 1) * 8);
+		tegra_pmc_writel(val,
+				 offsetof(struct pmc_ctlr,
+				 pmc_clk_out_cntrl));
+
 	} else {
 		printf("%s: Unknown output clock id %d\n", __func__, clk_id);
 		return -EINVAL;
 	}
 
 	return 0;
+}
+
+__weak bool clock_early_init_done(void)
+{
+	return true;
 }

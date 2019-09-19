@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale Layerscape MC I/O wrapper
  *
- * Copyright (C) 2013-2015 Freescale Semiconductor, Inc.
- * Author: German Rivera <German.Rivera@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  */
 /*!
  *  @file    fsl_dpbp.h
@@ -14,17 +13,21 @@
 #define __FSL_DPBP_H
 
 /* DPBP Version */
-#define DPBP_VER_MAJOR				2
-#define DPBP_VER_MINOR				1
+#define DPBP_VER_MAJOR				3
+#define DPBP_VER_MINOR				3
 
 /* Command IDs */
-#define DPBP_CMDID_CLOSE				0x800
-#define DPBP_CMDID_OPEN					0x804
+#define DPBP_CMDID_CLOSE				0x8001
+#define DPBP_CMDID_OPEN					0x8041
+#define DPBP_CMDID_CREATE				0x9041
+#define DPBP_CMDID_DESTROY				0x9841
+#define DPBP_CMDID_GET_API_VERSION			0xa041
 
-#define DPBP_CMDID_ENABLE				0x002
-#define DPBP_CMDID_DISABLE				0x003
-#define DPBP_CMDID_GET_ATTR				0x004
-#define DPBP_CMDID_RESET				0x005
+#define DPBP_CMDID_ENABLE				0x0021
+#define DPBP_CMDID_DISABLE				0x0031
+#define DPBP_CMDID_GET_ATTR				0x0041
+#define DPBP_CMDID_RESET				0x0051
+#define DPBP_CMDID_IS_ENABLED				0x0061
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPBP_CMD_OPEN(cmd, dpbp_id) \
@@ -35,8 +38,6 @@
 do { \
 	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, attr->bpid); \
 	MC_RSP_OP(cmd, 0, 32, 32, int,	    attr->id);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
 } while (0)
 
 /* Data Path Buffer Pool API
@@ -81,6 +82,54 @@ int dpbp_open(struct fsl_mc_io	*mc_io,
 int dpbp_close(struct fsl_mc_io	*mc_io,
 	       uint32_t		cmd_flags,
 	       uint16_t	token);
+
+/**
+ * struct dpbp_cfg - Structure representing DPBP configuration
+ * @options:	place holder
+ */
+struct dpbp_cfg {
+	uint32_t options;
+};
+
+/**
+ * dpbp_create() - Create the DPBP object.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @cfg:	Configuration structure
+ * @token:	Returned token; use in subsequent API calls
+ *
+ * Create the DPBP object, allocate required resources and
+ * perform required initialization.
+ *
+ * The object can be created either by declaring it in the
+ * DPL file, or by calling this function.
+ * This function returns a unique authentication token,
+ * associated with the specific object ID and the specific MC
+ * portal; this token must be used in all subsequent calls to
+ * this specific object. For objects that are created using the
+ * DPL file, call dpbp_open function to get an authentication
+ * token first.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpbp_create(struct fsl_mc_io	*mc_io,
+		uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		const struct dpbp_cfg	*cfg,
+		uint32_t		*obj_id);
+
+/**
+ * dpbp_destroy() - Destroy the DPBP object and release all its resources.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPBP object
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpbp_destroy(struct fsl_mc_io	*mc_io,
+		 uint16_t		dprc_token,
+		 uint32_t		cmd_flags,
+		 uint32_t		obj_id);
 
 /**
  * dpbp_enable() - Enable the DPBP.
@@ -141,16 +190,7 @@ int dpbp_reset(struct fsl_mc_io	*mc_io,
  *		acquire/release operations on buffers
  */
 struct dpbp_attr {
-	int id;
-	/**
-	 * struct version - Structure representing DPBP version
-	 * @major:	DPBP major version
-	 * @minor:	DPBP minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
+	uint32_t id;
 	uint16_t bpid;
 };
 
@@ -168,6 +208,21 @@ int dpbp_get_attributes(struct fsl_mc_io	*mc_io,
 			uint32_t	cmd_flags,
 			uint16_t		token,
 			struct dpbp_attr	*attr);
+
+/**
+ * dpbp_get_api_version - Retrieve DPBP Major and Minor version info.
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	DPBP major version
+ * @minor_ver:	DPBP minor version
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpbp_get_api_version(struct fsl_mc_io *mc_io,
+			 u32 cmd_flags,
+			 u16 *major_ver,
+			 u16 *minor_ver);
 
 /** @} */
 

@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 SAMSUNG Electronics
  * SAMSUNG EXYNOS5420 SoC device tree source
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "exynos5.dtsi"
@@ -42,7 +41,14 @@
 		xhci1 = "/xhci@12400000";
 	};
 
-	i2c@12CA0000 {
+	adc@12D10000 {
+		compatible = "samsung,exynos-adc-v2";
+		reg = <0x12D10000 0x100>;
+		interrupts = <0 106 0>;
+		status = "disabled";
+	};
+
+	hsi2c_4: i2c@12CA0000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "samsung,exynos5-hsi2c";
@@ -96,6 +102,20 @@
 		compatible = "samsung,exynos5-hsi2c";
 		reg = <0x12E20000 0x100>;
 		interrupts = <0 203 0>;
+	};
+
+	i2s0: i2s@3830000 {
+		compatible = "samsung,s5pv210-i2s";
+		reg = <0x03830000 0x100>;
+		#sound-dai-cells = <1>;
+		samsung,idma-addr = <0x03000000>;
+		samsung,i2s-epll-clock-frequency = <192000000>;
+		samsung,i2s-sampling-rate = <48000>;
+		samsung,i2s-bits-per-sample = <16>;
+		samsung,i2s-channels = <2>;
+		samsung,i2s-lr-clk-framesize = <256>;
+		samsung,i2s-bit-clk-framesize = <32>;
+		samsung,i2s-id = <0>;
 	};
 
 	mmc@12200000 {
@@ -171,7 +191,7 @@
 		samsung,pwm-out-gpio = <&gpb2 0 GPIO_ACTIVE_HIGH>;
 	};
 
-	dp@145b0000 {
+	dp: dp@145b0000 {
 		samsung,lt-status = <0>;
 
 		samsung,master-mode = <0>;
@@ -188,6 +208,13 @@
 
 	dmc {
 		mem-type = "ddr3";
+	};
+
+	pwm: pwm@12dd0000 {
+		compatible = "samsung,exynos4210-pwm";
+		reg = <0x12dd0000 0x100>;
+		samsung,pwm-outputs = <0>, <1>, <2>, <3>;
+		#pwm-cells = <3>;
 	};
 
 	xhci1: xhci@12400000 {

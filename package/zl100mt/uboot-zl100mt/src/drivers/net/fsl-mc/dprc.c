@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale Layerscape MC I/O wrapper
  *
- * Copyright (C) 2013-2015 Freescale Semiconductor, Inc.
- * Author: German Rivera <German.Rivera@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  */
 
 #include <fsl-mc/fsl_mc_sys.h>
@@ -67,6 +66,52 @@ int dprc_close(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPRC_CMDID_CLOSE, cmd_flags,
 					  token);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dprc_create_container(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  struct dprc_cfg *cfg,
+			  int *child_container_id,
+			  uint64_t *child_portal_paddr)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	DPRC_CMD_CREATE_CONTAINER(cmd, cfg);
+
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_CREATE_CONT,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPRC_RSP_CREATE_CONTAINER(cmd, *child_container_id,
+				  *child_portal_paddr);
+
+	return 0;
+}
+
+int dprc_destroy_container(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   int child_container_id)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_DESTROY_CONT,
+					  cmd_flags,
+					  token);
+	DPRC_CMD_DESTROY_CONTAINER(cmd, child_container_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -304,6 +349,29 @@ int dprc_get_connection(struct fsl_mc_io *mc_io,
 
 	/* retrieve response parameters */
 	DPRC_RSP_GET_CONNECTION(cmd, endpoint2, *state);
+
+	return 0;
+}
+
+int dprc_get_api_version(struct fsl_mc_io *mc_io,
+			 u32 cmd_flags,
+			 u16 *major_ver,
+			 u16 *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_GET_API_VERSION,
+					  cmd_flags, 0);
+
+	/* send command to mc */
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	mc_cmd_read_api_version(&cmd, major_ver, minor_ver);
 
 	return 0;
 }

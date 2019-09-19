@@ -25,41 +25,13 @@
 #include <linux/types.h>
 #include <asm/byteorder.h>
 #include <asm/memory.h>
+#include <asm/barriers.h>
 #if 0	/* XXX###XXX */
 #include <asm/arch/hardware.h>
 #endif	/* XXX###XXX */
 
 static inline void sync(void)
 {
-}
-
-/*
- * Given a physical address and a length, return a virtual address
- * that can be used to access the memory range with the caching
- * properties specified by "flags".
- */
-#define MAP_NOCACHE	(0)
-#define MAP_WRCOMBINE	(0)
-#define MAP_WRBACK	(0)
-#define MAP_WRTHROUGH	(0)
-
-static inline void *
-map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
-{
-	return (void *)paddr;
-}
-
-/*
- * Take down a mapping set up by map_physmem().
- */
-static inline void unmap_physmem(void *vaddr, unsigned long flags)
-{
-
-}
-
-static inline phys_addr_t virt_to_phys(void * vaddr)
-{
-	return (phys_addr_t)(vaddr);
 }
 
 /*
@@ -136,8 +108,7 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
  * TODO: The kernel offers some more advanced versions of barriers, it might
  * have some advantages to use them instead of the simple one here.
  */
-#define mb()		asm volatile("dsb sy" : : : "memory")
-#define dmb()		__asm__ __volatile__ ("" : : : "memory")
+#define mb()		dsb()
 #define __iormb()	dmb()
 #define __iowmb()	dmb()
 
@@ -150,6 +121,27 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define readw(c)	({ u16 __v = __arch_getw(c); __iormb(); __v; })
 #define readl(c)	({ u32 __v = __arch_getl(c); __iormb(); __v; })
 #define readq(c)	({ u64 __v = __arch_getq(c); __iormb(); __v; })
+
+/*
+ * Relaxed I/O memory access primitives. These follow the Device memory
+ * ordering rules but do not guarantee any ordering relative to Normal memory
+ * accesses.
+ */
+#define readb_relaxed(c)	({ u8  __r = __raw_readb(c); __r; })
+#define readw_relaxed(c)	({ u16 __r = le16_to_cpu((__force __le16) \
+						__raw_readw(c)); __r; })
+#define readl_relaxed(c)	({ u32 __r = le32_to_cpu((__force __le32) \
+						__raw_readl(c)); __r; })
+#define readq_relaxed(c)	({ u64 __r = le64_to_cpu((__force __le64) \
+						__raw_readq(c)); __r; })
+
+#define writeb_relaxed(v, c)	((void)__raw_writeb((v), (c)))
+#define writew_relaxed(v, c)	((void)__raw_writew((__force u16) \
+						    cpu_to_le16(v), (c)))
+#define writel_relaxed(v, c)	((void)__raw_writel((__force u32) \
+						    cpu_to_le32(v), (c)))
+#define writeq_relaxed(v, c)	((void)__raw_writeq((__force u64) \
+						    cpu_to_le64(v), (c)))
 
 /*
  * The compiler seems to be incapable of optimising constants
@@ -189,7 +181,12 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define in_be32(a)	in_arch(l,be32,a)
 #define in_be16(a)	in_arch(w,be16,a)
 
+#define out_32(a,v)	__raw_writel(v,a)
+#define out_16(a,v)	__raw_writew(v,a)
 #define out_8(a,v)	__raw_writeb(v,a)
+
+#define in_32(a)	__raw_readl(a)
+#define in_16(a)	__raw_readw(a)
 #define in_8(a)		__raw_readb(a)
 
 #define clrbits(type, addr, clear) \
@@ -209,6 +206,10 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define setbits_le32(addr, set) setbits(le32, addr, set)
 #define clrsetbits_le32(addr, clear, set) clrsetbits(le32, addr, clear, set)
 
+#define clrbits_32(addr, clear) clrbits(32, addr, clear)
+#define setbits_32(addr, set) setbits(32, addr, set)
+#define clrsetbits_32(addr, clear, set) clrsetbits(32, addr, clear, set)
+
 #define clrbits_be16(addr, clear) clrbits(be16, addr, clear)
 #define setbits_be16(addr, set) setbits(be16, addr, set)
 #define clrsetbits_be16(addr, clear, set) clrsetbits(be16, addr, clear, set)
@@ -216,6 +217,10 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define clrbits_le16(addr, clear) clrbits(le16, addr, clear)
 #define setbits_le16(addr, set) setbits(le16, addr, set)
 #define clrsetbits_le16(addr, clear, set) clrsetbits(le16, addr, clear, set)
+
+#define clrbits_16(addr, clear) clrbits(16, addr, clear)
+#define setbits_16(addr, set) setbits(16, addr, set)
+#define clrsetbits_16(addr, clear, set) clrsetbits(16, addr, clear, set)
 
 #define clrbits_8(addr, clear) clrbits(8, addr, clear)
 #define setbits_8(addr, set) setbits(8, addr, set)
@@ -284,39 +289,12 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define insw_p(port,to,len)		insw(port,to,len)
 #define insl_p(port,to,len)		insl(port,to,len)
 
-/*
- * ioremap and friends.
- *
- * ioremap takes a PCI memory address, as specified in
- * linux/Documentation/IO-mapping.txt.  If you want a
- * physical address, use __ioremap instead.
- */
-extern void * __ioremap(unsigned long offset, size_t size, unsigned long flags);
-extern void __iounmap(void *addr);
-
-/*
- * Generic ioremap support.
- *
- * Define:
- *  iomem_valid_addr(off,size)
- *  iomem_to_phys(off)
- */
-#ifdef iomem_valid_addr
-#define __arch_ioremap(off,sz,nocache)					\
- ({									\
-	unsigned long _off = (off), _size = (sz);			\
-	void *_ret = (void *)0;						\
-	if (iomem_valid_addr(_off, _size))				\
-		_ret = __ioremap(iomem_to_phys(_off),_size,nocache);	\
-	_ret;								\
- })
-
-#define __arch_iounmap __iounmap
-#endif
-
-#define ioremap(off,sz)			__arch_ioremap((off),(sz),0)
-#define ioremap_nocache(off,sz)		__arch_ioremap((off),(sz),1)
-#define iounmap(_addr)			__arch_iounmap(_addr)
+#define writesl(a, d, s)	__raw_writesl((unsigned long)a, d, s)
+#define readsl(a, d, s)		__raw_readsl((unsigned long)a, d, s)
+#define writesw(a, d, s)	__raw_writesw((unsigned long)a, d, s)
+#define readsw(a, d, s)		__raw_readsw((unsigned long)a, d, s)
+#define writesb(a, d, s)	__raw_writesb((unsigned long)a, d, s)
+#define readsb(a, d, s)		__raw_readsb((unsigned long)a, d, s)
 
 /*
  * DMA-consistent mapping functions.  These allocate/free a region of
@@ -453,6 +431,7 @@ out:
 #endif	/* __mem_isa */
 #endif	/* __KERNEL__ */
 
+#include <asm-generic/io.h>
 #include <iotrace.h>
 
 #endif	/* __ASM_ARM_IO_H */

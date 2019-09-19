@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * AXP221 and AXP223 driver
  *
@@ -6,15 +7,13 @@
  *
  * (C) Copyright 2014 Hans de Goede <hdegoede@redhat.com>
  * (C) Copyright 2013 Oliver Schinagl <oliver@schinagl.nl>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <command.h>
 #include <errno.h>
-#include <asm/arch/gpio.h>
 #include <asm/arch/pmic_bus.h>
-#include <axp221.h>
+#include <axp_pmic.h>
 
 static u8 axp221_mvolt_to_cfg(int mvolt, int min, int max, int div)
 {
@@ -26,7 +25,7 @@ static u8 axp221_mvolt_to_cfg(int mvolt, int min, int max, int div)
 	return (mvolt - min) / div;
 }
 
-int axp221_set_dcdc1(unsigned int mvolt)
+int axp_set_dcdc1(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 1600, 3400, 100);
@@ -48,7 +47,7 @@ int axp221_set_dcdc1(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_DCDC1_EN);
 }
 
-int axp221_set_dcdc2(unsigned int mvolt)
+int axp_set_dcdc2(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 600, 1540, 20);
@@ -65,7 +64,7 @@ int axp221_set_dcdc2(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_DCDC2_EN);
 }
 
-int axp221_set_dcdc3(unsigned int mvolt)
+int axp_set_dcdc3(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 600, 1860, 20);
@@ -82,7 +81,7 @@ int axp221_set_dcdc3(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_DCDC3_EN);
 }
 
-int axp221_set_dcdc4(unsigned int mvolt)
+int axp_set_dcdc4(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 600, 1540, 20);
@@ -99,7 +98,7 @@ int axp221_set_dcdc4(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_DCDC4_EN);
 }
 
-int axp221_set_dcdc5(unsigned int mvolt)
+int axp_set_dcdc5(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 1000, 2550, 50);
@@ -116,75 +115,7 @@ int axp221_set_dcdc5(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_DCDC5_EN);
 }
 
-int axp221_set_dldo1(unsigned int mvolt)
-{
-	int ret;
-	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
-
-	if (mvolt == 0)
-		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
-					AXP221_OUTPUT_CTRL2_DLDO1_EN);
-
-	ret = pmic_bus_write(AXP221_DLDO1_CTRL, cfg);
-	if (ret)
-		return ret;
-
-	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
-				AXP221_OUTPUT_CTRL2_DLDO1_EN);
-}
-
-int axp221_set_dldo2(unsigned int mvolt)
-{
-	int ret;
-	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
-
-	if (mvolt == 0)
-		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
-					AXP221_OUTPUT_CTRL2_DLDO2_EN);
-
-	ret = pmic_bus_write(AXP221_DLDO2_CTRL, cfg);
-	if (ret)
-		return ret;
-
-	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
-				AXP221_OUTPUT_CTRL2_DLDO2_EN);
-}
-
-int axp221_set_dldo3(unsigned int mvolt)
-{
-	int ret;
-	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
-
-	if (mvolt == 0)
-		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
-					AXP221_OUTPUT_CTRL2_DLDO3_EN);
-
-	ret = pmic_bus_write(AXP221_DLDO3_CTRL, cfg);
-	if (ret)
-		return ret;
-
-	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
-				AXP221_OUTPUT_CTRL2_DLDO3_EN);
-}
-
-int axp221_set_dldo4(unsigned int mvolt)
-{
-	int ret;
-	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
-
-	if (mvolt == 0)
-		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
-					AXP221_OUTPUT_CTRL2_DLDO4_EN);
-
-	ret = pmic_bus_write(AXP221_DLDO4_CTRL, cfg);
-	if (ret)
-		return ret;
-
-	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
-				AXP221_OUTPUT_CTRL2_DLDO4_EN);
-}
-
-int axp221_set_aldo1(unsigned int mvolt)
+int axp_set_aldo1(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
@@ -201,7 +132,7 @@ int axp221_set_aldo1(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_ALDO1_EN);
 }
 
-int axp221_set_aldo2(unsigned int mvolt)
+int axp_set_aldo2(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
@@ -218,7 +149,7 @@ int axp221_set_aldo2(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL1_ALDO2_EN);
 }
 
-int axp221_set_aldo3(unsigned int mvolt)
+int axp_set_aldo3(unsigned int mvolt)
 {
 	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
@@ -235,48 +166,50 @@ int axp221_set_aldo3(unsigned int mvolt)
 				AXP221_OUTPUT_CTRL3_ALDO3_EN);
 }
 
-int axp221_set_eldo(int eldo_num, unsigned int mvolt)
+int axp_set_dldo(int dldo_num, unsigned int mvolt)
 {
-	int ret;
 	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
-	u8 addr, bits;
+	int ret;
 
-	switch (eldo_num) {
-	case 3:
-		addr = AXP221_ELDO3_CTRL;
-		bits = AXP221_OUTPUT_CTRL2_ELDO3_EN;
-		break;
-	case 2:
-		addr = AXP221_ELDO2_CTRL;
-		bits = AXP221_OUTPUT_CTRL2_ELDO2_EN;
-		break;
-	case 1:
-		addr = AXP221_ELDO1_CTRL;
-		bits = AXP221_OUTPUT_CTRL2_ELDO1_EN;
-		break;
-	default:
+	if (dldo_num < 1 || dldo_num > 4)
 		return -EINVAL;
-	}
 
 	if (mvolt == 0)
-		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2, bits);
+		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
+				AXP221_OUTPUT_CTRL2_DLDO1_EN << (dldo_num - 1));
 
-	ret = pmic_bus_write(addr, cfg);
+	ret = pmic_bus_write(AXP221_DLDO1_CTRL + (dldo_num - 1), cfg);
 	if (ret)
 		return ret;
 
-	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2, bits);
+	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
+				AXP221_OUTPUT_CTRL2_DLDO1_EN << (dldo_num - 1));
 }
 
-int axp221_init(void)
+int axp_set_eldo(int eldo_num, unsigned int mvolt)
 {
-	/* This cannot be 0 because it is used in SPL before BSS is ready */
-	static int needs_init = 1;
+	int ret;
+	u8 cfg = axp221_mvolt_to_cfg(mvolt, 700, 3300, 100);
+
+	if (eldo_num < 1 || eldo_num > 3)
+		return -EINVAL;
+
+	if (mvolt == 0)
+		return pmic_bus_clrbits(AXP221_OUTPUT_CTRL2,
+				AXP221_OUTPUT_CTRL2_ELDO1_EN << (eldo_num - 1));
+
+	ret = pmic_bus_write(AXP221_ELDO1_CTRL + (eldo_num - 1), cfg);
+	if (ret)
+		return ret;
+
+	return pmic_bus_setbits(AXP221_OUTPUT_CTRL2,
+				AXP221_OUTPUT_CTRL2_ELDO1_EN << (eldo_num - 1));
+}
+
+int axp_init(void)
+{
 	u8 axp_chip_id;
 	int ret;
-
-	if (!needs_init)
-		return 0;
 
 	ret = pmic_bus_init();
 	if (ret)
@@ -289,16 +222,27 @@ int axp221_init(void)
 	if (!(axp_chip_id == 0x6 || axp_chip_id == 0x7 || axp_chip_id == 0x17))
 		return -ENODEV;
 
-	needs_init = 0;
+	/*
+	 * Turn off LDOIO regulators / tri-state GPIO pins, when rebooting
+	 * from android these are sometimes on.
+	 */
+	ret = pmic_bus_write(AXP_GPIO0_CTRL, AXP_GPIO_CTRL_INPUT);
+	if (ret)
+		return ret;
+
+	ret = pmic_bus_write(AXP_GPIO1_CTRL, AXP_GPIO_CTRL_INPUT);
+	if (ret)
+		return ret;
+
 	return 0;
 }
 
-int axp221_get_sid(unsigned int *sid)
+int axp_get_sid(unsigned int *sid)
 {
 	u8 *dest = (u8 *)sid;
 	int i, ret;
 
-	ret = axp221_init();
+	ret = pmic_bus_init();
 	if (ret)
 		return ret;
 
@@ -317,5 +261,16 @@ int axp221_get_sid(unsigned int *sid)
 	for (i = 0; i < 4; i++)
 		sid[i] = be32_to_cpu(sid[i]);
 
+	return 0;
+}
+
+int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	pmic_bus_write(AXP221_SHUTDOWN, AXP221_SHUTDOWN_POWEROFF);
+
+	/* infinite loop during shutdown */
+	while (1) {}
+
+	/* not reached */
 	return 0;
 }

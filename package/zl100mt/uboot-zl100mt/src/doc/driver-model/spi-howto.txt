@@ -163,11 +163,6 @@ At this point you should be able to build U-Boot for your board with the
 empty SPI driver. You still have empty methods in your driver, but we will
 write these one by one.
 
-If you have spi_init() functions or the like that are called from your
-board then the build will fail. Remove these calls and make a note of the
-init that needs to be done.
-
-
 7. Set up your platform data structure
 
 This will hold the information your driver to operate, like its hardware
@@ -223,7 +218,7 @@ static int exynos_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct exynos_spi_platdata *plat = bus->platdata;
 	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
+	int node = dev_of_offset(bus);
 
 	plat->regs = (struct exynos_spi *)fdtdec_get_addr(blob, node, "reg");
 	plat->periph_id = pinmux_decode_periph_id(blob, node);

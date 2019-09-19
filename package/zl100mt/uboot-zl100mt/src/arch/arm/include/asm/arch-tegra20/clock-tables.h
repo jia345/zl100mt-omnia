@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * Copyright (c) 2010-2012 NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Tegra20 clock PLL tables */
@@ -29,6 +28,7 @@ enum clock_id {
 	/* These are the base clocks (inputs to the Tegra SOC) */
 	CLOCK_ID_32KHZ,
 	CLOCK_ID_OSC,
+	CLOCK_ID_CLK_M,
 
 	CLOCK_ID_COUNT,	/* number of clocks */
 	CLOCK_ID_NONE = -1,

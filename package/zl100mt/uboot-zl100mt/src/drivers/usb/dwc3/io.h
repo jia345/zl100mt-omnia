@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /**
  * io.h - DesignWare USB3 DRD IO Header
  *
@@ -11,8 +12,6 @@
  *
  * commit 2c4cbe6e5a : usb: dwc3: add tracepoints to aid debugging
  *
- * SPDX-License-Identifier:     GPL-2.0
- *
  */
 
 #ifndef __DRIVERS_USB_DWC3_IO_H
@@ -23,7 +22,7 @@
 #define	CACHELINE_SIZE		CONFIG_SYS_CACHELINE_SIZE
 static inline u32 dwc3_readl(void __iomem *base, u32 offset)
 {
-	u32 offs = offset - DWC3_GLOBALS_REGS_START;
+	unsigned long offs = offset - DWC3_GLOBALS_REGS_START;
 	u32 value;
 
 	/*
@@ -38,7 +37,7 @@ static inline u32 dwc3_readl(void __iomem *base, u32 offset)
 
 static inline void dwc3_writel(void __iomem *base, u32 offset, u32 value)
 {
-	u32 offs = offset - DWC3_GLOBALS_REGS_START;
+	unsigned long offs = offset - DWC3_GLOBALS_REGS_START;
 
 	/*
 	 * We requested the mem region starting from the Globals address
@@ -48,7 +47,7 @@ static inline void dwc3_writel(void __iomem *base, u32 offset, u32 value)
 	writel(value, base + offs);
 }
 
-static inline void dwc3_flush_cache(int addr, int length)
+static inline void dwc3_flush_cache(uintptr_t addr, int length)
 {
 	flush_dcache_range(addr, addr + ROUND(length, CACHELINE_SIZE));
 }

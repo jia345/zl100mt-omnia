@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  U-Boot - x86 Startup Code
  *
@@ -6,8 +7,6 @@
  *
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -17,8 +16,9 @@
 #include <asm/processor-flags.h>
 #include <generated/generic-asm-offsets.h>
 #include <generated/asm-offsets.h>
+#include <linux/linkage.h>
 
-.section .text
+.section .text.start
 .code32
 .globl _start
 .type _start, @function
@@ -67,6 +67,10 @@ _start:
 
 	/* Save table pointer */
 	movl	%ecx, %esi
+
+#ifdef CONFIG_X86_LOAD_FROM_32_BIT
+	lgdt	gdt_ptr2
+#endif
 
 	/* Load the segement registers to match the GDT loaded in start16.S */
 	movl	$(X86_GDT_ENTRY_32BIT_DS * X86_GDT_ENTRY_SIZE), %eax
@@ -123,17 +127,13 @@ car_init_ret:
 #endif
 	/* Set up global data */
 	mov	%esp, %eax
-	call	board_init_f_mem
+	call	board_init_f_alloc_reserve
 	mov	%eax, %esp
+	call	board_init_f_init_reserve
 
-	/*
-	 * Debug UART is available here although it may not be plumbed out
-	 * to pins depending on the board. To use it:
-	 *
-	 * call  debug_uart_init
-	 * mov   $'a', %eax
-	 * call  printch
-	 */
+#ifdef CONFIG_DEBUG_UART
+	call	debug_uart_init
+#endif
 
 	/* Get address of global_data */
 	mov	%fs:0, %edx
@@ -185,20 +185,32 @@ board_init_f_r_trampoline:
 	movl	%eax, %esp
 
 	/* See if we need to disable CAR */
-.weak	car_uninit
-	movl	$car_uninit, %eax
-	cmpl	$0, %eax
-	jz	1f
-
 	call	car_uninit
-1:
+
 	/* Re-enter U-Boot by calling board_init_f_r() */
 	call	board_init_f_r
+
+#ifdef CONFIG_TPL
+.globl jump_to_spl
+.type jump_to_spl, @function
+jump_to_spl:
+	/* Reset stack to the top of CAR space */
+	movl	$(CONFIG_SYS_CAR_ADDR + CONFIG_SYS_CAR_SIZE - 4), %esp
+#ifdef CONFIG_DCACHE_RAM_MRC_VAR_SIZE
+	subl	$CONFIG_DCACHE_RAM_MRC_VAR_SIZE, %esp
+#endif
+
+	jmp	*%eax
+#endif
 
 die:
 	hlt
 	jmp	die
 	hlt
+
+WEAK(car_uninit)
+	ret
+ENDPROC(car_uninit)
 
 blank_idt_ptr:
 	.word	0		/* limit */
@@ -224,3 +236,71 @@ multiboot_header:
 	.long	0
 	/* entry addr */
 	.long	CONFIG_SYS_TEXT_BASE
+
+#ifdef CONFIG_X86_LOAD_FROM_32_BIT
+	/*
+	 * The following Global Descriptor Table is just enough to get us into
+	 * 'Flat Protected Mode' - It will be discarded as soon as the final
+	 * GDT is setup in a safe location in RAM
+	 */
+gdt_ptr2:
+	.word	0x1f		/* limit (31 bytes = 4 GDT entries - 1) */
+	.long	gdt_rom2	/* base */
+
+	/* Some CPUs are picky about GDT alignment... */
+	.align	16
+.globl gdt_rom2
+gdt_rom2:
+	/*
+	 * The GDT table ...
+	 *
+	 *	 Selector	Type
+	 *	 0x00		NULL
+	 *	 0x08		Unused
+	 *	 0x10		32bit code
+	 *	 0x18		32bit data/stack
+	 */
+	/* The NULL Desciptor - Mandatory */
+	.word	0x0000		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x00		/* access */
+	.byte	0x00		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/* Unused Desciptor - (matches Linux) */
+	.word	0x0000		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x00		/* access */
+	.byte	0x00		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/*
+	 * The Code Segment Descriptor:
+	 * - Base   = 0x00000000
+	 * - Size   = 4GB
+	 * - Access = Present, Ring 0, Exec (Code), Readable
+	 * - Flags  = 4kB Granularity, 32-bit
+	 */
+	.word	0xffff		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x9b		/* access */
+	.byte	0xcf		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/*
+	 * The Data Segment Descriptor:
+	 * - Base   = 0x00000000
+	 * - Size   = 4GB
+	 * - Access = Present, Ring 0, Non-Exec (Data), Writable
+	 * - Flags  = 4kB Granularity, 32-bit
+	 */
+	.word	0xffff		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x93		/* access */
+	.byte	0xcf		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+#endif

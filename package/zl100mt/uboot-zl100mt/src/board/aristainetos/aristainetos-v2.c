@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -6,20 +7,18 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/mx6-pins.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/video.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <miiphy.h>
@@ -34,7 +33,7 @@
 #include <micrel.h>
 #include <spi.h>
 #include <video.h>
-#include <../drivers/video/ipu.h>
+#include <../drivers/video/imx/ipu.h>
 #if defined(CONFIG_VIDEO_BMP_LOGO)
 	#include <bmp_logo.h>
 #endif
@@ -580,6 +579,21 @@ static void setup_iomux_gpio(void)
 	imx_iomux_v3_setup_multiple_pads(gpio_pads, ARRAY_SIZE(gpio_pads));
 }
 
+static void set_gpr_register(void)
+{
+	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
+
+	writel(IOMUXC_GPR1_APP_CLK_REQ_N | IOMUXC_GPR1_PCIE_RDY_L23 |
+	       IOMUXC_GPR1_EXC_MON_SLVE |
+	       (2 << IOMUXC_GPR1_ADDRS0_OFFSET) |
+	       IOMUXC_GPR1_ACT_CS0,
+	       &iomuxc_regs->gpr[1]);
+	writel(0x0, &iomuxc_regs->gpr[8]);
+	writel(IOMUXC_GPR12_ARMP_IPG_CLK_EN | IOMUXC_GPR12_ARMP_AHB_CLK_EN |
+	       IOMUXC_GPR12_ARMP_ATB_CLK_EN | IOMUXC_GPR12_ARMP_APB_CLK_EN,
+	       &iomuxc_regs->gpr[12]);
+}
+
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
@@ -588,6 +602,7 @@ int board_early_init_f(void)
 	gpio_direction_output(SOFT_RESET_GPIO, 1);
 	gpio_direction_output(SD2_DRIVER_ENABLE, 1);
 	setup_display();
+	set_gpr_register();
 	return 0;
 }
 
@@ -635,7 +650,7 @@ int board_late_init(void)
 {
 	char *my_bootdelay;
 	char bootmode = 0;
-	char const *panel = getenv("panel");
+	char const *panel = env_get("panel");
 
 	/*
 	 * Check the boot-source. If booting from NOR Flash,
@@ -652,11 +667,11 @@ int board_late_init(void)
 	bootmode |= (gpio_get_value(IMX_GPIO_NR(7, 1)) ? 1 : 0) << 2;
 
 	if (bootmode == 7) {
-		my_bootdelay = getenv("nor_bootdelay");
+		my_bootdelay = env_get("nor_bootdelay");
 		if (my_bootdelay != NULL)
-			setenv("bootdelay", my_bootdelay);
+			env_set("bootdelay", my_bootdelay);
 		else
-			setenv("bootdelay", "-2");
+			env_set("bootdelay", "-2");
 	}
 
 	/* if we have the lg panel, we can initialze it now */

@@ -1,6 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
-#
-# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import os
@@ -62,8 +61,12 @@ def RunPipe(pipe_list, infile=None, outfile=None,
     """
     if test_result:
         if hasattr(test_result, '__call__'):
-            return test_result(pipe_list=pipe_list)
-        return test_result
+            result = test_result(pipe_list=pipe_list)
+            if result:
+                return result
+        else:
+            return test_result
+        # No result: fall through to normal processing
     result = CommandResult()
     last_pipe = None
     pipeline = list(pipe_list)
@@ -85,7 +88,7 @@ def RunPipe(pipe_list, infile=None, outfile=None,
 
         try:
             last_pipe = cros_subprocess.Popen(cmd, cwd=cwd, **kwargs)
-        except Exception, err:
+        except Exception as err:
             result.exception = err
             if raise_on_error:
                 raise Exception("Error running '%s': %s" % (user_pipestr, str))
@@ -104,8 +107,9 @@ def RunPipe(pipe_list, infile=None, outfile=None,
         raise Exception("Error running '%s'" % user_pipestr)
     return result
 
-def Output(*cmd):
-    return RunPipe([cmd], capture=True, raise_on_error=False).stdout
+def Output(*cmd, **kwargs):
+    raise_on_error = kwargs.get('raise_on_error', True)
+    return RunPipe([cmd], capture=True, raise_on_error=raise_on_error).stdout
 
 def OutputOneLine(*cmd, **kwargs):
     raise_on_error = kwargs.pop('raise_on_error', True)

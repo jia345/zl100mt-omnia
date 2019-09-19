@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_CLK_H
@@ -157,9 +156,6 @@ struct clk_pm_regs {
 #define CLK_NAND_MLC			(1 << 1)
 #define CLK_NAND_SLC_SELECT		(1 << 2)
 #define CLK_NAND_MLC_INT		(1 << 5)
-
-/* DMA Clock Control Register bits */
-#define DMA_CLK_ENABLE			(1 << 0)
 
 /* SSP Clock Control Register bits */
 #define CLK_SSP0_ENABLE_CLOCK		(1 << 0)

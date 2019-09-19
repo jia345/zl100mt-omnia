@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2013-2015 Arcturus Networks, Inc.
- *           http://www.arcturusnetworks.com/products/ucp1020/
+ * Copyright 2013-2019 Arcturus Networks, Inc.
+ *           https://www.arcturusnetworks.com/products/ucp1020/
  *           by Oleksandr G Zhadan et al.
  * based on board/freescale/p1_p2_rdb_pc/spl.c
  * original copyright follows:
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +14,7 @@
 #include <pci.h>
 #include <i2c.h>
 #include <miiphy.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
@@ -64,7 +63,7 @@ void board_gpio_init(void)
 
 	for (i = 0; i < GPIO_MAX_NUM; i++) {
 		sprintf(envname, "GPIO%d", i);
-		val = getenv(envname);
+		val = env_get(envname);
 		if (val) {
 			char direction = toupper(val[0]);
 			char level = toupper(val[1]);
@@ -82,7 +81,7 @@ void board_gpio_init(void)
 		}
 	}
 
-	val = getenv("PCIE_OFF");
+	val = env_get("PCIE_OFF");
 	if (val) {
 		gpio_direction_input(GPIO_PCIE1_EN);
 		gpio_direction_input(GPIO_PCIE2_EN);
@@ -91,7 +90,7 @@ void board_gpio_init(void)
 		gpio_direction_output(GPIO_PCIE2_EN, 1);
 	}
 
-	val = getenv("SDHC_CDWP_OFF");
+	val = env_get("SDHC_CDWP_OFF");
 	if (!val) {
 		ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 
@@ -109,7 +108,9 @@ int checkboard(void)
 {
 	printf("Board: %s\n", CONFIG_BOARDNAME_LOCAL);
 	board_gpio_init();
+#ifdef CONFIG_MMC
 	printf("SD/MMC: 4-bit Mode\n");
+#endif
 
 	return 0;
 }
@@ -194,7 +195,9 @@ int last_stage_init(void)
 	static char newkernelargs[256];
 	static u8 id1[16];
 	static u8 id2;
+#ifdef CONFIG_MMC
 	struct mmc *mmc;
+#endif
 	char *sval, *kval;
 
 	if (i2c_read(CONFIG_SYS_I2C_IDT6V49205B, 7, 1, &id1[0], 2) < 0) {
@@ -214,8 +217,9 @@ int last_stage_init(void)
 	else
 		printf("NCT72(0x%x): ready\n", id2);
 
-	kval = getenv("kernelargs");
+	kval = env_get("kernelargs");
 
+#ifdef CONFIG_MMC
 	mmc = find_mmc_device(0);
 	if (mmc)
 		if (!mmc_init(mmc)) {
@@ -230,21 +234,22 @@ int last_stage_init(void)
 				strcat(newkernelargs, mmckargs);
 				strcat(newkernelargs, " ");
 				strcat(newkernelargs, &tmp[n]);
-				setenv("kernelargs", newkernelargs);
+				env_set("kernelargs", newkernelargs);
 			} else {
-				setenv("kernelargs", mmckargs);
+				env_set("kernelargs", mmckargs);
 			}
 		}
+#endif
 	get_arc_info();
 
 	if (kval) {
-		sval = getenv("SERIAL");
+		sval = env_get("SERIAL");
 		if (sval) {
 			strcpy(newkernelargs, "SN=");
 			strcat(newkernelargs, sval);
 			strcat(newkernelargs, " ");
 			strcat(newkernelargs, kval);
-			setenv("kernelargs", newkernelargs);
+			env_set("kernelargs", newkernelargs);
 		}
 	} else {
 		printf("Error reading kernelargs env variable!\n");
@@ -307,15 +312,15 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
 	FT_FSL_PCI_SETUP;
 
 #if defined(CONFIG_HAS_FSL_DR_USB)
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)

@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * keystone2: common clock header file
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_CLOCK_H
@@ -24,8 +23,13 @@
 #include <asm/arch/clock-k2l.h>
 #endif
 
+#ifdef CONFIG_SOC_K2G
+#include <asm/arch/clock-k2g.h>
+#endif
+
 #define CORE_PLL MAIN_PLL
 #define DDR3_PLL DDR3A_PLL
+#define NSS_PLL PASS_PLL
 
 #define CLK_LIST(CLK)\
 	CLK(0, core_pll_clk)\
@@ -48,7 +52,8 @@
 	CLK(17, sys_clk1_6_clk)\
 	CLK(18, sys_clk1_12_clk)\
 	CLK(19, sys_clk2_clk)\
-	CLK(20, sys_clk3_clk)
+	CLK(20, sys_clk3_clk)\
+	CLK(21, uart_pll_clk)
 
 #include <asm/types.h>
 
@@ -57,8 +62,12 @@
 #define CLOCK_INDEXES_LIST	CLK_LIST(GENERATE_INDX_STR)
 
 enum {
+	SPD200,
+	SPD400,
+	SPD600,
 	SPD800,
 	SPD850,
+	SPD900,
 	SPD1000,
 	SPD1200,
 	SPD1250,
@@ -75,6 +84,7 @@ enum {
 	PASS_PLL,
 	DDR3A_PLL,
 	DDR3B_PLL,
+	UART_PLL,
 	MAX_PLL_COUNT,
 };
 
@@ -85,6 +95,7 @@ enum ext_clk_e {
 	tetris_clk,
 	ddr3a_clk,
 	ddr3b_clk,
+	uart_clk,
 	ext_clk_count /* number of external clocks */
 };
 
@@ -105,7 +116,6 @@ struct pll_init_data {
 	int pll_od;		/* PLL output divider */
 };
 
-extern unsigned int external_clk[ext_clk_count];
 extern const struct keystone_pll_regs keystone_pll_regs[];
 extern s16 divn_val[];
 extern int speeds[];
@@ -113,11 +123,11 @@ extern int speeds[];
 void init_plls(void);
 void init_pll(const struct pll_init_data *data);
 struct pll_init_data *get_pll_init_data(int pll);
-unsigned long clk_get_rate(unsigned int clk);
-unsigned long clk_round_rate(unsigned int clk, unsigned long hz);
-int clk_set_rate(unsigned int clk, unsigned long hz);
-int get_max_dev_speed(void);
-int get_max_arm_speed(void);
+unsigned long ks_clk_get_rate(unsigned int clk);
+int get_max_dev_speed(int *spds);
+int get_max_arm_speed(int *spds);
+void pll_pa_clk_sel(void);
+unsigned int get_external_clk(u32 clk);
 
 #endif
 #endif

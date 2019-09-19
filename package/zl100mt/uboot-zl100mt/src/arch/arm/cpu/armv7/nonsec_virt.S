@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * code for switching cores into non-secure state and into HYP mode
  *
  * Copyright (c) 2013	Andre Przywara <andre.przywara@linaro.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -37,7 +36,7 @@ _monitor_vectors:
 
 /*
  * secure monitor handler
- * U-boot calls this "software interrupt" in start.S
+ * U-Boot calls this "software interrupt" in start.S
  * This is executed on a "smc" instruction, we use a "smc #0" to switch
  * to non-secure state.
  * r0, r1, r2: passed to the callee
@@ -49,8 +48,27 @@ _secure_monitor:
 	mcr	p15, 0, r5, c12, c0, 1
 	isb
 
-	@ Obtain a secure stack, and configure the PSCI backend
+	@ Obtain a secure stack
+	bl	psci_stack_setup
+
+	@ Configure the PSCI backend
+	push	{r0, r1, r2, ip}
 	bl	psci_arch_init
+	pop	{r0, r1, r2, ip}
+#endif
+
+#ifdef CONFIG_ARM_ERRATA_773022
+	mrc	p15, 0, r5, c1, c0, 1
+	orr	r5, r5, #(1 << 1)
+	mcr	p15, 0, r5, c1, c0, 1
+	isb
+#endif
+
+#ifdef CONFIG_ARM_ERRATA_774769
+	mrc	p15, 0, r5, c1, c0, 1
+	orr	r5, r5, #(1 << 25)
+	mcr	p15, 0, r5, c1, c0, 1
+	isb
 #endif
 
 	mrc	p15, 0, r5, c1, c1, 0		@ read SCR
@@ -62,6 +80,8 @@ _secure_monitor:
 #ifdef CONFIG_ARMV7_VIRT
 	orreq	r5, r5, #0x100			@ allow HVC instruction
 	moveq	r6, #HYP_MODE			@ Enter the kernel as HYP
+	mrseq	r3, sp_svc
+	msreq	sp_hyp, r3			@ migrate SP
 #endif
 
 	mcr	p15, 0, r5, c1, c1, 0		@ write SCR (with NS bit set)
@@ -169,11 +189,11 @@ ENTRY(_nonsec_init)
  * we do this here instead.
  * But first check if we have the generic timer.
  */
-#ifdef CONFIG_TIMER_CLK_FREQ
+#ifdef COUNTER_FREQUENCY
 	mrc	p15, 0, r0, c0, c1, 1		@ read ID_PFR1
 	and	r0, r0, #CPUID_ARM_GENTIMER_MASK	@ mask arch timer bits
 	cmp	r0, #(1 << CPUID_ARM_GENTIMER_SHIFT)
-	ldreq	r1, =CONFIG_TIMER_CLK_FREQ
+	ldreq	r1, =COUNTER_FREQUENCY
 	mcreq	p15, 0, r1, c14, c0, 0		@ write CNTFRQ
 #endif
 

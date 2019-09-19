@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Keystone2: Common SoC definitions, structures etc.
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef __ASM_ARCH_HARDWARE_H
 #define __ASM_ARCH_HARDWARE_H
@@ -23,8 +22,6 @@ typedef volatile unsigned int   dv_reg;
 typedef volatile unsigned int   *dv_reg_p;
 
 #endif
-
-#define		BIT(x)	(1 << (x))
 
 #define KS2_DDRPHY_PIR_OFFSET           0x04
 #define KS2_DDRPHY_PGCR0_OFFSET         0x08
@@ -54,6 +51,12 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_DDRPHY_ZQ2CR1_OFFSET        0x1A4
 #define KS2_DDRPHY_ZQ3CR1_OFFSET        0x1B4
 
+#define KS2_DDRPHY_DATX8_2_OFFSET       0x240
+#define KS2_DDRPHY_DATX8_3_OFFSET       0x280
+#define KS2_DDRPHY_DATX8_4_OFFSET       0x2C0
+#define KS2_DDRPHY_DATX8_5_OFFSET       0x300
+#define KS2_DDRPHY_DATX8_6_OFFSET       0x340
+#define KS2_DDRPHY_DATX8_7_OFFSET       0x380
 #define KS2_DDRPHY_DATX8_8_OFFSET       0x3C0
 
 #define IODDRM_MASK                     0x00000180
@@ -68,11 +71,13 @@ typedef volatile unsigned int   *dv_reg_p;
 #define PDQ_MASK                        0x00000070
 #define NOSRA_MASK                      0x08000000
 #define ECC_MASK                        0x00000001
+#define DXEN_MASK                       0x00000001
 
 /* DDR3 definitions */
 #define KS2_DDR3A_EMIF_CTRL_BASE	0x21010000
 #define KS2_DDR3A_EMIF_DATA_BASE	0x80000000
 #define KS2_DDR3A_DDRPHYC		0x02329000
+#define EMIF1_BASE			KS2_DDR3A_EMIF_CTRL_BASE
 
 #define KS2_DDR3_MIDR_OFFSET            0x00
 #define KS2_DDR3_STATUS_OFFSET          0x04
@@ -123,8 +128,13 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_EDMA_PARAM_1(x)		(0x4020 + (4 * x))
 
 /* NETCP pktdma */
+#ifdef CONFIG_SOC_K2G
+#define KS2_NETCP_PDMA_RX_FREE_QUEUE	113
+#define KS2_NETCP_PDMA_RX_RCV_QUEUE	114
+#else
 #define KS2_NETCP_PDMA_RX_FREE_QUEUE	4001
 #define KS2_NETCP_PDMA_RX_RCV_QUEUE	4002
+#endif
 
 /* Chip Interrupt Controller */
 #define KS2_CIC2_BASE			0x02608000
@@ -145,12 +155,15 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_JTAG_ID_REG			(KS2_DEVICE_STATE_CTRL_BASE + 0x18)
 #define KS2_DEVSTAT			(KS2_DEVICE_STATE_CTRL_BASE + 0x20)
 #define KS2_DEVCFG			(KS2_DEVICE_STATE_CTRL_BASE + 0x14c)
+#define KS2_ETHERNET_CFG		(KS2_DEVICE_STATE_CTRL_BASE + 0xe20)
+#define KS2_ETHERNET_RGMII		2
 
 /* PSC */
 #define KS2_PSC_BASE			0x02350000
 #define KS2_LPSC_GEM_0			15
 #define KS2_LPSC_TETRIS			52
 #define KS2_TETRIS_PWR_DOMAIN		31
+#define KS2_GEM_0_PWR_DOMAIN		8
 
 /* Chip configuration unlock codes and registers */
 #define KS2_KICK0			(KS2_DEVICE_STATE_CTRL_BASE + 0x38)
@@ -169,6 +182,8 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_DDR3BPLLCTL1		(KS2_DEVICE_STATE_CTRL_BASE + 0x36C)
 #define KS2_ARMPLLCTL0			(KS2_DEVICE_STATE_CTRL_BASE + 0x370)
 #define KS2_ARMPLLCTL1			(KS2_DEVICE_STATE_CTRL_BASE + 0x374)
+#define KS2_UARTPLLCTL0			(KS2_DEVICE_STATE_CTRL_BASE + 0x390)
+#define KS2_UARTPLLCTL1			(KS2_DEVICE_STATE_CTRL_BASE + 0x394)
 
 #define KS2_PLL_CNTRL_BASE		0x02310000
 #define KS2_CLOCK_BASE			KS2_PLL_CNTRL_BASE
@@ -181,10 +196,17 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_RSTYPE_PLL_SOFT		BIT(13)
 
 /* SPI */
+#ifdef CONFIG_SOC_K2G
+#define KS2_SPI0_BASE			0x21805400
+#define KS2_SPI1_BASE			0x21805800
+#define KS2_SPI2_BASE			0x21805c00
+#define KS2_SPI3_BASE			0x21806000
+#else
 #define KS2_SPI0_BASE			0x21000400
 #define KS2_SPI1_BASE			0x21000600
 #define KS2_SPI2_BASE			0x21000800
 #define KS2_SPI_BASE			KS2_SPI0_BASE
+#endif
 
 /* AEMIF */
 #define KS2_AEMIF_CNTRL_BASE       	0x21000a00
@@ -196,10 +218,46 @@ typedef volatile unsigned int   *dv_reg_p;
 /* MSMC control */
 #define KS2_MSMC_CTRL_BASE		0x0bc00000
 #define KS2_MSMC_DATA_BASE		0x0c000000
-#define KS2_MSMC_SEGMENT_TETRIS		8
-#define KS2_MSMC_SEGMENT_NETCP		9
-#define KS2_MSMC_SEGMENT_QM_PDSP	10
-#define KS2_MSMC_SEGMENT_PCIE0		11
+
+/* KS2 Generic Privilege ID Settings for MSMC2 */
+#define KS2_MSMC_SEGMENT_C6X_0		0
+#define KS2_MSMC_SEGMENT_C6X_1		1
+#define KS2_MSMC_SEGMENT_C6X_2		2
+#define KS2_MSMC_SEGMENT_C6X_3		3
+#define KS2_MSMC_SEGMENT_C6X_4		4
+#define KS2_MSMC_SEGMENT_C6X_5		5
+#define KS2_MSMC_SEGMENT_C6X_6		6
+#define KS2_MSMC_SEGMENT_C6X_7		7
+
+#define KS2_MSMC_SEGMENT_DEBUG		12
+
+/* KS2 HK/L/E MSMC PRIVIDs  for MSMC2 */
+#define K2HKLE_MSMC_SEGMENT_ARM		8
+#define K2HKLE_MSMC_SEGMENT_NETCP	9
+#define K2HKLE_MSMC_SEGMENT_QM_PDSP	10
+#define K2HKLE_MSMC_SEGMENT_PCIE0	11
+
+/* K2HK specific Privilege ID Settings */
+#define K2HKE_MSMC_SEGMENT_HYPERLINK	14
+
+/* K2L specific Privilege ID Settings */
+#define K2L_MSMC_SEGMENT_PCIE1		14
+
+/* K2E specific Privilege ID Settings */
+#define K2E_MSMC_SEGMENT_PCIE1		13
+#define K2E_MSMC_SEGMENT_TSIP		15
+
+/* K2G specific Privilege ID Settings */
+#define K2G_MSMC_SEGMENT_ARM		1
+#define K2G_MSMC_SEGMENT_ICSS0		2
+#define K2G_MSMC_SEGMENT_ICSS1		3
+#define K2G_MSMC_SEGMENT_NSS		4
+#define K2G_MSMC_SEGMENT_PCIE		5
+#define K2G_MSMC_SEGMENT_USB		6
+#define K2G_MSMC_SEGMENT_MLB		8
+#define K2G_MSMC_SEGMENT_PMMC		9
+#define K2G_MSMC_SEGMENT_DSS		10
+#define K2G_MSMC_SEGMENT_MMC		11
 
 /* MSMC segment size shift bits */
 #define KS2_MSMC_SEG_SIZE_SHIFT		12
@@ -213,6 +271,22 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_MISC_CTRL			(KS2_DEVICE_STATE_CTRL_BASE + 0xc7c)
 
 /* Queue manager */
+#ifdef CONFIG_SOC_K2G
+#define KS2_QM_BASE_ADDRESS		0x040C0000
+#define KS2_QM_CONF_BASE		0x04040000
+#define KS2_QM_DESC_SETUP_BASE		0x04080000
+#define KS2_QM_STATUS_RAM_BASE		0x0 /* K2G doesn't have it */
+#define KS2_QM_INTD_CONF_BASE		0x0
+#define KS2_QM_PDSP1_CMD_BASE		0x0
+#define KS2_QM_PDSP1_CTRL_BASE		0x0
+#define KS2_QM_PDSP1_IRAM_BASE		0x0
+#define KS2_QM_MANAGER_QUEUES_BASE	0x040c0000
+#define KS2_QM_MANAGER_Q_PROXY_BASE	0x04040200
+#define KS2_QM_QUEUE_STATUS_BASE	0x04100000
+#define KS2_QM_LINK_RAM_BASE		0x04020000
+#define KS2_QM_REGION_NUM		8
+#define KS2_QM_QPOOL_NUM		112
+#else
 #define KS2_QM_BASE_ADDRESS		0x23a80000
 #define KS2_QM_CONF_BASE		0x02a02000
 #define KS2_QM_DESC_SETUP_BASE		0x02a03000
@@ -227,6 +301,7 @@ typedef volatile unsigned int   *dv_reg_p;
 #define KS2_QM_LINK_RAM_BASE		0x00100000
 #define KS2_QM_REGION_NUM		64
 #define KS2_QM_QPOOL_NUM		4000
+#endif
 
 /* USB */
 #define KS2_USB_SS_BASE			0x02680000
@@ -249,6 +324,10 @@ typedef volatile unsigned int   *dv_reg_p;
 #define CPU_66AK2Hx	0xb981
 #define CPU_66AK2Ex	0xb9a6
 #define CPU_66AK2Lx	0xb9a7
+#define CPU_66AK2Gx	0xbb06
+
+/* Variant definitions */
+#define CPU_66AK2G1x	0x08
 
 /* DEVSPEED register */
 #define DEVSPEED_DEVSPEED_SHIFT	16
@@ -267,6 +346,10 @@ typedef volatile unsigned int   *dv_reg_p;
 
 #ifdef CONFIG_SOC_K2L
 #include <asm/arch/hardware-k2l.h>
+#endif
+
+#ifdef CONFIG_SOC_K2G
+#include <asm/arch/hardware-k2g.h>
 #endif
 
 #ifndef __ASSEMBLY__
@@ -291,6 +374,11 @@ static inline u8 cpu_is_k2e(void)
 static inline u8 cpu_is_k2l(void)
 {
 	return get_part_number() == CPU_66AK2Lx;
+}
+
+static inline u8 cpu_is_k2g(void)
+{
+	return get_part_number() == CPU_66AK2Gx;
 }
 
 static inline u8 cpu_revision(void)

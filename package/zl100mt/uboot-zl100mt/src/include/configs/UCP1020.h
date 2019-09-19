@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2013-2015 Arcturus Networks, Inc.
- *           http://www.arcturusnetworks.com/products/ucp1020/
+ * Copyright 2013-2019 Arcturus Networks, Inc.
+ *           https://www.arcturusnetworks.com/products/ucp1020/
  * based on include/configs/p1_p2_rdb_pc.h
  * original copyright follows:
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,16 +13,66 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_GENERIC_BOARD
-#define CONFIG_DISPLAY_BOARDINFO
+/*** Arcturus FirmWare Environment */
 
-#define CONFIG_FSL_ELBC
-#define CONFIG_PCI
+#define MAX_SERIAL_SIZE 15
+#define MAX_HWADDR_SIZE 17
+
+#define MAX_FWENV_ADDR	4
+
+#define FWENV_MMC	1
+#define FWENV_SPI_FLASH	2
+#define FWENV_NOR_FLASH	3
+/*
+ #define FWENV_TYPE    FWENV_MMC
+ #define FWENV_TYPE    FWENV_SPI_FLASH
+*/
+#define FWENV_TYPE	FWENV_NOR_FLASH
+
+#if (FWENV_TYPE == FWENV_MMC)
+#ifndef CONFIG_SYS_MMC_ENV_DEV
+#define CONFIG_SYS_MMC_ENV_DEV 1
+#endif
+#define FWENV_ADDR1 -1
+#define FWENV_ADDR2 -1
+#define FWENV_ADDR3 -1
+#define FWENV_ADDR4 -1
+#define EMPY_CHAR 0
+#endif
+
+#if (FWENV_TYPE == FWENV_SPI_FLASH)
+#ifndef CONFIG_SF_DEFAULT_SPEED
+#define CONFIG_SF_DEFAULT_SPEED	1000000
+#endif
+#ifndef CONFIG_SF_DEFAULT_MODE
+#define CONFIG_SF_DEFAULT_MODE	SPI_MODE0
+#endif
+#ifndef CONFIG_SF_DEFAULT_CS
+#define CONFIG_SF_DEFAULT_CS	0
+#endif
+#ifndef CONFIG_SF_DEFAULT_BUS
+#define CONFIG_SF_DEFAULT_BUS	0
+#endif
+#define FWENV_ADDR1 (0x200 - sizeof(smac))
+#define FWENV_ADDR2 (0x400 - sizeof(smac))
+#define FWENV_ADDR3 (CONFIG_ENV_SECT_SIZE + 0x200 - sizeof(smac))
+#define FWENV_ADDR4 (CONFIG_ENV_SECT_SIZE + 0x400 - sizeof(smac))
+#define EMPY_CHAR 0xff
+#endif
+
+#if (FWENV_TYPE == FWENV_NOR_FLASH)
+#define FWENV_ADDR1 0xEC080000
+#define FWENV_ADDR2 -1
+#define FWENV_ADDR3 -1
+#define FWENV_ADDR4 -1
+#define EMPY_CHAR 0xff
+#endif
+/***********************************/
+
 #define CONFIG_PCIE1	/* PCIE controller 1 (slot 1) */
 #define CONFIG_PCIE2	/* PCIE controller 2 (slot 2) */
 #define CONFIG_FSL_PCI_INIT	/* Use common FSL init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
-#define CONFIG_FSL_PCIE_RESET	/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT	/* enable 64-bit PCI resources */
 
 #if defined(CONFIG_TARTGET_UCP1020T1)
@@ -31,9 +80,7 @@
 #define CONFIG_UCP1020_REV_1_3
 
 #define CONFIG_BOARDNAME "uCP1020-64EE512-0U1-XR-T1"
-#define CONFIG_P1020
 
-#define CONFIG_TSEC_ENET
 #define CONFIG_TSEC1
 #define CONFIG_TSEC3
 #define CONFIG_HAS_ETH0
@@ -46,18 +93,7 @@
 #define CONFIG_NETMASK		255.255.252.0
 #define CONFIG_ETHPRIME		"eTSEC3"
 
-#ifndef CONFIG_SPI_FLASH
-#endif
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-
-#define CONFIG_MMC
 #define CONFIG_SYS_L2_SIZE	(256 << 10)
-
-#define CONFIG_LAST_STAGE_INIT
-
-#if !defined(CONFIG_DONGLE)
-#define CONFIG_SILENT_CONSOLE
-#endif
 
 #endif
 
@@ -67,11 +103,8 @@
 #define CONFIG_UCP1020_REV_1_3
 
 #define CONFIG_BOARDNAME_LOCAL "uCP1020-64EEE512-OU1-XR"
-#define CONFIG_P1020
 
-#define CONFIG_TSEC_ENET
 #define CONFIG_TSEC1
-#define CONFIG_TSEC2
 #define CONFIG_TSEC3
 #define CONFIG_HAS_ETH0
 #define CONFIG_HAS_ETH1
@@ -87,36 +120,24 @@
 #define CONFIG_NETMASK		255.255.255.0
 #define CONFIG_ETHPRIME		"eTSEC1"
 
-#ifndef CONFIG_SPI_FLASH
-#endif
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
+#undef CONFIG_SYS_REDUNDAND_ENVIRONMENT
 
-#define CONFIG_MMC
 #define CONFIG_SYS_L2_SIZE	(256 << 10)
-
-#define CONFIG_LAST_STAGE_INIT
 
 #endif
 
 #ifdef CONFIG_SDCARD
 #define CONFIG_RAMBOOT_SDCARD
 #define CONFIG_SYS_RAMBOOT
-#define CONFIG_SYS_EXTRA_ENV_RELOC
-#define CONFIG_SYS_TEXT_BASE		0x11000000
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
 #ifdef CONFIG_SPIFLASH
 #define CONFIG_RAMBOOT_SPIFLASH
 #define CONFIG_SYS_RAMBOOT
-#define CONFIG_SYS_EXTRA_ENV_RELOC
-#define CONFIG_SYS_TEXT_BASE		0x11000000
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
-#ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE		0xeff80000
-#endif
 #define CONFIG_SYS_TEXT_BASE_NOR	0xeff80000
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
@@ -127,21 +148,9 @@
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #endif
 
-/* High Level Configuration Options */
-#define CONFIG_BOOKE
-#define CONFIG_E500
-/* #define CONFIG_MPC85xx */
-
-#define CONFIG_MP
-
-#define CONFIG_FSL_LAW
-
 #define CONFIG_ENV_OVERWRITE
 
-#define CONFIG_CMD_SATA
-#define CONFIG_SATA_SIL
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
-#define CONFIG_LIBATA
 #define CONFIG_LBA48
 
 #define CONFIG_SYS_CLK_FREQ	66666666
@@ -149,40 +158,16 @@
 
 #define CONFIG_HWCONFIG
 
-#define CONFIG_DTT_ADM1021	1	/* ADM1021 temp sensor support	*/
-#define CONFIG_SYS_DTT_BUS_NUM	1	/* The I2C bus for DTT		*/
-#define CONFIG_DTT_SENSORS	{ 0, 1 }	/* Sensor index	*/
-/*
- * ADM1021/NCT72 temp sensor configuration (see dtt/adm1021.c for details).
- * there will be one entry in this array for each two (dummy) sensors in
- * CONFIG_DTT_SENSORS.
- *
- * For uCP1020 module:
- * - only one ADM1021/NCT72
- * - i2c addr 0x41
- * - conversion rate 0x02 = 0.25 conversions/second
- * - ALERT output disabled
- * - local temp sensor enabled, min set to 0 deg, max set to 85 deg
- * - remote temp sensor enabled, min set to 0 deg, max set to 85 deg
- */
-#define CONFIG_SYS_DTT_ADM1021	{ { CONFIG_SYS_I2C_NCT72_ADDR, \
-					 0x02, 0, 1, 0, 85, 1, 0, 85} }
-
-#define CONFIG_CMD_DTT
-
 /*
  * These can be toggled for performance analysis, otherwise use default.
  */
 #define CONFIG_L2_CACHE
 #define CONFIG_BTB
 
-#define CONFIG_BOARD_EARLY_INIT_F	/* Call board_pre_init */
-
 #define CONFIG_ENABLE_36BIT_PHYS
 
 #define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x1fffffff
-#define CONFIG_PANIC_HANG	/* do not reset board on panic */
 
 #define CONFIG_SYS_CCSRBAR		0xffe00000
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
@@ -195,13 +180,11 @@
 
 /* DDR Setup */
 #define CONFIG_DDR_ECC_ENABLE
-#define CONFIG_SYS_FSL_DDR3
 #ifndef CONFIG_DDR_ECC_ENABLE
 #define CONFIG_SYS_DDR_RAW_TIMING
 #define CONFIG_DDR_SPD
 #endif
 #define CONFIG_SYS_SPD_BUS_NUM 1
-#undef CONFIG_FSL_DDR_INTERACTIVE
 
 #define CONFIG_SYS_SDRAM_SIZE_LAW	LAW_SIZE_512M
 #define CONFIG_CHIP_SELECTS_PER_CTRL	1
@@ -209,7 +192,6 @@
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x00000000
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
 
-#define CONFIG_NUM_DDR_CONTROLLERS	1
 #define CONFIG_DIMM_SLOTS_PER_CTLR	1
 
 /* Default settings for DDR3 */
@@ -286,12 +268,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_EMPTY_INFO
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
-
-#define CONFIG_BOARD_EARLY_INIT_R	/* call board_early_init_r function */
 
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xffd00000 /* stack in RAM */
@@ -328,9 +305,7 @@
  * open - index 2
  * shorted - index 1
  */
-#define CONFIG_CONS_INDEX		1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -343,20 +318,6 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_CCSRBAR + 0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR + 0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/*
- * Pass open firmware flat tree
- */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
-
-/* new uImage format support */
-#define CONFIG_FIT
-#define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -371,25 +332,11 @@
 #define CONFIG_SYS_SPD_BUS_NUM		1 /* For rom_loc and flash bank */
 
 #define CONFIG_RTC_DS1337
-#define CONFIG_SYS_RTC_DS1337_NOOSC
+#define CONFIG_RTC_DS1337_NOOSC
 #define CONFIG_SYS_I2C_RTC_ADDR		0x68
 #define CONFIG_SYS_I2C_PCA9557_ADDR	0x18
 #define CONFIG_SYS_I2C_NCT72_ADDR	0x4C
 #define CONFIG_SYS_I2C_IDT6V49205B	0x69
-
-/*
- * eSPI - Enhanced SPI
- */
-#define CONFIG_HARD_SPI
-#define CONFIG_FSL_ESPI
-
-#define CONFIG_SPI_FLASH_SST		1
-#define CONFIG_SPI_FLASH_STMICRO	1
-#define CONFIG_SPI_FLASH_WINBOND	1
-#define CONFIG_CMD_SF			1
-#define CONFIG_CMD_SPI			1
-#define CONFIG_SF_DEFAULT_SPEED		10000000
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 
 #if defined(CONFIG_PCI)
 /*
@@ -419,11 +366,7 @@
 #define CONFIG_SYS_PCIE1_IO_PHYS	0xffc00000
 #define CONFIG_SYS_PCIE1_IO_SIZE	0x00010000	/* 64k */
 
-#define CONFIG_PCI_PNP	/* do pci plug-and-play */
-#define CONFIG_CMD_PCI
-
 #define CONFIG_PCI_SCAN_SHOW	/* show pci devices on startup */
-#define CONFIG_DOS_PARTITION
 #endif /* CONFIG_PCI */
 
 /*
@@ -431,21 +374,15 @@
  */
 #ifdef CONFIG_ENV_FIT_UCBOOT
 
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x20000)
 #define CONFIG_ENV_SIZE		0x20000
 #define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K (one sector) */
 
 #else
 
-#define CONFIG_ENV_SPI_BUS	0
-#define CONFIG_ENV_SPI_CS	0
-#define CONFIG_ENV_SPI_MAX_HZ	10000000
-#define CONFIG_ENV_SPI_MODE	0
 
 #ifdef CONFIG_RAMBOOT_SPIFLASH
 
-#define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_SIZE		0x3000		/* 12KB */
 #define CONFIG_ENV_OFFSET	0x2000		/* 8KB */
 #define CONFIG_ENV_SECT_SIZE	0x1000
@@ -457,18 +394,15 @@
 #endif
 
 #elif defined(CONFIG_RAMBOOT_SDCARD)
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_FSL_FIXED_MMC_LOCATION
 #define CONFIG_ENV_SIZE		0x2000
 #define CONFIG_SYS_MMC_ENV_DEV	0
 
 #elif defined(CONFIG_SYS_RAMBOOT)
-#define CONFIG_ENV_IS_NOWHERE	/* Store ENV in memory only */
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 #define CONFIG_ENV_SIZE		0x2000
 
 #else
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_BASE		(CONFIG_SYS_FLASH_BASE)
 #define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K (one sector) */
 #define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
@@ -487,77 +421,33 @@
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	/* allow baudrate change */
 
 /*
- * Command line configuration.
- */
-#define CONFIG_CMD_IRQ
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_IRQ
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_ERRATA
-#define CONFIG_CMD_CRAMFS
-#define CONFIG_CRAMFS_CMDLINE
-
-/*
  * USB
  */
 #define CONFIG_HAS_FSL_DR_USB
 
 #if defined(CONFIG_HAS_FSL_DR_USB)
-#define CONFIG_USB_EHCI
-
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
 
-#ifdef CONFIG_USB_EHCI
-#define CONFIG_CMD_USB
+#ifdef CONFIG_USB_EHCI_HCD
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_EHCI_FSL
-#define CONFIG_USB_STORAGE
 #endif
 #endif
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 #ifdef CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
-#define CONFIG_CMD_MMC
 #define CONFIG_MMC_SPI
-#define CONFIG_CMD_MMC_SPI
-#define CONFIG_GENERIC_MMC
-#endif
-
-#if defined(CONFIG_MMC) || defined(CONFIG_USB_EHCI) || defined(CONFIG_FSL_SATA)
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_DOS_PARTITION
 #endif
 
 /* Misc Extra Settings */
-#define CONFIG_CMD_GPIO			1
 #undef CONFIG_WATCHDOG	/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
-#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
-#else
-#define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
-#endif
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE/* Boot Argument Buffer Size */
 #define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms tick */
 
 /*
@@ -579,18 +469,13 @@
 
 #if defined(CONFIG_TSEC_ENET)
 
-#if defined(CONFIG_UCP1020_REV_1_2)
-#define CONFIG_PHY_MICREL_KSZ9021
-#elif defined(CONFIG_UCP1020_REV_1_3)
-#define CONFIG_PHY_MICREL_KSZ9031
+#if defined(CONFIG_UCP1020_REV_1_2) || defined(CONFIG_UCP1020_REV_1_3)
 #else
 #error "UCP1020 module revision is not defined !!!"
 #endif
 
-#define CONFIG_CMD_DHCP
 #define CONFIG_BOOTP_SERVERIP
 
-#define CONFIG_MII		/* MII PHY management */
 #define CONFIG_TSEC1_NAME	"eTSEC1"
 #define CONFIG_TSEC2_NAME	"eTSEC2"
 #define CONFIG_TSEC3_NAME	"eTSEC3"
@@ -608,11 +493,9 @@
 #define TSEC2_PHYIDX	0
 #define TSEC3_PHYIDX	0
 
-#define CONFIG_PHY_GIGE	1	/* Include GbE speed/duplex detection */
-
 #endif
 
-#define CONFIG_HOSTNAME		UCP1020
+#define CONFIG_HOSTNAME		"UCP1020"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin /* U-Boot image on TFTP server */
@@ -620,13 +503,8 @@
 /* default location for tftp and bootm */
 #define CONFIG_LOADADDR		1000000
 
-#define CONFIG_BOOTARGS	/* the boot command will set bootargs */
-
-#define CONFIG_BAUDRATE	115200
-
 #if defined(CONFIG_DONGLE)
 
-#define CONFIG_BOOTDELAY 1	/* autoboot after 1 seconds */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 "bootcmd=run prog_spi_mbrbootcramfs\0"					\
 "bootfile=uImage\0"							\
@@ -756,7 +634,6 @@
 
 #if defined(CONFIG_UCP1020T1)
 
-#define CONFIG_BOOTDELAY 2 /* autoboot after 2 sec, -1 disables auto-boot */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 "bootcmd=run releasefpga; run norbootworking || run norbootrecovery\0"	\
 "bootfile=uImage\0"							\
@@ -846,7 +723,6 @@
 
 #else /* For Arcturus Modules */
 
-#define CONFIG_BOOTDELAY 2 /* autoboot after 2 sec, -1 disables auto-boot */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 "bootcmd=run norkernel\0"						\
 "bootfile=uImage\0"							\

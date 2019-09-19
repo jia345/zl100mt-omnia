@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013-2015
  * NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 /* Tegra210 Clock control functions */
 
 #include <common.h>
+#include <errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sysctr.h>
@@ -40,7 +40,7 @@ enum clock_type_id {
 	CLOCK_TYPE_PDCT,
 	CLOCK_TYPE_ACPT,
 	CLOCK_TYPE_ASPTE,
-	CLOCK_TYPE_PMDACD2T,
+	CLOCK_TYPE_PDD2T,
 	CLOCK_TYPE_PCST,
 	CLOCK_TYPE_DP,
 
@@ -97,8 +97,8 @@ static enum clock_id clock_source[CLOCK_TYPE_COUNT][CLOCK_MAX_MUX+1] = {
 	{ CLK(AUDIO),	CLK(SFROM32KHZ),	CLK(PERIPH),	CLK(OSC),
 		CLK(EPCI),	CLK(NONE),	CLK(NONE),	CLK(NONE),
 		MASK_BITS_31_29},
-	{ CLK(PERIPH),	CLK(MEMORY),	CLK(DISPLAY),	CLK(AUDIO),
-		CLK(CGENERAL),	CLK(DISPLAY2),	CLK(OSC),	CLK(NONE),
+	{ CLK(PERIPH),	CLK(NONE),	CLK(DISPLAY),	CLK(NONE),
+		CLK(NONE),	CLK(DISPLAY2),	CLK(OSC),	CLK(NONE),
 		MASK_BITS_31_29},
 	{ CLK(PERIPH),	CLK(CGENERAL),	CLK(SFROM32KHZ),	CLK(OSC),
 		CLK(NONE),	CLK(NONE),	CLK(NONE),	CLK(NONE),
@@ -174,8 +174,8 @@ static enum clock_type_id clock_periph_type[PERIPHC_COUNT] = {
 	TYPE(PERIPHC_0bh,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_0ch,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_SBC1,	CLOCK_TYPE_PC2CC3M_T),
-	TYPE(PERIPHC_DISP1,	CLOCK_TYPE_PMDACD2T),
-	TYPE(PERIPHC_DISP2,	CLOCK_TYPE_PMDACD2T),
+	TYPE(PERIPHC_DISP1,	CLOCK_TYPE_PDD2T),
+	TYPE(PERIPHC_DISP2,	CLOCK_TYPE_PDD2T),
 
 	/* 0x10 */
 	TYPE(PERIPHC_10h,	CLOCK_TYPE_NONE),
@@ -731,6 +731,51 @@ u32 *get_periph_source_reg(enum periph_id periph_id)
 	return &clkrst->crc_clk_src_y[internal_id];
 }
 
+int get_periph_clock_info(enum periph_id periph_id, int *mux_bits,
+			  int *divider_bits, int *type)
+{
+	enum periphc_internal_id internal_id;
+
+	if (!clock_periph_id_isvalid(periph_id))
+		return -1;
+
+	internal_id = periph_id_to_internal_id[periph_id];
+	if (!periphc_internal_id_isvalid(internal_id))
+		return -1;
+
+	*type = clock_periph_type[internal_id];
+	if (!clock_type_id_isvalid(*type))
+		return -1;
+
+	*mux_bits = clock_source[*type][CLOCK_MAX_MUX];
+
+	if (*type == CLOCK_TYPE_PC2CC3M_T16)
+		*divider_bits = 16;
+	else
+		*divider_bits = 8;
+
+	return 0;
+}
+
+enum clock_id get_periph_clock_id(enum periph_id periph_id, int source)
+{
+	enum periphc_internal_id internal_id;
+	int type;
+
+	if (!clock_periph_id_isvalid(periph_id))
+		return CLOCK_ID_NONE;
+
+	internal_id = periph_id_to_internal_id[periph_id];
+	if (!periphc_internal_id_isvalid(internal_id))
+		return CLOCK_ID_NONE;
+
+	type = clock_periph_type[internal_id];
+	if (!clock_type_id_isvalid(type))
+		return CLOCK_ID_NONE;
+
+	return clock_source[type][source];
+}
+
 /**
  * Given a peripheral ID and the required source clock, this returns which
  * value should be programmed into the source mux for that peripheral.
@@ -747,23 +792,10 @@ int get_periph_clock_source(enum periph_id periph_id,
 	enum clock_id parent, int *mux_bits, int *divider_bits)
 {
 	enum clock_type_id type;
-	enum periphc_internal_id internal_id;
-	int mux;
+	int mux, err;
 
-	assert(clock_periph_id_isvalid(periph_id));
-
-	internal_id = INTERNAL_ID(periph_id_to_internal_id[periph_id]);
-	assert(periphc_internal_id_isvalid(internal_id));
-
-	type = clock_periph_type[internal_id];
-	assert(clock_type_id_isvalid(type));
-
-	*mux_bits = clock_source[type][CLOCK_MAX_MUX];
-
-	if (type == CLOCK_TYPE_PC2CC3M_T16)
-		*divider_bits = 16;
-	else
-		*divider_bits = 8;
+	err = get_periph_clock_info(periph_id, mux_bits, divider_bits, &type);
+	assert(!err);
 
 	for (mux = 0; mux < CLOCK_MAX_MUX; mux++)
 		if (clock_source[type][mux] == parent)
@@ -998,18 +1030,27 @@ void clock_early_init(void)
 	udelay(2);
 }
 
+unsigned int clk_m_get_rate(unsigned parent_rate)
+{
+	struct clk_rst_ctlr *clkrst = (struct clk_rst_ctlr *)NV_PA_CLK_RST_BASE;
+	u32 value, div;
+
+	value = readl(&clkrst->crc_spare_reg0);
+	div = ((value >> 2) & 0x3) + 1;
+
+	return parent_rate / div;
+}
+
 void arch_timer_init(void)
 {
 	struct sysctr_ctlr *sysctr = (struct sysctr_ctlr *)NV_PA_TSC_BASE;
 	u32 freq, val;
 
-	freq = clock_get_rate(CLOCK_ID_OSC);
-	debug("%s: osc freq is %dHz [0x%08X]\n", __func__, freq, freq);
+	freq = clock_get_rate(CLOCK_ID_CLK_M);
+	debug("%s: clk_m freq is %dHz [0x%08X]\n", __func__, freq, freq);
 
-	/* ARM CNTFRQ */
-#ifndef CONFIG_ARM64
-	asm("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (freq));
-#endif
+	if (current_el() == 3)
+		asm("msr cntfrq_el0, %0\n" : : "r" (freq));
 
 	/* Only Tegra114+ has the System Counter regs */
 	debug("%s: setting CNTFID0 to 0x%08X\n", __func__, freq);
@@ -1019,6 +1060,59 @@ void arch_timer_init(void)
 	val |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
 	writel(val, &sysctr->cntcr);
 	debug("%s: TSC CNTCR = 0x%08X\n", __func__, val);
+}
+
+#define PLLREFE_MISC			0x4c8
+#define  PLLREFE_MISC_LOCK		BIT(27)
+#define  PLLREFE_MISC_IDDQ		BIT(24)
+
+#define PLLREFE_BASE			0x4c4
+#define  PLLREFE_BASE_BYPASS		BIT(31)
+#define  PLLREFE_BASE_ENABLE		BIT(30)
+#define  PLLREFE_BASE_REF_DIS		BIT(29)
+#define  PLLREFE_BASE_KCP(kcp)		(((kcp) & 0x3) << 27)
+#define  PLLREFE_BASE_KVCO		BIT(26)
+#define  PLLREFE_BASE_DIVP(p)		(((p) & 0x1f) << 16)
+#define  PLLREFE_BASE_DIVN(n)		(((n) & 0xff) << 8)
+#define  PLLREFE_BASE_DIVM(m)		(((m) & 0xff) << 0)
+
+static int tegra_pllref_enable(void)
+{
+	u32 value;
+	unsigned long start;
+
+	/*
+	 * This sequence comes from Tegra X1 TRM section "Cold Boot, with no
+	 * Recovery Mode or Boot from USB", sub-section "PLLREFE".
+	 */
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLREFE_MISC);
+	value &= ~PLLREFE_MISC_IDDQ;
+	writel(value, NV_PA_CLK_RST_BASE + PLLREFE_MISC);
+
+	udelay(5);
+
+	value = PLLREFE_BASE_ENABLE |
+		PLLREFE_BASE_KCP(0) |
+		PLLREFE_BASE_DIVP(0) |
+		PLLREFE_BASE_DIVN(0x41) |
+		PLLREFE_BASE_DIVM(4);
+	writel(value, NV_PA_CLK_RST_BASE + PLLREFE_BASE);
+
+	debug("waiting for pllrefe lock\n");
+	start = get_timer(0);
+	while (get_timer(start) < 250) {
+		value = readl(NV_PA_CLK_RST_BASE + PLLREFE_MISC);
+		if (value & PLLREFE_MISC_LOCK)
+			break;
+	}
+	if (!(value & PLLREFE_MISC_LOCK)) {
+		debug("  timeout\n");
+		return -ETIMEDOUT;
+	}
+	debug("  done\n");
+
+	return 0;
 }
 
 #define PLLE_SS_CNTL 0x68
@@ -1032,100 +1126,155 @@ void arch_timer_init(void)
 #define  PLLE_SS_CNTL_SSCMAX(x) (((x) & 0x1ff) << 0)
 
 #define PLLE_BASE 0x0e8
-#define  PLLE_BASE_ENABLE (1 << 30)
-#define  PLLE_BASE_LOCK_OVERRIDE (1 << 29)
-#define  PLLE_BASE_PLDIV_CML(x) (((x) & 0xf) << 24)
+#define  PLLE_BASE_ENABLE (1 << 31)
+#define  PLLE_BASE_PLDIV_CML(x) (((x) & 0x1f) << 24)
 #define  PLLE_BASE_NDIV(x) (((x) & 0xff) << 8)
 #define  PLLE_BASE_MDIV(x) (((x) & 0xff) << 0)
 
 #define PLLE_MISC 0x0ec
 #define  PLLE_MISC_IDDQ_SWCTL (1 << 14)
-#define  PLLE_MISC_IDDQ_OVERRIDE (1 << 13)
-#define  PLLE_MISC_LOCK_ENABLE (1 << 9)
-#define  PLLE_MISC_PTS (1 << 8)
-#define  PLLE_MISC_VREG_BG_CTRL(x) (((x) & 0x3) << 4)
+#define  PLLE_MISC_IDDQ_OVERRIDE_VALUE (1 << 13)
+#define  PLLE_MISC_LOCK (1 << 11)
+#define  PLLE_PTS (1 << 8)
+#define  PLLE_MISC_KCP(x) (((x) & 0x3) << 6)
 #define  PLLE_MISC_VREG_CTRL(x) (((x) & 0x3) << 2)
+#define  PLLE_MISC_KVCO (1 << 0)
 
 #define PLLE_AUX 0x48c
+#define  PLLE_AUX_SS_SEQ_INCLUDE (1 << 31)
+#define  PLLE_AUX_REF_SEL_PLLREFE (1 << 28)
 #define  PLLE_AUX_SEQ_ENABLE (1 << 24)
+#define  PLLE_AUX_SS_SWCTL (1 << 6)
 #define  PLLE_AUX_ENABLE_SWCTL (1 << 4)
+#define  PLLE_AUX_USE_LOCKDET (1 << 3)
 
 int tegra_plle_enable(void)
 {
-	unsigned int m = 1, n = 200, cpcon = 13;
 	u32 value;
+	unsigned long start;
 
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
-	value &= ~PLLE_BASE_LOCK_OVERRIDE;
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
+	/* PLLREF feeds PLLE */
+	tegra_pllref_enable();
+
+	/*
+	 * This sequence comes from Tegra X1 TRM section "Cold Boot, with no
+	 * Recovery Mode or Boot from USB", sub-section "PLLEs".
+	 */
+
+	/* 1. Select XTAL as the source */
 
 	value = readl(NV_PA_CLK_RST_BASE + PLLE_AUX);
-	value |= PLLE_AUX_ENABLE_SWCTL;
-	value &= ~PLLE_AUX_SEQ_ENABLE;
+	value &= ~PLLE_AUX_REF_SEL_PLLREFE;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_AUX);
 
-	udelay(1);
-
 	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
-	value |= PLLE_MISC_IDDQ_SWCTL;
-	value &= ~PLLE_MISC_IDDQ_OVERRIDE;
-	value |= PLLE_MISC_LOCK_ENABLE;
-	value |= PLLE_MISC_PTS;
-	value |= PLLE_MISC_VREG_BG_CTRL(3);
-	value |= PLLE_MISC_VREG_CTRL(2);
+	value &= ~PLLE_MISC_IDDQ_OVERRIDE_VALUE;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
 
+	/* 2. Wait 5 us */
 	udelay(5);
 
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
-	value |= PLLE_SS_CNTL_SSCBYP | PLLE_SS_CNTL_INTERP_RESET |
-		 PLLE_SS_CNTL_BYPASS_SS;
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+	/*
+	 * 3. Program the following registers to generate a low jitter 100MHz
+	 * clock.
+	 */
 
 	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
-	value &= ~PLLE_BASE_PLDIV_CML(0xf);
+	value &= ~PLLE_BASE_PLDIV_CML(0x1f);
 	value &= ~PLLE_BASE_NDIV(0xff);
 	value &= ~PLLE_BASE_MDIV(0xff);
-	value |= PLLE_BASE_PLDIV_CML(cpcon);
-	value |= PLLE_BASE_NDIV(n);
-	value |= PLLE_BASE_MDIV(m);
+	value |= PLLE_BASE_PLDIV_CML(0xe);
+	value |= PLLE_BASE_NDIV(0x7d);
+	value |= PLLE_BASE_MDIV(2);
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
 
-	udelay(1);
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+	value |= PLLE_PTS;
+	value &= ~PLLE_MISC_KCP(3);
+	value &= ~PLLE_MISC_VREG_CTRL(3);
+	value &= ~PLLE_MISC_KVCO;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
 
 	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
 	value |= PLLE_BASE_ENABLE;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
 
-	/* wait for lock */
-	udelay(300);
+	/* 4. Wait for LOCK */
+
+	debug("waiting for plle lock\n");
+	start = get_timer(0);
+	while (get_timer(start) < 250) {
+		value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+		if (value & PLLE_MISC_LOCK)
+			break;
+	}
+	if (!(value & PLLE_MISC_LOCK)) {
+		debug("  timeout\n");
+		return -ETIMEDOUT;
+	}
+	debug("  done\n");
+
+	/* 5. Enable SSA */
 
 	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+	value &= ~PLLE_SS_CNTL_SSCINC(0xff);
+	value |= PLLE_SS_CNTL_SSCINC(1);
+	value &= ~PLLE_SS_CNTL_SSCINCINTR(0x3f);
+	value |= PLLE_SS_CNTL_SSCINCINTR(0x23);
+	value &= ~PLLE_SS_CNTL_SSCMAX(0x1fff);
+	value |= PLLE_SS_CNTL_SSCMAX(0x21);
 	value &= ~PLLE_SS_CNTL_SSCINVERT;
 	value &= ~PLLE_SS_CNTL_SSCCENTER;
-
-	value &= ~PLLE_SS_CNTL_SSCINCINTR(0x3f);
-	value &= ~PLLE_SS_CNTL_SSCINC(0xff);
-	value &= ~PLLE_SS_CNTL_SSCMAX(0x1ff);
-
-	value |= PLLE_SS_CNTL_SSCINCINTR(0x20);
-	value |= PLLE_SS_CNTL_SSCINC(0x01);
-	value |= PLLE_SS_CNTL_SSCMAX(0x25);
-
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
-
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
-	value &= ~PLLE_SS_CNTL_SSCBYP;
 	value &= ~PLLE_SS_CNTL_BYPASS_SS;
+	value &= ~PLLE_SS_CNTL_SSCBYP;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+
+	/* 6. Wait 300 ns */
 
 	udelay(1);
-
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
 	value &= ~PLLE_SS_CNTL_INTERP_RESET;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
 
+	/* 7. Enable HW power sequencer for PLLE */
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+	value &= ~PLLE_MISC_IDDQ_SWCTL;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_AUX);
+	value &= ~PLLE_AUX_SS_SWCTL;
+	value &= ~PLLE_AUX_ENABLE_SWCTL;
+	value |= PLLE_AUX_SS_SEQ_INCLUDE;
+	value |= PLLE_AUX_USE_LOCKDET;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_AUX);
+
+	/* 8. Wait 1 us */
+
 	udelay(1);
+	value |= PLLE_AUX_SEQ_ENABLE;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_AUX);
 
 	return 0;
 }
+
+struct periph_clk_init periph_clk_init_table[] = {
+	{ PERIPH_ID_SBC1, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SBC2, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SBC3, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SBC4, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SBC5, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SBC6, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_HOST1X, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SDMMC1, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SDMMC2, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SDMMC3, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_SDMMC4, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_PWM, CLOCK_ID_SFROM32KHZ },
+	{ PERIPH_ID_I2C1, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_I2C2, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_I2C3, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_I2C4, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_I2C5, CLOCK_ID_PERIPH },
+	{ PERIPH_ID_I2C6, CLOCK_ID_PERIPH },
+	{ -1, },
+};

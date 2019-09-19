@@ -1,18 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
 #include <common.h>
 #include <malloc.h>
+#include <memalign.h>
 #include "jobdesc.h"
 #include "desc.h"
 #include "jr.h"
 #include "fsl_hash.h"
 #include <hw_sha.h>
-#include <asm-generic/errno.h>
+#include <linux/errno.h>
 
 #define CRYPTO_MAX_ALG_NAME	80
 #define SHA1_DIGEST_SIZE        20
@@ -84,7 +84,7 @@ static int caam_hash_update(void *hash_ctx, const void *buf,
 			    enum caam_hash_algos caam_algo)
 {
 	uint32_t final = 0;
-	dma_addr_t addr = virt_to_phys((void *)buf);
+	phys_addr_t addr = virt_to_phys((void *)buf);
 	struct sha_ctx *ctx = hash_ctx;
 
 	if (ctx->sg_num >= MAX_SG_32) {
@@ -93,11 +93,11 @@ static int caam_hash_update(void *hash_ctx, const void *buf,
 	}
 
 #ifdef CONFIG_PHYS_64BIT
-	ctx->sg_tbl[ctx->sg_num].addr_hi = addr >> 32;
+	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_hi, (uint32_t)(addr >> 32));
 #else
-	ctx->sg_tbl[ctx->sg_num].addr_hi = 0x0;
+	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_hi, 0x0);
 #endif
-	ctx->sg_tbl[ctx->sg_num].addr_lo = addr;
+	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_lo, (uint32_t)addr);
 
 	sec_out32(&ctx->sg_tbl[ctx->sg_num].len_flag,
 		  (size & SG_ENTRY_LENGTH_MASK));
@@ -163,19 +163,36 @@ int caam_hash(const unsigned char *pbuf, unsigned int buf_len,
 {
 	int ret = 0;
 	uint32_t *desc;
+	unsigned int size;
 
-	desc = malloc(sizeof(int) * MAX_CAAM_DESCSIZE);
+	desc = malloc_cache_aligned(sizeof(int) * MAX_CAAM_DESCSIZE);
 	if (!desc) {
 		debug("Not enough memory for descriptor allocation\n");
 		return -ENOMEM;
 	}
+
+	if (!IS_ALIGNED((uintptr_t)pbuf, ARCH_DMA_MINALIGN) ||
+	    !IS_ALIGNED((uintptr_t)pout, ARCH_DMA_MINALIGN)) {
+		puts("Error: Address arguments are not aligned\n");
+		return -EINVAL;
+	}
+
+	size = ALIGN(buf_len, ARCH_DMA_MINALIGN);
+	flush_dcache_range((unsigned long)pbuf, (unsigned long)pbuf + size);
 
 	inline_cnstr_jobdesc_hash(desc, pbuf, buf_len, pout,
 				  driver_hash[algo].alg_type,
 				  driver_hash[algo].digestsize,
 				  0);
 
+	size = ALIGN(sizeof(int) * MAX_CAAM_DESCSIZE, ARCH_DMA_MINALIGN);
+	flush_dcache_range((unsigned long)desc, (unsigned long)desc + size);
+
 	ret = run_descriptor_jr(desc);
+
+	size = ALIGN(driver_hash[algo].digestsize, ARCH_DMA_MINALIGN);
+	invalidate_dcache_range((unsigned long)pout,
+				(unsigned long)pout + size);
 
 	free(desc);
 	return ret;

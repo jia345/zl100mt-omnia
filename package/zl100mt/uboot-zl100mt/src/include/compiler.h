@@ -15,7 +15,7 @@
     defined(__sun__)	 || \
     defined(__APPLE__)
 # include <inttypes.h>
-#elif defined(__linux__) || defined(__WIN32__) || defined(__MINGW32__)
+#elif defined(__linux__) || defined(__WIN32__) || defined(__MINGW32__) || defined(__OpenBSD__)
 # include <stdint.h>
 #endif
 
@@ -50,6 +50,14 @@ typedef unsigned long ulong;
 #endif
 #ifdef __FreeBSD__
 # include <sys/endian.h> /* htole32 and friends */
+# define __BYTE_ORDER BYTE_ORDER
+# define __LITTLE_ENDIAN LITTLE_ENDIAN
+# define __BIG_ENDIAN BIG_ENDIAN
+#elif defined(__OpenBSD__)
+# include <endian.h>
+# define __BYTE_ORDER BYTE_ORDER
+# define __LITTLE_ENDIAN LITTLE_ENDIAN
+# define __BIG_ENDIAN BIG_ENDIAN
 #endif
 
 #include <time.h>
@@ -112,13 +120,8 @@ typedef unsigned int uint;
 
 #else /* !USE_HOSTCC */
 
-#ifdef CONFIG_USE_STDINT
-/* Provided by gcc. */
-#include <stdint.h>
-#else
 /* Type for `void *' pointers. */
 typedef unsigned long int uintptr_t;
-#endif
 
 #include <linux/string.h>
 #include <linux/types.h>

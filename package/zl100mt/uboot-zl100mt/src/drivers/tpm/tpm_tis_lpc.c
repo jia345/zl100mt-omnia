@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -16,11 +15,25 @@
 #include <common.h>
 #include <dm.h>
 #include <mapmem.h>
-#include <tis.h>
-#include <tpm.h>
+#include <tpm-v1.h>
 #include <asm/io.h>
 
 #define PREFIX "lpc_tpm: "
+
+enum i2c_chip_type {
+	SLB9635,
+	AT97SC3204,
+};
+
+static const char * const chip_name[] = {
+	[SLB9635] = "Infineon SLB9635 TT 1.2",
+	[AT97SC3204] = "Atmel AT97SC3204",
+};
+
+static const u32 chip_didvid[] = {
+	[SLB9635] = 0xb15d1,
+	[AT97SC3204] = 0x32041114,
+};
 
 struct tpm_locality {
 	u32 access;
@@ -147,24 +160,25 @@ static int tis_wait_reg(struct tpm_tis_lpc_priv *priv, u32 *reg, u8 mask,
 static int tpm_tis_lpc_probe(struct udevice *dev)
 {
 	struct tpm_tis_lpc_priv *priv = dev_get_priv(dev);
-	u32 vid, did;
 	fdt_addr_t addr;
 	u32 didvid;
+	ulong chip_type = dev_get_driver_data(dev);
 
-	addr = dev_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 	priv->regs = map_sysmem(addr, 0);
 	didvid = tpm_read_word(priv, &priv->regs[0].did_vid);
 
-	vid = didvid & 0xffff;
-	did = (didvid >> 16) & 0xffff;
-	if (vid != 0x15d1 || did != 0xb) {
+	if (didvid != chip_didvid[chip_type]) {
+		u32 vid, did;
+		vid = didvid & 0xffff;
+		did = (didvid >> 16) & 0xffff;
 		debug("Invalid vendor/device ID %04x/%04x\n", vid, did);
-		return -ENOSYS;
+		return -ENODEV;
 	}
 
-	debug("Found TPM %s by %s\n", "SLB9635 TT 1.2", "Infineon");
+	debug("Found TPM: %s\n", chip_name[chip_type]);
 
 	return 0;
 }
@@ -205,7 +219,7 @@ static int tis_senddata(struct udevice *dev, const u8 *data, size_t len)
 		/* Wait till the device is ready to accept more data. */
 		while (!burst) {
 			if (max_cycles++ == MAX_DELAY_US) {
-				printf("%s:%d failed to feed %d bytes of %d\n",
+				printf("%s:%d failed to feed %zd bytes of %zd\n",
 				       __FILE__, __LINE__, len - offset, len);
 				return -ETIMEDOUT;
 			}
@@ -225,7 +239,7 @@ static int tis_senddata(struct udevice *dev, const u8 *data, size_t len)
 		 * changes to zero exactly after the last byte is fed into the
 		 * FIFO.
 		 */
-		count = min((u32)burst, len - offset - 1);
+		count = min((size_t)burst, len - offset - 1);
 		while (count--)
 			tpm_write_byte(priv, data[offset++],
 				       &regs[locality].data);
@@ -374,31 +388,6 @@ static int tis_readresponse(struct udevice *dev, u8 *buffer, size_t len)
 	return offset;
 }
 
-static int tpm_tis_lpc_open(struct udevice *dev)
-{
-	struct tpm_tis_lpc_priv *priv = dev_get_priv(dev);
-	struct tpm_locality *regs = priv->regs;
-	u8 locality = 0; /* we use locality zero for everything. */
-	int ret;
-
-	/* now request access to locality. */
-	tpm_write_word(priv, TIS_ACCESS_REQUEST_USE, &regs[locality].access);
-
-	/* did we get a lock? */
-	ret = tis_wait_reg(priv, &regs[locality].access,
-			 TIS_ACCESS_ACTIVE_LOCALITY,
-			 TIS_ACCESS_ACTIVE_LOCALITY);
-	if (ret == -ETIMEDOUT) {
-		printf("%s:%d - failed to lock locality %d\n",
-		       __FILE__, __LINE__, locality);
-		return ret;
-	}
-
-	tpm_write_word(priv, TIS_STS_COMMAND_READY,
-		       &regs[locality].tpm_status);
-	return 0;
-}
-
 static int tpm_tis_lpc_close(struct udevice *dev)
 {
 	struct tpm_tis_lpc_priv *priv = dev_get_priv(dev);
@@ -420,13 +409,47 @@ static int tpm_tis_lpc_close(struct udevice *dev)
 	return 0;
 }
 
+static int tpm_tis_lpc_open(struct udevice *dev)
+{
+	struct tpm_tis_lpc_priv *priv = dev_get_priv(dev);
+	struct tpm_locality *regs = priv->regs;
+	u8 locality = 0; /* we use locality zero for everything. */
+	int ret;
+
+	ret = tpm_tis_lpc_close(dev);
+	if (ret) {
+		printf("%s: Failed to close TPM\n", __func__);
+		return ret;
+	}
+
+	/* now request access to locality. */
+	tpm_write_word(priv, TIS_ACCESS_REQUEST_USE, &regs[locality].access);
+
+	/* did we get a lock? */
+	ret = tis_wait_reg(priv, &regs[locality].access,
+			 TIS_ACCESS_ACTIVE_LOCALITY,
+			 TIS_ACCESS_ACTIVE_LOCALITY);
+	if (ret == -ETIMEDOUT) {
+		printf("%s:%d - failed to lock locality %d\n",
+		       __FILE__, __LINE__, locality);
+		return ret;
+	}
+
+	tpm_write_word(priv, TIS_STS_COMMAND_READY,
+		       &regs[locality].tpm_status);
+
+	return 0;
+}
+
 static int tpm_tis_get_desc(struct udevice *dev, char *buf, int size)
 {
+	ulong chip_type = dev_get_driver_data(dev);
+
 	if (size < 50)
 		return -ENOSPC;
 
-	return snprintf(buf, size, "1.2 TPM (vendor %s, chip %s)",
-			"Infineon", "SLB9635 TT 1.2");
+	return snprintf(buf, size, "1.2 TPM (%s)",
+			chip_name[chip_type]);
 }
 
 
@@ -439,7 +462,8 @@ static const struct tpm_ops tpm_tis_lpc_ops = {
 };
 
 static const struct udevice_id tpm_tis_lpc_ids[] = {
-	{ .compatible = "infineon,slb9635lpc" },
+	{ .compatible = "infineon,slb9635lpc", .data = SLB9635 },
+	{ .compatible = "atmel,at97sc3204", .data = AT97SC3204 },
 	{ }
 };
 

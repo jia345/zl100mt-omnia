@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>
@@ -81,6 +80,13 @@ static const struct socfpga_sdram_config sdram_config = {
 			SDR_CTRLGRP_DRAMODT_READ_LSB)			|
 		(CONFIG_HPS_SDR_CTRLCFG_DRAMODT_WRITE <<
 			SDR_CTRLGRP_DRAMODT_WRITE_LSB),
+	.extratime1 =
+	(CONFIG_HPS_SDR_CTRLCFG_EXTRATIME1_CFG_EXTRA_CTL_CLK_RD_TO_WR <<
+			SDR_CTRLGRP_EXTRATIME1_RD_TO_WR_LSB)		|
+	(CONFIG_HPS_SDR_CTRLCFG_EXTRATIME1_CFG_EXTRA_CTL_CLK_RD_TO_WR_BC <<
+			SDR_CTRLGRP_EXTRATIME1_RD_TO_WR_BC_LSB)		|
+(CONFIG_HPS_SDR_CTRLCFG_EXTRATIME1_CFG_EXTRA_CTL_CLK_RD_TO_WR_DIFF_CHIP <<
+			SDR_CTRLGRP_EXTRATIME1_RD_TO_WR_DIFF_LSB),
 	.dram_addrw =
 		(CONFIG_HPS_SDR_CTRLCFG_DRAMADDRW_COLBITS <<
 			SDR_CTRLGRP_DRAMADDRW_COLBITS_LSB)		|
@@ -245,7 +251,7 @@ static const struct socfpga_sdram_rw_mgr_config rw_mgr_config = {
 		RW_MGR_MEM_VIRTUAL_GROUPS_PER_WRITE_DQS,
 };
 
-struct socfpga_sdram_io_config io_config = {
+static const struct socfpga_sdram_io_config io_config = {
 	.delay_per_dchain_tap		= IO_DELAY_PER_DCHAIN_TAP,
 	.delay_per_dqs_en_dchain_tap	= IO_DELAY_PER_DQS_EN_DCHAIN_TAP,
 	.delay_per_opa_tap		= IO_DELAY_PER_OPA_TAP,
@@ -263,7 +269,7 @@ struct socfpga_sdram_io_config io_config = {
 	.shift_dqs_en_when_shift_dqs	= IO_SHIFT_DQS_EN_WHEN_SHIFT_DQS,
 };
 
-struct socfpga_sdram_misc_config misc_config = {
+static const struct socfpga_sdram_misc_config misc_config = {
 	.afi_rate_ratio			= AFI_RATE_RATIO,
 	.calib_lfifo_offset		= CALIB_LFIFO_OFFSET,
 	.calib_vfifo_offset		= CALIB_VFIFO_OFFSET,

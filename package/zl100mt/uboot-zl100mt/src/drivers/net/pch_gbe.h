@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
  *
  * Intel Platform Controller Hub EG20T (codename Topcliff) GMAC Driver
  * Adapted from linux drivers/net/ethernet/oki-semi/pch_gbe/pch_gbe.h
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PCH_GBE_H_
@@ -287,12 +286,10 @@ struct pch_gbe_priv {
 	struct pch_gbe_rx_desc rx_desc[PCH_GBE_DESC_NUM];
 	struct pch_gbe_tx_desc tx_desc[PCH_GBE_DESC_NUM];
 	char rx_buff[PCH_GBE_DESC_NUM][PCH_GBE_RX_FRAME_LEN];
-	struct eth_device *dev;
 	struct phy_device *phydev;
 	struct mii_dev *bus;
 	struct pch_gbe_regs *mac_regs;
-	pci_dev_t bdf;
-	u32 interface;
+	struct udevice *dev;
 	int rx_idx;
 	int tx_idx;
 };

@@ -8,27 +8,20 @@
 #include <asm/io.h>
 #include <watchdog.h>
 #include <asm/arch/imx-regs.h>
-
-struct watchdog_regs {
-	u16	wcr;	/* Control */
-	u16	wsr;	/* Service */
-	u16	wrsr;	/* Reset Status */
-};
-
-#define WCR_WDZST	0x01
-#define WCR_WDBG	0x02
-#define WCR_WDE		0x04	/* WDOG enable */
-#define WCR_WDT		0x08
-#define WCR_SRS		0x10
-#define SET_WCR_WT(x)	(x << 8)
+#ifdef CONFIG_FSL_LSCH2
+#include <asm/arch/immap_lsch2.h>
+#endif
+#include <fsl_wdog.h>
 
 #ifdef CONFIG_IMX_WATCHDOG
 void hw_watchdog_reset(void)
 {
+#ifndef CONFIG_WATCHDOG_RESET_DISABLE
 	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
 
 	writew(0x5555, &wdog->wsr);
 	writew(0xaaaa, &wdog->wsr);
+#endif /* CONFIG_WATCHDOG_RESET_DISABLE*/
 }
 
 void hw_watchdog_init(void)
@@ -45,17 +38,22 @@ void hw_watchdog_init(void)
 #define CONFIG_WATCHDOG_TIMEOUT_MSECS 128000
 #endif
 	timeout = (CONFIG_WATCHDOG_TIMEOUT_MSECS / 500) - 1;
+#ifdef CONFIG_FSL_LSCH2
+	writew((WCR_WDA | WCR_SRS | WCR_WDE) << 8 | timeout, &wdog->wcr);
+#else
 	writew(WCR_WDZST | WCR_WDBG | WCR_WDE | WCR_WDT | WCR_SRS |
-		SET_WCR_WT(timeout), &wdog->wcr);
+		WCR_WDA | SET_WCR_WT(timeout), &wdog->wcr);
+#endif /* CONFIG_FSL_LSCH2*/
 	hw_watchdog_reset();
 }
 #endif
 
-void reset_cpu(ulong addr)
+void __attribute__((weak)) reset_cpu(ulong addr)
 {
 	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
 
-	writew(WCR_WDE, &wdog->wcr);
+	clrsetbits_le16(&wdog->wcr, WCR_WT_MSK, WCR_WDE);
+
 	writew(0x5555, &wdog->wsr);
 	writew(0xaaaa, &wdog->wsr);	/* load minimum 1/2 second timeout */
 	while (1) {

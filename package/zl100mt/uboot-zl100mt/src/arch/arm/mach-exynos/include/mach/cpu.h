@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010 Samsung Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _EXYNOS4_CPU_H
@@ -237,7 +236,7 @@ static inline void s5p_set_cpu_id(void)
 		 * Exynos5800 is a variant of Exynos5420
 		 * and has product id 0x5422
 		 */
-		s5p_cpu_id = 0x5800;
+		s5p_cpu_id = 0x5422;
 		break;
 	}
 }
@@ -267,10 +266,12 @@ IS_EXYNOS_TYPE(exynos4210, 0x4210)
 IS_EXYNOS_TYPE(exynos4412, 0x4412)
 IS_EXYNOS_TYPE(exynos5250, 0x5250)
 IS_EXYNOS_TYPE(exynos5420, 0x5420)
-IS_EXYNOS_TYPE(exynos5800, 0x5800)
+IS_EXYNOS_TYPE(exynos5422, 0x5422)
+
+#define proid_is_exynos542x() (proid_is_exynos5420() || proid_is_exynos5422())
 
 #define SAMSUNG_BASE(device, base)				\
-static inline unsigned int __attribute__((no_instrument_function)) \
+static inline unsigned long __attribute__((no_instrument_function)) \
 	samsung_get_base_##device(void) \
 {								\
 	if (cpu_is_exynos4()) {				\
@@ -278,7 +279,7 @@ static inline unsigned int __attribute__((no_instrument_function)) \
 			return EXYNOS4X12_##base;		\
 		return EXYNOS4_##base;				\
 	} else if (cpu_is_exynos5()) {				\
-		if (proid_is_exynos5420() || proid_is_exynos5800())	\
+		if (proid_is_exynos542x())			\
 			return EXYNOS5420_##base;		\
 		return EXYNOS5_##base;				\
 	}							\
@@ -288,9 +289,7 @@ static inline unsigned int __attribute__((no_instrument_function)) \
 SAMSUNG_BASE(adc, ADC_BASE)
 SAMSUNG_BASE(clock, CLOCK_BASE)
 SAMSUNG_BASE(ace_sfr, ACE_SFR_BASE)
-SAMSUNG_BASE(dp, DP_BASE)
 SAMSUNG_BASE(sysreg, SYSREG_BASE)
-SAMSUNG_BASE(fimd, FIMD_BASE)
 SAMSUNG_BASE(i2c, I2C_BASE)
 SAMSUNG_BASE(i2s, I2S_BASE)
 SAMSUNG_BASE(mipi_dsim, MIPI_DSIM_BASE)

@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
- * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
  */
 
 #include <common.h>
 #include <command.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-#include <asm/ppc4xx-gpio.h>
 #include <asm/global_data.h>
 
 #include "mpc8308.h"
@@ -26,22 +24,34 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int get_fpga_state(unsigned dev)
+#ifdef CONFIG_GDSYS_LEGACY_DRIVERS
+/* as gpio output status cannot be read back, we have to buffer it locally */
+u32 gpio0_out;
+
+void setbits_gpio0_out(u32 mask)
+{
+	immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+
+	gpio0_out |= mask;
+	out_be32(&immr->gpio[0].dat, gpio0_out);
+}
+
+void clrbits_gpio0_out(u32 mask)
+{
+	immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+
+	gpio0_out &= ~mask;
+	out_be32(&immr->gpio[0].dat, gpio0_out);
+}
+
+int get_fpga_state(uint dev)
 {
 	return gd->arch.fpga_state[dev];
 }
 
-void print_fpga_state(unsigned dev)
-{
-	if (gd->arch.fpga_state[dev] & FPGA_STATE_DONE_FAILED)
-		puts("       Waiting for FPGA-DONE timed out.\n");
-	if (gd->arch.fpga_state[dev] & FPGA_STATE_REFLECTION_FAILED)
-		puts("       FPGA reflection test failed.\n");
-}
-
 int board_early_init_f(void)
 {
-	unsigned k;
+	uint k;
 
 	for (k = 0; k < CONFIG_SYS_FPGA_COUNT; ++k)
 		gd->arch.fpga_state[k] = 0;
@@ -51,8 +61,8 @@ int board_early_init_f(void)
 
 int board_early_init_r(void)
 {
-	unsigned k;
-	unsigned ctr;
+	uint k;
+	uint ctr;
 
 	for (k = 0; k < CONFIG_SYS_FPGA_COUNT; ++k)
 		gd->arch.fpga_state[k] = 0;
@@ -69,7 +79,7 @@ int board_early_init_r(void)
 	for (k = 0; k < CONFIG_SYS_FPGA_COUNT; ++k) {
 		ctr = 0;
 		while (!mpc8308_get_fpga_done(k)) {
-			udelay(100000);
+			mdelay(100);
 			if (ctr++ > 5) {
 				gd->arch.fpga_state[k] |=
 					FPGA_STATE_DONE_FAILED;
@@ -96,7 +106,7 @@ int board_early_init_r(void)
 			if (val == REFLECTION_TESTPATTERN_INV)
 				break;
 
-			udelay(100000);
+			mdelay(100);
 			if (ctr++ > 5) {
 				gd->arch.fpga_state[k] |=
 					FPGA_STATE_REFLECTION_FAILED;
@@ -107,3 +117,4 @@ int board_early_init_r(void)
 
 	return 0;
 }
+#endif

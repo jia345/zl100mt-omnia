@@ -1,16 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
  * Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_DEVICE_INTERNAL_H
 #define _DM_DEVICE_INTERNAL_H
 
+#include <dm/ofnode.h>
+
+struct device_node;
 struct udevice;
 
 /**
@@ -38,6 +40,33 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 		const char *name, void *platdata, int of_offset,
 		struct udevice **devp);
 
+int device_bind_ofnode(struct udevice *parent, const struct driver *drv,
+		       const char *name, void *platdata, ofnode node,
+		       struct udevice **devp);
+
+/**
+ * device_bind_with_driver_data() - Create a device and bind it to a driver
+ *
+ * Called to set up a new device attached to a driver, in the case where the
+ * driver was matched to the device by means of a match table that provides
+ * driver_data.
+ *
+ * Once bound a device exists but is not yet active until device_probe() is
+ * called.
+ *
+ * @parent: Pointer to device's parent, under which this driver will exist
+ * @drv: Device's driver
+ * @name: Name of device (e.g. device tree node name)
+ * @driver_data: The driver_data field from the driver's match table.
+ * @node: Device tree node for this device. This is invalid for devices which
+ * don't use device tree.
+ * @devp: if non-NULL, returns a pointer to the bound device
+ * @return 0 if OK, -ve on error
+ */
+int device_bind_with_driver_data(struct udevice *parent,
+				 const struct driver *drv, const char *name,
+				 ulong driver_data, ofnode node,
+				 struct udevice **devp);
 /**
  * device_bind_by_name: Create a device and bind it to a driver
  *
@@ -45,8 +74,8 @@ int device_bind(struct udevice *parent, const struct driver *drv,
  * tree.
  *
  * @parent: Pointer to device's parent
- * @pre_reloc_only: If true, bind the driver only if its DM_INIT_F flag is set.
- * If false bind the driver always.
+ * @pre_reloc_only: If true, bind the driver only if its DM_FLAG_PRE_RELOC flag
+ * is set. If false bind the driver always.
  * @info: Name and platdata for this device
  * @devp: if non-NULL, returns a pointer to the bound device
  * @return 0 if OK, -ve on error
@@ -66,31 +95,19 @@ int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
 int device_probe(struct udevice *dev);
 
 /**
- * device_probe() - Probe a child device, activating it
- *
- * Activate a device so that it is ready for use. All its parents are probed
- * first. The child is provided with parent data if parent_priv is not NULL.
- *
- * @dev: Pointer to device to probe
- * @parent_priv: Pointer to parent data. If non-NULL then this is provided to
- * the child.
- * @return 0 if OK, -ve on error
- */
-int device_probe_child(struct udevice *dev, void *parent_priv);
-
-/**
  * device_remove() - Remove a device, de-activating it
  *
  * De-activate a device so that it is no longer ready for use. All its
  * children are deactivated first.
  *
  * @dev: Pointer to device to remove
+ * @flags: Flags for selective device removal (DM_REMOVE_...)
  * @return 0 if OK, -ve on error (an error here is normally a very bad thing)
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
-int device_remove(struct udevice *dev);
+int device_remove(struct udevice *dev, uint flags);
 #else
-static inline int device_remove(struct udevice *dev) { return 0; }
+static inline int device_remove(struct udevice *dev, uint flags) { return 0; }
 #endif
 
 /**
@@ -107,36 +124,48 @@ int device_unbind(struct udevice *dev);
 static inline int device_unbind(struct udevice *dev) { return 0; }
 #endif
 
-/**
- * device_remove_children() - Stop all device's children
- * @dev:	The device whose children are to be removed
- * @return 0 on success, -ve on error
- */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
-int device_remove_children(struct udevice *dev);
+void device_free(struct udevice *dev);
 #else
-static inline int device_remove_children(struct udevice *dev) { return 0; }
+static inline void device_free(struct udevice *dev) {}
 #endif
 
 /**
- * device_unbind_children() - Unbind all device's children from the device
+ * device_chld_unbind() - Unbind all device's children from the device if bound
+ *			  to drv
  *
  * On error, the function continues to unbind all children, and reports the
  * first error.
  *
  * @dev:	The device that is to be stripped of its children
+ * @drv:	The targeted driver
  * @return 0 on success, -ve on error
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
-int device_unbind_children(struct udevice *dev);
+int device_chld_unbind(struct udevice *dev, struct driver *drv);
 #else
-static inline int device_unbind_children(struct udevice *dev) { return 0; }
+static inline int device_chld_unbind(struct udevice *dev, struct driver *drv)
+{
+	return 0;
+}
 #endif
 
+/**
+ * device_chld_remove() - Stop all device's children
+ * @dev:	The device whose children are to be removed
+ * @drv:	The targeted driver
+ * @flags:	Flag, if this functions is called in the pre-OS stage
+ * @return 0 on success, -ve on error
+ */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
-void device_free(struct udevice *dev);
+int device_chld_remove(struct udevice *dev, struct driver *drv,
+		       uint flags);
 #else
-static inline void device_free(struct udevice *dev) {}
+static inline int device_chld_remove(struct udevice *dev, struct driver *drv,
+				     uint flags)
+{
+	return 0;
+}
 #endif
 
 /**

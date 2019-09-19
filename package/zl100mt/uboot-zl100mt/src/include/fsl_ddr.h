@@ -1,9 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
  */
 
 #ifndef FSL_DDR_MAIN_H
@@ -17,7 +14,7 @@
 
 #ifndef CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS
 /* All controllers are for main memory */
-#define CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS	CONFIG_NUM_DDR_CONTROLLERS
+#define CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS	CONFIG_SYS_NUM_DDR_CTLRS
 #endif
 
 #ifdef CONFIG_SYS_FSL_DDR_LE
@@ -56,7 +53,6 @@ compute_dimm_parameters(const unsigned int ctrl_num,
  *
  * All data structures have to be on the stack
  */
-#define CONFIG_SYS_NUM_DDR_CTLRS CONFIG_NUM_DDR_CONTROLLERS
 #define CONFIG_SYS_DIMM_SLOTS_PER_CTLR CONFIG_DIMM_SLOTS_PER_CTLR
 
 typedef struct {
@@ -131,6 +127,7 @@ void board_add_ram_info(int use_default);
 /* processor specific function */
 void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 				   unsigned int ctrl_num, int step);
+void remove_unused_controllers(fsl_ddr_info_t *info);
 
 /* board specific function */
 int fsl_ddr_get_dimm_params(dimm_params_t *pdimm,
@@ -139,4 +136,6 @@ int fsl_ddr_get_dimm_params(dimm_params_t *pdimm,
 void update_spd_address(unsigned int ctrl_num,
 			unsigned int slot,
 			unsigned int *addr);
+
+void erratum_a009942_check_cpo(void);
 #endif

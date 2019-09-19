@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014, Bin Meng <bmeng.cn@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/fsp/fsp_support.h>
 #include <asm/e820.h>
+#include <asm/mrccache.h>
 #include <asm/post.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -32,13 +32,20 @@ int dram_init(void)
 	gd->ram_size = ram_size;
 	post_code(POST_DRAM);
 
+#ifdef CONFIG_ENABLE_MRC_CACHE
+	gd->arch.mrc_output = fsp_get_nvs_data(gd->arch.hob_list,
+					       &gd->arch.mrc_output_len);
+#endif
+
 	return 0;
 }
 
-void dram_init_banksize(void)
+int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = 0;
 	gd->bd->bi_dram[0].size = gd->ram_size;
+
+	return 0;
 }
 
 /*
@@ -54,9 +61,10 @@ ulong board_get_usable_ram_top(ulong total_size)
 	return fsp_get_usable_lowmem_top(gd->arch.hob_list);
 }
 
-unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
+unsigned int install_e820_map(unsigned int max_entries,
+			      struct e820_entry *entries)
 {
-	unsigned num_entries = 0;
+	unsigned int num_entries = 0;
 	const struct hob_header *hdr;
 	struct hob_res_desc *res_desc;
 
@@ -72,9 +80,10 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
 				entries[num_entries].type = E820_RAM;
 			else if (res_desc->type == RES_MEM_RESERVED)
 				entries[num_entries].type = E820_RESERVED;
+
+			num_entries++;
 		}
 		hdr = get_next_hob(hdr);
-		num_entries++;
 	}
 
 	/* Mark PCIe ECAM address range as reserved */
@@ -82,6 +91,18 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
 	entries[num_entries].size = CONFIG_PCIE_ECAM_SIZE;
 	entries[num_entries].type = E820_RESERVED;
 	num_entries++;
+
+#ifdef CONFIG_HAVE_ACPI_RESUME
+	/*
+	 * Everything between U-Boot's stack and ram top needs to be
+	 * reserved in order for ACPI S3 resume to work.
+	 */
+	entries[num_entries].addr = gd->start_addr_sp - CONFIG_STACK_SIZE;
+	entries[num_entries].size = gd->ram_top - gd->start_addr_sp + \
+		CONFIG_STACK_SIZE;
+	entries[num_entries].type = E820_RESERVED;
+	num_entries++;
+#endif
 
 	return num_entries;
 }

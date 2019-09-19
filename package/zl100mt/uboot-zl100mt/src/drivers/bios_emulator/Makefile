@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+
+
 X86DIR  = x86emu
 
 obj-y = atibios.o biosemu.o besys.o bios.o \

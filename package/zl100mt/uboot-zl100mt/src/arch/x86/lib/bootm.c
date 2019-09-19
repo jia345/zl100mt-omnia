@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
  *
  * Copyright (C) 2001  Erik Mouw (J.A.K.Mouw@its.tudelft.nl)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <dm/device.h>
+#include <dm/root.h>
 #include <errno.h>
 #include <fdt_support.h>
 #include <image.h>
@@ -26,14 +27,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define COMMAND_LINE_OFFSET 0x9000
 
-/*
- * Implement a weak default function for boards that optionally
- * need to clean up the system before jumping to the kernel.
- */
-__weak void board_final_cleanup(void)
-{
-}
-
 void bootm_announce_and_cleanup(void)
 {
 	printf("\nStarting kernel ...\n\n");
@@ -42,10 +35,16 @@ void bootm_announce_and_cleanup(void)
 	timestamp_add_now(TS_U_BOOT_START_KERNEL);
 #endif
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
-#ifdef CONFIG_BOOTSTAGE_REPORT
+#if CONFIG_IS_ENABLED(BOOTSTAGE_REPORT)
 	bootstage_report();
 #endif
-	board_final_cleanup();
+
+	/*
+	 * Call remove function of all devices with a removal flag set.
+	 * This may be useful for last-stage operations, like cancelling
+	 * of DMA operation or releasing device internal buffers.
+	 */
+	dm_remove_devices_flags(DM_REMOVE_ACTIVE_ALL);
 }
 
 #if defined(CONFIG_OF_LIBFDT) && !defined(CONFIG_OF_NO_KERNEL)
@@ -117,6 +116,10 @@ static int boot_prep_linux(bootm_headers_t *images)
 		char *base_ptr;
 
 		base_ptr = (char *)load_zimage(data, len, &load_address);
+		if (!base_ptr) {
+			puts("## Kernel loading failed ...\n");
+			goto error;
+		}
 		images->os.load = load_address;
 		cmd_line_dest = base_ptr + COMMAND_LINE_OFFSET;
 		images->ep = (ulong)base_ptr;
@@ -155,14 +158,21 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 			puts("Cannot boot 64-bit kernel on 32-bit machine\n");
 			return -EFAULT;
 		}
+		/* At present 64-bit U-Boot does not support booting a
+		 * kernel.
+		 * TODO(sjg@chromium.org): Support booting both 32-bit and
+		 * 64-bit kernels from 64-bit U-Boot.
+		 */
+#if !CONFIG_IS_ENABLED(X86_64)
 		return cpu_jump_to_64bit(setup_base, load_address);
+#endif
 	} else {
 		/*
 		* Set %ebx, %ebp, and %edi to 0, %esi to point to the
 		* boot_params structure, and then jump to the kernel. We
 		* assume that %cs is 0x10, 4GB flat, and read/execute, and
 		* the data segments are 0x18, 4GB flat, and read/write.
-		* U-boot is setting them up that way for itself in
+		* U-Boot is setting them up that way for itself in
 		* arch/i386/cpu/cpu.c.
 		*
 		* Note that we cannot currently boot a kernel while running as

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006-2007
  *
@@ -5,12 +6,10 @@
  *
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <pci.h>
 #include <mpc83xx.h>
 #include <ns16550.h>
@@ -39,7 +38,7 @@ static long fixed_sdram(void)
 	u32 msize_log2 = __ilog2(msize);
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
-		(CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000));
+		(CONFIG_SYS_SDRAM_BASE & 0xfffff000));
 	out_be32(&im->sysconf.ddrlaw[0].ar, (LBLAWAR_EN | (msize_log2 - 1)));
 	out_be32(&im->sysconf.ddrcdr, CONFIG_SYS_DDRCDR_VALUE);
 
@@ -49,12 +48,12 @@ static long fixed_sdram(void)
 	 */
 	__udelay(50000);
 
-#if ((CONFIG_SYS_DDR_SDRAM_BASE & 0x00FFFFFF) != 0)
+#if ((CONFIG_SYS_SDRAM_BASE & 0x00FFFFFF) != 0)
 #warning Chip select bounds is only configurable in 16MB increments
 #endif
 	out_be32(&im->ddr.csbnds[0].csbnds,
-		((CONFIG_SYS_DDR_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
-		(((CONFIG_SYS_DDR_SDRAM_BASE + msize - 1) >> CSBNDS_EA_SHIFT) &
+		((CONFIG_SYS_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_SDRAM_BASE + msize - 1) >> CSBNDS_EA_SHIFT) &
 			CSBNDS_EA));
 	out_be32(&im->ddr.cs_config[0], CONFIG_SYS_DDR_CS0_CONFIG);
 
@@ -81,14 +80,14 @@ static long fixed_sdram(void)
 
 	/* now check the real size */
 	disable_addr_trans ();
-	msize = get_ram_size (CONFIG_SYS_DDR_BASE, msize);
+	msize = get_ram_size (CONFIG_SYS_SDRAM_BASE, msize);
 	enable_addr_trans ();
 #endif
 
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile fsl_lbc_t *lbc = &im->im_lbc;
@@ -101,12 +100,14 @@ phys_size_t initdram(int board_type)
 	msize = fixed_sdram();
 
 	/* Local Bus setup lbcr and mrtpr */
-	out_be32(&lbc->lbcr, CONFIG_SYS_LBC_LBCR);
-	out_be32(&lbc->mrtpr, CONFIG_SYS_LBC_MRTPR);
+	out_be32(&lbc->lbcr, 0x00040000);
+	out_be32(&lbc->mrtpr, 0x20000000);
 	sync();
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize;
+	gd->ram_size = msize;
+
+	return 0;
 }
 
 #define VE8313_WDT_EN	0x00020000

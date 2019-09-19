@@ -1,25 +1,51 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <config.h>
 #include <common.h>
+#include <console.h>
 #include <div64.h>
-#include <inttypes.h>
 #include <version.h>
 #include <linux/ctype.h>
 #include <asm/io.h>
 
-int display_options (void)
+char *display_options_get_banner_priv(bool newlines, const char *build_tag,
+				      char *buf, int size)
 {
-#if defined(BUILD_TAG)
-	printf ("\n\n%s, Build: %s\n\n", version_string, BUILD_TAG);
-#else
-	printf ("\n\n%s\n\n", version_string);
+	int len;
+
+	len = snprintf(buf, size, "%s%s", newlines ? "\n\n" : "",
+		       version_string);
+	if (build_tag && len < size)
+		len += snprintf(buf + len, size - len, ", Build: %s",
+				build_tag);
+	if (len > size - 3)
+		len = size - 3;
+	if (len < 0)
+		len = 0;
+	snprintf(buf + len, size - len, "\n\n");
+
+	return buf;
+}
+
+#ifndef BUILD_TAG
+#define BUILD_TAG NULL
 #endif
+
+char *display_options_get_banner(bool newlines, char *buf, int size)
+{
+	return display_options_get_banner_priv(newlines, BUILD_TAG, buf, size);
+}
+
+int display_options(void)
+{
+	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
+
+	display_options_get_banner(true, buf, sizeof(buf));
+	printf("%s", buf);
+
 	return 0;
 }
 
@@ -40,7 +66,7 @@ void print_freq(uint64_t freq, const char *s)
 	}
 
 	if (!c) {
-		printf("%" PRIu64 " Hz%s", freq, s);
+		printf("%llu Hz%s", freq, s);
 		return;
 	}
 
@@ -80,7 +106,7 @@ void print_size(uint64_t size, const char *s)
 	}
 
 	if (!c) {
-		printf("%" PRIu64 " Bytes%s", size, s);
+		printf("%llu Bytes%s", size, s);
 		return;
 	}
 
@@ -150,7 +176,9 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 				x = lb.us[i] = *(volatile uint16_t *)data;
 			else
 				x = lb.uc[i] = *(volatile uint8_t *)data;
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
+#if defined(CONFIG_SPL_BUILD)
+			printf(" %x", (uint)x);
+#elif defined(CONFIG_SYS_SUPPORT_64BIT_DATA)
 			printf(" %0*llx", width * 2, (long long)x);
 #else
 			printf(" %0*x", width * 2, x);

@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * sunxi_emac.c -- Allwinner A10 ethernet driver
  *
  * (C) Copyright 2012, Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <clk.h>
 #include <dm.h>
 #include <linux/err.h>
 #include <malloc.h>
@@ -158,6 +158,7 @@ struct sunxi_sramc_regs {
 
 struct emac_eth_dev {
 	struct emac_regs *regs;
+	struct clk clk;
 	struct mii_dev *bus;
 	struct phy_device *phydev;
 	int link_printed;
@@ -327,6 +328,20 @@ static void emac_reset(struct emac_eth_dev *priv)
 	udelay(200);
 }
 
+static int _sunxi_write_hwaddr(struct emac_eth_dev *priv, u8 *enetaddr)
+{
+	struct emac_regs *regs = priv->regs;
+	u32 enetaddr_lo, enetaddr_hi;
+
+	enetaddr_lo = enetaddr[2] | (enetaddr[1] << 8) | (enetaddr[0] << 16);
+	enetaddr_hi = enetaddr[5] | (enetaddr[4] << 8) | (enetaddr[3] << 16);
+
+	writel(enetaddr_hi, &regs->mac_a0);
+	writel(enetaddr_lo, &regs->mac_a1);
+
+	return 0;
+}
+
 static int _sunxi_emac_eth_init(struct emac_eth_dev *priv, u8 *enetaddr)
 {
 	struct emac_regs *regs = priv->regs;
@@ -350,10 +365,7 @@ static int _sunxi_emac_eth_init(struct emac_eth_dev *priv, u8 *enetaddr)
 	/* Set up EMAC */
 	emac_setup(priv);
 
-	writel(enetaddr[0] << 16 | enetaddr[1] << 8 | enetaddr[2],
-	       &regs->mac_a1);
-	writel(enetaddr[3] << 16 | enetaddr[4] << 8 | enetaddr[5],
-	       &regs->mac_a0);
+	_sunxi_write_hwaddr(priv, enetaddr);
 
 	mdelay(1);
 
@@ -490,14 +502,12 @@ static int _sunxi_emac_eth_send(struct emac_eth_dev *priv, void *packet,
 	return 0;
 }
 
-static void sunxi_emac_board_setup(struct emac_eth_dev *priv)
+static int sunxi_emac_board_setup(struct emac_eth_dev *priv)
 {
-	struct sunxi_ccm_reg *const ccm =
-		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 	struct sunxi_sramc_regs *sram =
 		(struct sunxi_sramc_regs *)SUNXI_SRAMC_BASE;
 	struct emac_regs *regs = priv->regs;
-	int pin;
+	int pin, ret;
 
 	/* Map SRAM to EMAC */
 	setbits_le32(&sram->ctrl1, 0x5 << 2);
@@ -507,10 +517,16 @@ static void sunxi_emac_board_setup(struct emac_eth_dev *priv)
 		sunxi_gpio_set_cfgpin(pin, SUNXI_GPA_EMAC);
 
 	/* Set up clock gating */
-	setbits_le32(&ccm->ahb_gate0, 0x1 << AHB_GATE_OFFSET_EMAC);
+	ret = clk_enable(&priv->clk);
+	if (ret) {
+		dev_err(dev, "failed to enable emac clock\n");
+		return ret;
+	}
 
 	/* Set MII clock */
 	clrsetbits_le32(&regs->mac_mcfg, 0xf << 2, 0xd << 2);
+
+	return 0;
 }
 
 static int sunxi_emac_eth_start(struct udevice *dev)
@@ -547,9 +563,19 @@ static int sunxi_emac_eth_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct emac_eth_dev *priv = dev_get_priv(dev);
+	int ret;
 
 	priv->regs = (struct emac_regs *)pdata->iobase;
-	sunxi_emac_board_setup(priv);
+
+	ret = clk_get_by_index(dev, 0, &priv->clk);
+	if (ret) {
+		dev_err(dev, "failed to get emac clock\n");
+		return ret;
+	}
+
+	ret = sunxi_emac_board_setup(priv);
+	if (ret)
+		return ret;
 
 	return sunxi_emac_init_phy(priv, dev);
 }
@@ -565,7 +591,7 @@ static int sunxi_emac_eth_ofdata_to_platdata(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 
-	pdata->iobase = dev_get_addr(dev);
+	pdata->iobase = devfdt_get_addr(dev);
 
 	return 0;
 }

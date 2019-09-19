@@ -1,39 +1,49 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
-#include <fdtdec.h>
-#include <inttypes.h>
 #include <pci.h>
-#include <dm/lists.h>
-#include <dm/root.h>
+#include <asm/io.h>
 #include <dm/device-internal.h>
+#include <dm/lists.h>
 #if defined(CONFIG_X86) && defined(CONFIG_HAVE_FSP)
 #include <asm/fsp/fsp_support.h>
 #endif
+#include "pci_internal.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
-struct pci_controller *pci_bus_to_hose(int busnum)
+int pci_get_bus(int busnum, struct udevice **busp)
 {
-	struct udevice *bus;
 	int ret;
 
-	ret = uclass_get_device_by_seq(UCLASS_PCI, busnum, &bus);
-	if (ret) {
-		debug("%s: Cannot get bus %d: ret=%d\n", __func__, busnum, ret);
-		return NULL;
+	ret = uclass_get_device_by_seq(UCLASS_PCI, busnum, busp);
+
+	/* Since buses may not be numbered yet try a little harder with bus 0 */
+	if (ret == -ENODEV) {
+		ret = uclass_first_device_err(UCLASS_PCI, busp);
+		if (ret)
+			return ret;
+		ret = uclass_get_device_by_seq(UCLASS_PCI, busnum, busp);
 	}
-	return dev_get_uclass_priv(bus);
+
+	return ret;
 }
 
-pci_dev_t pci_get_bdf(struct udevice *dev)
+struct udevice *pci_get_controller(struct udevice *dev)
+{
+	while (device_is_on_pci_bus(dev))
+		dev = dev->parent;
+
+	return dev;
+}
+
+pci_dev_t dm_pci_get_bdf(struct udevice *dev)
 {
 	struct pci_child_platdata *pplat = dev_get_parent_platdata(dev);
 	struct udevice *bus = dev->parent;
@@ -65,30 +75,7 @@ static int pci_get_bus_max(void)
 
 int pci_last_busno(void)
 {
-	struct pci_controller *hose;
-	struct udevice *bus;
-	struct uclass *uc;
-	int ret;
-
-	debug("pci_last_busno\n");
-	ret = uclass_get(UCLASS_PCI, &uc);
-	if (ret || list_empty(&uc->dev_head))
-		return -1;
-
-	/* Probe the last bus */
-	bus = list_entry(uc->dev_head.prev, struct udevice, uclass_node);
-	debug("bus = %p, %s\n", bus, bus->name);
-	assert(bus);
-	ret = device_probe(bus);
-	if (ret)
-		return ret;
-
-	/* If that bus has bridges, we may have new buses now. Get the last */
-	bus = list_entry(uc->dev_head.prev, struct udevice, uclass_node);
-	hose = dev_get_uclass_priv(bus);
-	debug("bus = %s, hose = %p\n", bus->name, hose);
-
-	return hose->last_busno;
+	return pci_get_bus_max();
 }
 
 int pci_get_ff(enum pci_size_t size)
@@ -102,6 +89,27 @@ int pci_get_ff(enum pci_size_t size)
 		return 0xffffffff;
 	}
 }
+
+static void pci_dev_find_ofnode(struct udevice *bus, phys_addr_t bdf,
+				ofnode *rnode)
+{
+	struct fdt_pci_addr addr;
+	ofnode node;
+	int ret;
+
+	dev_for_each_subnode(node, bus) {
+		ret = ofnode_read_pci_addr(node, FDT_PCI_SPACE_CONFIG, "reg",
+					   &addr);
+		if (ret)
+			continue;
+
+		if (PCI_MASK_BUS(addr.phys_hi) != PCI_MASK_BUS(bdf))
+			continue;
+
+		*rnode = node;
+		break;
+	}
+};
 
 int pci_bus_find_devfn(struct udevice *bus, pci_dev_t find_devfn,
 		       struct udevice **devp)
@@ -123,12 +131,12 @@ int pci_bus_find_devfn(struct udevice *bus, pci_dev_t find_devfn,
 	return -ENODEV;
 }
 
-int pci_bus_find_bdf(pci_dev_t bdf, struct udevice **devp)
+int dm_pci_bus_find_bdf(pci_dev_t bdf, struct udevice **devp)
 {
 	struct udevice *bus;
 	int ret;
 
-	ret = uclass_get_device_by_seq(UCLASS_PCI, PCI_BUS(bdf), &bus);
+	ret = pci_get_bus(PCI_BUS(bdf), &bus);
 	if (ret)
 		return ret;
 	return pci_bus_find_devfn(bus, PCI_MASK_BUS(bdf), devp);
@@ -189,6 +197,65 @@ int pci_find_device_id(struct pci_device_id *ids, int index,
 	return -ENODEV;
 }
 
+static int dm_pci_bus_find_device(struct udevice *bus, unsigned int vendor,
+				  unsigned int device, int *indexp,
+				  struct udevice **devp)
+{
+	struct pci_child_platdata *pplat;
+	struct udevice *dev;
+
+	for (device_find_first_child(bus, &dev);
+	     dev;
+	     device_find_next_child(&dev)) {
+		pplat = dev_get_parent_platdata(dev);
+		if (pplat->vendor == vendor && pplat->device == device) {
+			if (!(*indexp)--) {
+				*devp = dev;
+				return 0;
+			}
+		}
+	}
+
+	return -ENODEV;
+}
+
+int dm_pci_find_device(unsigned int vendor, unsigned int device, int index,
+		       struct udevice **devp)
+{
+	struct udevice *bus;
+
+	/* Scan all known buses */
+	for (uclass_first_device(UCLASS_PCI, &bus);
+	     bus;
+	     uclass_next_device(&bus)) {
+		if (!dm_pci_bus_find_device(bus, vendor, device, &index, devp))
+			return device_probe(*devp);
+	}
+	*devp = NULL;
+
+	return -ENODEV;
+}
+
+int dm_pci_find_class(uint find_class, int index, struct udevice **devp)
+{
+	struct udevice *dev;
+
+	/* Scan all known buses */
+	for (pci_find_first_device(&dev);
+	     dev;
+	     pci_find_next_device(&dev)) {
+		struct pci_child_platdata *pplat = dev_get_parent_platdata(dev);
+
+		if (pplat->class == find_class && !index--) {
+			*devp = dev;
+			return device_probe(*devp);
+		}
+	}
+	*devp = NULL;
+
+	return -ENODEV;
+}
+
 int pci_bus_write_config(struct udevice *bus, pci_dev_t bdf, int offset,
 			 unsigned long value, enum pci_size_t size)
 {
@@ -200,13 +267,28 @@ int pci_bus_write_config(struct udevice *bus, pci_dev_t bdf, int offset,
 	return ops->write_config(bus, bdf, offset, value, size);
 }
 
+int pci_bus_clrset_config32(struct udevice *bus, pci_dev_t bdf, int offset,
+			    u32 clr, u32 set)
+{
+	ulong val;
+	int ret;
+
+	ret = pci_bus_read_config(bus, bdf, offset, &val, PCI_SIZE_32);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return pci_bus_write_config(bus, bdf, offset, val, PCI_SIZE_32);
+}
+
 int pci_write_config(pci_dev_t bdf, int offset, unsigned long value,
 		     enum pci_size_t size)
 {
 	struct udevice *bus;
 	int ret;
 
-	ret = uclass_get_device_by_seq(UCLASS_PCI, PCI_BUS(bdf), &bus);
+	ret = pci_get_bus(PCI_BUS(bdf), &bus);
 	if (ret)
 		return ret;
 
@@ -218,11 +300,11 @@ int dm_pci_write_config(struct udevice *dev, int offset, unsigned long value,
 {
 	struct udevice *bus;
 
-	for (bus = dev; device_get_uclass_id(bus->parent) == UCLASS_PCI;)
+	for (bus = dev; device_is_on_pci_bus(bus);)
 		bus = bus->parent;
-	return pci_bus_write_config(bus, pci_get_bdf(dev), offset, value, size);
+	return pci_bus_write_config(bus, dm_pci_get_bdf(dev), offset, value,
+				    size);
 }
-
 
 int pci_write_config32(pci_dev_t bdf, int offset, u32 value)
 {
@@ -271,7 +353,7 @@ int pci_read_config(pci_dev_t bdf, int offset, unsigned long *valuep,
 	struct udevice *bus;
 	int ret;
 
-	ret = uclass_get_device_by_seq(UCLASS_PCI, PCI_BUS(bdf), &bus);
+	ret = pci_get_bus(PCI_BUS(bdf), &bus);
 	if (ret)
 		return ret;
 
@@ -283,9 +365,9 @@ int dm_pci_read_config(struct udevice *dev, int offset, unsigned long *valuep,
 {
 	struct udevice *bus;
 
-	for (bus = dev; device_get_uclass_id(bus->parent) == UCLASS_PCI;)
+	for (bus = dev; device_is_on_pci_bus(bus);)
 		bus = bus->parent;
-	return pci_bus_read_config(bus, pci_get_bdf(dev), offset, valuep,
+	return pci_bus_read_config(bus, dm_pci_get_bdf(dev), offset, valuep,
 				   size);
 }
 
@@ -367,9 +449,65 @@ int dm_pci_read_config32(struct udevice *dev, int offset, u32 *valuep)
 	return 0;
 }
 
+int dm_pci_clrset_config8(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u8 val;
+	int ret;
+
+	ret = dm_pci_read_config8(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config8(dev, offset, val);
+}
+
+int dm_pci_clrset_config16(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u16 val;
+	int ret;
+
+	ret = dm_pci_read_config16(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config16(dev, offset, val);
+}
+
+int dm_pci_clrset_config32(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u32 val;
+	int ret;
+
+	ret = dm_pci_read_config32(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config32(dev, offset, val);
+}
+
+static void set_vga_bridge_bits(struct udevice *dev)
+{
+	struct udevice *parent = dev->parent;
+	u16 bc;
+
+	while (parent->seq != 0) {
+		dm_pci_read_config16(parent, PCI_BRIDGE_CONTROL, &bc);
+		bc |= PCI_BRIDGE_CTL_VGA;
+		dm_pci_write_config16(parent, PCI_BRIDGE_CONTROL, bc);
+		parent = parent->parent;
+	}
+}
+
 int pci_auto_config_devices(struct udevice *bus)
 {
 	struct pci_controller *hose = bus->uclass_priv;
+	struct pci_child_platdata *pplat;
 	unsigned int sub_bus;
 	struct udevice *dev;
 	int ret;
@@ -381,40 +519,96 @@ int pci_auto_config_devices(struct udevice *bus)
 	     !ret && dev;
 	     ret = device_find_next_child(&dev)) {
 		unsigned int max_bus;
+		int ret;
 
 		debug("%s: device %s\n", __func__, dev->name);
-		max_bus = pciauto_config_device(hose, pci_get_bdf(dev));
+		ret = dm_pciauto_config_device(dev);
+		if (ret < 0)
+			return ret;
+		max_bus = ret;
 		sub_bus = max(sub_bus, max_bus);
+
+		pplat = dev_get_parent_platdata(dev);
+		if (pplat->class == (PCI_CLASS_DISPLAY_VGA << 8))
+			set_vga_bridge_bits(dev);
 	}
 	debug("%s: done\n", __func__);
 
 	return sub_bus;
 }
 
-int dm_pci_hose_probe_bus(struct pci_controller *hose, pci_dev_t bdf)
+int pci_generic_mmap_write_config(
+	struct udevice *bus,
+	int (*addr_f)(struct udevice *bus, pci_dev_t bdf, uint offset, void **addrp),
+	pci_dev_t bdf,
+	uint offset,
+	ulong value,
+	enum pci_size_t size)
 {
-	struct udevice *parent, *bus;
+	void *address;
+
+	if (addr_f(bus, bdf, offset, &address) < 0)
+		return 0;
+
+	switch (size) {
+	case PCI_SIZE_8:
+		writeb(value, address);
+		return 0;
+	case PCI_SIZE_16:
+		writew(value, address);
+		return 0;
+	case PCI_SIZE_32:
+		writel(value, address);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+int pci_generic_mmap_read_config(
+	struct udevice *bus,
+	int (*addr_f)(struct udevice *bus, pci_dev_t bdf, uint offset, void **addrp),
+	pci_dev_t bdf,
+	uint offset,
+	ulong *valuep,
+	enum pci_size_t size)
+{
+	void *address;
+
+	if (addr_f(bus, bdf, offset, &address) < 0) {
+		*valuep = pci_get_ff(size);
+		return 0;
+	}
+
+	switch (size) {
+	case PCI_SIZE_8:
+		*valuep = readb(address);
+		return 0;
+	case PCI_SIZE_16:
+		*valuep = readw(address);
+		return 0;
+	case PCI_SIZE_32:
+		*valuep = readl(address);
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
+int dm_pci_hose_probe_bus(struct udevice *bus)
+{
 	int sub_bus;
 	int ret;
 
 	debug("%s\n", __func__);
-	parent = hose->bus;
-
-	/* Find the bus within the parent */
-	ret = pci_bus_find_devfn(parent, PCI_MASK_BUS(bdf), &bus);
-	if (ret) {
-		debug("%s: Cannot find device %x on bus %s: %d\n", __func__,
-		      bdf, parent->name, ret);
-		return ret;
-	}
 
 	sub_bus = pci_get_bus_max() + 1;
 	debug("%s: bus = %d/%s\n", __func__, sub_bus, bus->name);
-	pciauto_prescan_setup_bridge(hose, bdf, sub_bus);
+	dm_pciauto_prescan_setup_bridge(bus, sub_bus);
 
 	ret = device_probe(bus);
 	if (ret) {
-		debug("%s: Cannot probe bus bus %s: %d\n", __func__, bus->name,
+		debug("%s: Cannot probe bus %s: %d\n", __func__, bus->name,
 		      ret);
 		return ret;
 	}
@@ -424,7 +618,7 @@ int dm_pci_hose_probe_bus(struct pci_controller *hose, pci_dev_t bdf)
 		return -EPIPE;
 	}
 	sub_bus = pci_get_bus_max();
-	pciauto_postscan_setup_bridge(hose, bdf, sub_bus);
+	dm_pciauto_postscan_setup_bridge(bus, sub_bus);
 
 	return sub_bus;
 }
@@ -433,9 +627,10 @@ int dm_pci_hose_probe_bus(struct pci_controller *hose, pci_dev_t bdf)
  * pci_match_one_device - Tell if a PCI device structure has a matching
  *                        PCI device id structure
  * @id: single PCI device id structure to match
- * @dev: the PCI device structure to match against
+ * @find: the PCI device id structure to match against
  *
- * Returns the matching pci_device_id structure or %NULL if there is no match.
+ * Returns true if the finding pci_device_id structure matched or false if
+ * there is no match.
  */
 static bool pci_match_one_id(const struct pci_device_id *id,
 			     const struct pci_device_id *find)
@@ -454,12 +649,20 @@ static bool pci_match_one_id(const struct pci_device_id *id,
  * pci_find_and_bind_driver() - Find and bind the right PCI driver
  *
  * This only looks at certain fields in the descriptor.
+ *
+ * @parent:	Parent bus
+ * @find_id:	Specification of the driver to find
+ * @bdf:	Bus/device/function addreess - see PCI_BDF()
+ * @devp:	Returns a pointer to the device created
+ * @return 0 if OK, -EPERM if the device is not needed before relocation and
+ *	   therefore was not created, other -ve value on error
  */
 static int pci_find_and_bind_driver(struct udevice *parent,
-				    struct pci_device_id *find_id, pci_dev_t bdf,
-				    struct udevice **devp)
+				    struct pci_device_id *find_id,
+				    pci_dev_t bdf, struct udevice **devp)
 {
 	struct pci_driver_entry *start, *entry;
+	ofnode node = ofnode_null();
 	const char *drv;
 	int n_ents;
 	int ret;
@@ -470,6 +673,10 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 
 	debug("%s: Searching for driver: vendor=%x, device=%x\n", __func__,
 	      find_id->vendor, find_id->device);
+
+	/* Determine optional OF node */
+	pci_dev_find_ofnode(parent, bdf, &node);
+
 	start = ll_entry_start(struct pci_driver_entry, pci_driver_entry);
 	n_ents = ll_entry_count(struct pci_driver_entry, pci_driver_entry);
 	for (entry = start; entry != start + n_ents; entry++) {
@@ -493,7 +700,7 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 			 */
 			if (!(gd->flags & GD_FLG_RELOC) &&
 			    !(drv->flags & DM_FLAG_PRE_RELOC))
-				return 0;
+				return -EPERM;
 
 			/*
 			 * We could pass the descriptor to the driver as
@@ -503,12 +710,12 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 			 * find another driver. For now this doesn't seem
 			 * necesssary, so just bind the first match.
 			 */
-			ret = device_bind(parent, drv, drv->name, NULL, -1,
-					  &dev);
+			ret = device_bind_ofnode(parent, drv, drv->name, NULL,
+						 node, &dev);
 			if (ret)
 				goto error;
 			debug("%s: Match found: %s\n", __func__, drv->name);
-			dev->driver_data = find_id->driver_data;
+			dev->driver_data = id->driver_data;
 			*devp = dev;
 			return 0;
 		}
@@ -521,7 +728,7 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 	 * limited (ie: using Cache As RAM).
 	 */
 	if (!(gd->flags & GD_FLG_RELOC) && !bridge)
-		return 0;
+		return -EPERM;
 
 	/* Bind a generic driver so that the device can be used */
 	sprintf(name, "pci_%x:%x.%x", parent->seq, PCI_DEV(bdf),
@@ -531,9 +738,10 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 		return -ENOMEM;
 	drv = bridge ? "pci_bridge_drv" : "pci_generic_drv";
 
-	ret = device_bind_driver(parent, drv, str, devp);
+	ret = device_bind_driver_to_node(parent, drv, str, node, devp);
 	if (ret) {
-		debug("%s: Failed to bind generic driver: %d", __func__, ret);
+		debug("%s: Failed to bind generic driver: %d\n", __func__, ret);
+		free(str);
 		return ret;
 	}
 	debug("%s: No match found: bound generic driver instead\n", __func__);
@@ -556,23 +764,28 @@ int pci_bind_bus_devices(struct udevice *bus)
 	found_multi = false;
 	end = PCI_BDF(bus->seq, PCI_MAX_PCI_DEVICES - 1,
 		      PCI_MAX_PCI_FUNCTIONS - 1);
-	for (bdf = PCI_BDF(bus->seq, 0, 0); bdf < end;
+	for (bdf = PCI_BDF(bus->seq, 0, 0); bdf <= end;
 	     bdf += PCI_BDF(0, 0, 1)) {
 		struct pci_child_platdata *pplat;
 		struct udevice *dev;
 		ulong class;
 
+		if (!PCI_FUNC(bdf))
+			found_multi = false;
 		if (PCI_FUNC(bdf) && !found_multi)
 			continue;
+
 		/* Check only the first access, we don't expect problems */
-		ret = pci_bus_read_config(bus, bdf, PCI_HEADER_TYPE,
-					  &header_type, PCI_SIZE_8);
+		ret = pci_bus_read_config(bus, bdf, PCI_VENDOR_ID, &vendor,
+					  PCI_SIZE_16);
 		if (ret)
 			goto error;
-		pci_bus_read_config(bus, bdf, PCI_VENDOR_ID, &vendor,
-				    PCI_SIZE_16);
+
 		if (vendor == 0xffff || vendor == 0x0000)
 			continue;
+
+		pci_bus_read_config(bus, bdf, PCI_HEADER_TYPE,
+				    &header_type, PCI_SIZE_8);
 
 		if (!PCI_FUNC(bdf))
 			found_multi = header_type & 0x80;
@@ -588,9 +801,7 @@ int pci_bind_bus_devices(struct udevice *bus)
 		/* Find this device in the device tree */
 		ret = pci_bus_find_devfn(bus, PCI_MASK_BUS(bdf), &dev);
 
-		/* Search for a driver */
-
-		/* If nothing in the device tree, bind a generic device */
+		/* If nothing in the device tree, bind a device */
 		if (ret == -ENODEV) {
 			struct pci_device_id find_id;
 			ulong val;
@@ -609,17 +820,17 @@ int pci_bind_bus_devices(struct udevice *bus)
 			ret = pci_find_and_bind_driver(bus, &find_id, bdf,
 						       &dev);
 		}
-		if (ret)
+		if (ret == -EPERM)
+			continue;
+		else if (ret)
 			return ret;
 
 		/* Update the platform data */
-		if (dev) {
-			pplat = dev_get_parent_platdata(dev);
-			pplat->devfn = PCI_MASK_BUS(bdf);
-			pplat->vendor = vendor;
-			pplat->device = device;
-			pplat->class = class;
-		}
+		pplat = dev_get_parent_platdata(dev);
+		pplat->devfn = PCI_MASK_BUS(bdf);
+		pplat->vendor = vendor;
+		pplat->device = device;
+		pplat->class = class;
 	}
 
 	return 0;
@@ -629,43 +840,24 @@ error:
 	return ret;
 }
 
-static int pci_uclass_post_bind(struct udevice *bus)
-{
-	/*
-	 * If there is no pci device listed in the device tree,
-	 * don't bother scanning the device tree.
-	 */
-	if (bus->of_offset == -1)
-		return 0;
-
-	/*
-	 * Scan the device tree for devices. This does not probe the PCI bus,
-	 * as this is not permitted while binding. It just finds devices
-	 * mentioned in the device tree.
-	 *
-	 * Before relocation, only bind devices marked for pre-relocation
-	 * use.
-	 */
-	return dm_scan_fdt_node(bus, gd->fdt_blob, bus->of_offset,
-				gd->flags & GD_FLG_RELOC ? false : true);
-}
-
-static int decode_regions(struct pci_controller *hose, const void *blob,
-			  int parent_node, int node)
+static void decode_regions(struct pci_controller *hose, ofnode parent_node,
+			   ofnode node)
 {
 	int pci_addr_cells, addr_cells, size_cells;
 	int cells_per_record;
-	phys_addr_t addr;
 	const u32 *prop;
 	int len;
 	int i;
 
-	prop = fdt_getprop(blob, node, "ranges", &len);
-	if (!prop)
-		return -EINVAL;
-	pci_addr_cells = fdt_address_cells(blob, node);
-	addr_cells = fdt_address_cells(blob, parent_node);
-	size_cells = fdt_size_cells(blob, node);
+	prop = ofnode_get_property(node, "ranges", &len);
+	if (!prop) {
+		debug("%s: Cannot decode regions\n", __func__);
+		return;
+	}
+
+	pci_addr_cells = ofnode_read_simple_addr_cells(node);
+	addr_cells = ofnode_read_simple_addr_cells(parent_node);
+	size_cells = ofnode_read_simple_size_cells(node);
 
 	/* PCI addresses are always 3-cells */
 	len /= sizeof(u32);
@@ -678,6 +870,7 @@ static int decode_regions(struct pci_controller *hose, const void *blob,
 		int space_code;
 		u32 flags;
 		int type;
+		int pos;
 
 		if (len < cells_per_record)
 			break;
@@ -689,9 +882,8 @@ static int decode_regions(struct pci_controller *hose, const void *blob,
 		prop += addr_cells;
 		size = fdtdec_get_number(prop, size_cells);
 		prop += size_cells;
-		debug("%s: region %d, pci_addr=%" PRIx64 ", addr=%" PRIx64
-		      ", size=%" PRIx64 ", space_code=%d\n", __func__,
-		      hose->region_count, pci_addr, addr, size, space_code);
+		debug("%s: region %d, pci_addr=%llx, addr=%llx, size=%llx, space_code=%d\n",
+		      __func__, hose->region_count, pci_addr, addr, size, space_code);
 		if (space_code & 2) {
 			type = flags & (1U << 30) ? PCI_REGION_PREFETCH :
 					PCI_REGION_MEM;
@@ -700,39 +892,74 @@ static int decode_regions(struct pci_controller *hose, const void *blob,
 		} else {
 			continue;
 		}
-		debug(" - type=%d\n", type);
-		pci_set_region(hose->regions + hose->region_count++, pci_addr,
-			       addr, size, type);
+
+		if (!IS_ENABLED(CONFIG_SYS_PCI_64BIT) &&
+		    type == PCI_REGION_MEM && upper_32_bits(pci_addr)) {
+			debug(" - beyond the 32-bit boundary, ignoring\n");
+			continue;
+		}
+
+		pos = -1;
+		for (i = 0; i < hose->region_count; i++) {
+			if (hose->regions[i].flags == type)
+				pos = i;
+		}
+		if (pos == -1)
+			pos = hose->region_count++;
+		debug(" - type=%d, pos=%d\n", type, pos);
+		pci_set_region(hose->regions + pos, pci_addr, addr, size, type);
 	}
 
 	/* Add a region for our local memory */
-	addr = gd->ram_size;
-	if (gd->pci_ram_top && gd->pci_ram_top < addr)
-		addr = gd->pci_ram_top;
-	pci_set_region(hose->regions + hose->region_count++, 0, 0, addr,
-		       PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
+#ifdef CONFIG_NR_DRAM_BANKS
+	bd_t *bd = gd->bd;
 
-	return 0;
+	if (!bd)
+		return;
+
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; ++i) {
+		if (hose->region_count == MAX_PCI_REGIONS) {
+			pr_err("maximum number of regions parsed, aborting\n");
+			break;
+		}
+
+		if (bd->bi_dram[i].size) {
+			pci_set_region(hose->regions + hose->region_count++,
+				       bd->bi_dram[i].start,
+				       bd->bi_dram[i].start,
+				       bd->bi_dram[i].size,
+				       PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
+		}
+	}
+#else
+	phys_addr_t base = 0, size;
+
+	size = gd->ram_size;
+#ifdef CONFIG_SYS_SDRAM_BASE
+	base = CONFIG_SYS_SDRAM_BASE;
+#endif
+	if (gd->pci_ram_top && gd->pci_ram_top < base + size)
+		size = gd->pci_ram_top - base;
+	if (size)
+		pci_set_region(hose->regions + hose->region_count++, base,
+			base, size, PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
+#endif
+
+	return;
 }
 
 static int pci_uclass_pre_probe(struct udevice *bus)
 {
 	struct pci_controller *hose;
-	int ret;
 
 	debug("%s, bus=%d/%s, parent=%s\n", __func__, bus->seq, bus->name,
 	      bus->parent->name);
 	hose = bus->uclass_priv;
 
 	/* For bridges, use the top-level PCI controller */
-	if (device_get_uclass_id(bus->parent) == UCLASS_ROOT) {
+	if (!device_is_on_pci_bus(bus)) {
 		hose->ctlr = bus;
-		ret = decode_regions(hose, gd->fdt_blob, bus->parent->of_offset,
-				bus->of_offset);
-		if (ret) {
-			debug("%s: Cannot decode regions\n", __func__);
-			return ret;
-		}
+		decode_regions(hose, dev_ofnode(bus->parent), dev_ofnode(bus));
 	} else {
 		struct pci_controller *parent_hose;
 
@@ -757,6 +984,8 @@ static int pci_uclass_post_probe(struct udevice *bus)
 
 #ifdef CONFIG_PCI_PNP
 	ret = pci_auto_config_devices(bus);
+	if (ret < 0)
+		return ret;
 #endif
 
 #if defined(CONFIG_X86) && defined(CONFIG_HAVE_FSP)
@@ -773,37 +1002,46 @@ static int pci_uclass_post_probe(struct udevice *bus)
 	 * Note we only call this 1) after U-Boot is relocated, and 2)
 	 * root bus has finished probing.
 	 */
-	if ((gd->flags & GD_FLG_RELOC) && (bus->seq == 0))
+	if ((gd->flags & GD_FLG_RELOC) && (bus->seq == 0)) {
 		ret = fsp_init_phase_pci();
+		if (ret)
+			return ret;
+	}
 #endif
 
-	return ret < 0 ? ret : 0;
+	return 0;
+}
+
+int pci_get_devfn(struct udevice *dev)
+{
+	struct fdt_pci_addr addr;
+	int ret;
+
+	/* Extract the devfn from fdt_pci_addr */
+	ret = ofnode_read_pci_addr(dev_ofnode(dev), FDT_PCI_SPACE_CONFIG,
+				   "reg", &addr);
+	if (ret) {
+		if (ret != -ENOENT)
+			return -EINVAL;
+	}
+
+	return addr.phys_hi & 0xff00;
 }
 
 static int pci_uclass_child_post_bind(struct udevice *dev)
 {
 	struct pci_child_platdata *pplat;
-	struct fdt_pci_addr addr;
-	int ret;
 
-	if (dev->of_offset == -1)
+	if (!dev_of_valid(dev))
 		return 0;
 
-	/*
-	 * We could read vendor, device, class if available. But for now we
-	 * just check the address.
-	 */
 	pplat = dev_get_parent_platdata(dev);
-	ret = fdtdec_get_pci_addr(gd->fdt_blob, dev->of_offset,
-				  FDT_PCI_SPACE_CONFIG, "reg", &addr);
 
-	if (ret) {
-		if (ret != -ENOENT)
-			return -EINVAL;
-	} else {
-		/* extract the devfn from fdt_pci_addr */
-		pplat->devfn = addr.phys_hi & 0xff00;
-	}
+	/* Extract vendor id and device id if available */
+	ofnode_read_pci_vendev(dev_ofnode(dev), &pplat->vendor, &pplat->device);
+
+	/* Extract the devfn from fdt_pci_addr */
+	pplat->devfn = pci_get_devfn(dev);
 
 	return 0;
 }
@@ -886,11 +1124,335 @@ int pci_find_first_device(struct udevice **devp)
 	return skip_to_next_device(bus, devp);
 }
 
+ulong pci_conv_32_to_size(ulong value, uint offset, enum pci_size_t size)
+{
+	switch (size) {
+	case PCI_SIZE_8:
+		return (value >> ((offset & 3) * 8)) & 0xff;
+	case PCI_SIZE_16:
+		return (value >> ((offset & 2) * 8)) & 0xffff;
+	default:
+		return value;
+	}
+}
+
+ulong pci_conv_size_to_32(ulong old, ulong value, uint offset,
+			  enum pci_size_t size)
+{
+	uint off_mask;
+	uint val_mask, shift;
+	ulong ldata, mask;
+
+	switch (size) {
+	case PCI_SIZE_8:
+		off_mask = 3;
+		val_mask = 0xff;
+		break;
+	case PCI_SIZE_16:
+		off_mask = 2;
+		val_mask = 0xffff;
+		break;
+	default:
+		return value;
+	}
+	shift = (offset & off_mask) * 8;
+	ldata = (value & val_mask) << shift;
+	mask = val_mask << shift;
+	value = (old & ~mask) | ldata;
+
+	return value;
+}
+
+int pci_get_regions(struct udevice *dev, struct pci_region **iop,
+		    struct pci_region **memp, struct pci_region **prefp)
+{
+	struct udevice *bus = pci_get_controller(dev);
+	struct pci_controller *hose = dev_get_uclass_priv(bus);
+	int i;
+
+	*iop = NULL;
+	*memp = NULL;
+	*prefp = NULL;
+	for (i = 0; i < hose->region_count; i++) {
+		switch (hose->regions[i].flags) {
+		case PCI_REGION_IO:
+			if (!*iop || (*iop)->size < hose->regions[i].size)
+				*iop = hose->regions + i;
+			break;
+		case PCI_REGION_MEM:
+			if (!*memp || (*memp)->size < hose->regions[i].size)
+				*memp = hose->regions + i;
+			break;
+		case (PCI_REGION_MEM | PCI_REGION_PREFETCH):
+			if (!*prefp || (*prefp)->size < hose->regions[i].size)
+				*prefp = hose->regions + i;
+			break;
+		}
+	}
+
+	return (*iop != NULL) + (*memp != NULL) + (*prefp != NULL);
+}
+
+u32 dm_pci_read_bar32(struct udevice *dev, int barnum)
+{
+	u32 addr;
+	int bar;
+
+	bar = PCI_BASE_ADDRESS_0 + barnum * 4;
+	dm_pci_read_config32(dev, bar, &addr);
+	if (addr & PCI_BASE_ADDRESS_SPACE_IO)
+		return addr & PCI_BASE_ADDRESS_IO_MASK;
+	else
+		return addr & PCI_BASE_ADDRESS_MEM_MASK;
+}
+
+void dm_pci_write_bar32(struct udevice *dev, int barnum, u32 addr)
+{
+	int bar;
+
+	bar = PCI_BASE_ADDRESS_0 + barnum * 4;
+	dm_pci_write_config32(dev, bar, addr);
+}
+
+static int _dm_pci_bus_to_phys(struct udevice *ctlr,
+			       pci_addr_t bus_addr, unsigned long flags,
+			       unsigned long skip_mask, phys_addr_t *pa)
+{
+	struct pci_controller *hose = dev_get_uclass_priv(ctlr);
+	struct pci_region *res;
+	int i;
+
+	if (hose->region_count == 0) {
+		*pa = bus_addr;
+		return 0;
+	}
+
+	for (i = 0; i < hose->region_count; i++) {
+		res = &hose->regions[i];
+
+		if (((res->flags ^ flags) & PCI_REGION_TYPE) != 0)
+			continue;
+
+		if (res->flags & skip_mask)
+			continue;
+
+		if (bus_addr >= res->bus_start &&
+		    (bus_addr - res->bus_start) < res->size) {
+			*pa = (bus_addr - res->bus_start + res->phys_start);
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+phys_addr_t dm_pci_bus_to_phys(struct udevice *dev, pci_addr_t bus_addr,
+			       unsigned long flags)
+{
+	phys_addr_t phys_addr = 0;
+	struct udevice *ctlr;
+	int ret;
+
+	/* The root controller has the region information */
+	ctlr = pci_get_controller(dev);
+
+	/*
+	 * if PCI_REGION_MEM is set we do a two pass search with preference
+	 * on matches that don't have PCI_REGION_SYS_MEMORY set
+	 */
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
+		ret = _dm_pci_bus_to_phys(ctlr, bus_addr,
+					  flags, PCI_REGION_SYS_MEMORY,
+					  &phys_addr);
+		if (!ret)
+			return phys_addr;
+	}
+
+	ret = _dm_pci_bus_to_phys(ctlr, bus_addr, flags, 0, &phys_addr);
+
+	if (ret)
+		puts("pci_hose_bus_to_phys: invalid physical address\n");
+
+	return phys_addr;
+}
+
+int _dm_pci_phys_to_bus(struct udevice *dev, phys_addr_t phys_addr,
+			unsigned long flags, unsigned long skip_mask,
+			pci_addr_t *ba)
+{
+	struct pci_region *res;
+	struct udevice *ctlr;
+	pci_addr_t bus_addr;
+	int i;
+	struct pci_controller *hose;
+
+	/* The root controller has the region information */
+	ctlr = pci_get_controller(dev);
+	hose = dev_get_uclass_priv(ctlr);
+
+	if (hose->region_count == 0) {
+		*ba = phys_addr;
+		return 0;
+	}
+
+	for (i = 0; i < hose->region_count; i++) {
+		res = &hose->regions[i];
+
+		if (((res->flags ^ flags) & PCI_REGION_TYPE) != 0)
+			continue;
+
+		if (res->flags & skip_mask)
+			continue;
+
+		bus_addr = phys_addr - res->phys_start + res->bus_start;
+
+		if (bus_addr >= res->bus_start &&
+		    (bus_addr - res->bus_start) < res->size) {
+			*ba = bus_addr;
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+pci_addr_t dm_pci_phys_to_bus(struct udevice *dev, phys_addr_t phys_addr,
+			      unsigned long flags)
+{
+	pci_addr_t bus_addr = 0;
+	int ret;
+
+	/*
+	 * if PCI_REGION_MEM is set we do a two pass search with preference
+	 * on matches that don't have PCI_REGION_SYS_MEMORY set
+	 */
+	if ((flags & PCI_REGION_TYPE) == PCI_REGION_MEM) {
+		ret = _dm_pci_phys_to_bus(dev, phys_addr, flags,
+					  PCI_REGION_SYS_MEMORY, &bus_addr);
+		if (!ret)
+			return bus_addr;
+	}
+
+	ret = _dm_pci_phys_to_bus(dev, phys_addr, flags, 0, &bus_addr);
+
+	if (ret)
+		puts("pci_hose_phys_to_bus: invalid physical address\n");
+
+	return bus_addr;
+}
+
+void *dm_pci_map_bar(struct udevice *dev, int bar, int flags)
+{
+	pci_addr_t pci_bus_addr;
+	u32 bar_response;
+
+	/* read BAR address */
+	dm_pci_read_config32(dev, bar, &bar_response);
+	pci_bus_addr = (pci_addr_t)(bar_response & ~0xf);
+
+	/*
+	 * Pass "0" as the length argument to pci_bus_to_virt.  The arg
+	 * isn't actualy used on any platform because u-boot assumes a static
+	 * linear mapping.  In the future, this could read the BAR size
+	 * and pass that as the size if needed.
+	 */
+	return dm_pci_bus_to_virt(dev, pci_bus_addr, flags, 0, MAP_NOCACHE);
+}
+
+static int _dm_pci_find_next_capability(struct udevice *dev, u8 pos, int cap)
+{
+	int ttl = PCI_FIND_CAP_TTL;
+	u8 id;
+	u16 ent;
+
+	dm_pci_read_config8(dev, pos, &pos);
+
+	while (ttl--) {
+		if (pos < PCI_STD_HEADER_SIZEOF)
+			break;
+		pos &= ~3;
+		dm_pci_read_config16(dev, pos, &ent);
+
+		id = ent & 0xff;
+		if (id == 0xff)
+			break;
+		if (id == cap)
+			return pos;
+		pos = (ent >> 8);
+	}
+
+	return 0;
+}
+
+int dm_pci_find_next_capability(struct udevice *dev, u8 start, int cap)
+{
+	return _dm_pci_find_next_capability(dev, start + PCI_CAP_LIST_NEXT,
+					    cap);
+}
+
+int dm_pci_find_capability(struct udevice *dev, int cap)
+{
+	u16 status;
+	u8 header_type;
+	u8 pos;
+
+	dm_pci_read_config16(dev, PCI_STATUS, &status);
+	if (!(status & PCI_STATUS_CAP_LIST))
+		return 0;
+
+	dm_pci_read_config8(dev, PCI_HEADER_TYPE, &header_type);
+	if ((header_type & 0x7f) == PCI_HEADER_TYPE_CARDBUS)
+		pos = PCI_CB_CAPABILITY_LIST;
+	else
+		pos = PCI_CAPABILITY_LIST;
+
+	return _dm_pci_find_next_capability(dev, pos, cap);
+}
+
+int dm_pci_find_next_ext_capability(struct udevice *dev, int start, int cap)
+{
+	u32 header;
+	int ttl;
+	int pos = PCI_CFG_SPACE_SIZE;
+
+	/* minimum 8 bytes per capability */
+	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
+
+	if (start)
+		pos = start;
+
+	dm_pci_read_config32(dev, pos, &header);
+	/*
+	 * If we have no capabilities, this is indicated by cap ID,
+	 * cap version and next pointer all being 0.
+	 */
+	if (header == 0)
+		return 0;
+
+	while (ttl--) {
+		if (PCI_EXT_CAP_ID(header) == cap)
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+		if (pos < PCI_CFG_SPACE_SIZE)
+			break;
+
+		dm_pci_read_config32(dev, pos, &header);
+	}
+
+	return 0;
+}
+
+int dm_pci_find_ext_capability(struct udevice *dev, int cap)
+{
+	return dm_pci_find_next_ext_capability(dev, 0, cap);
+}
+
 UCLASS_DRIVER(pci) = {
 	.id		= UCLASS_PCI,
 	.name		= "pci",
 	.flags		= DM_UC_FLAG_SEQ_ALIAS,
-	.post_bind	= pci_uclass_post_bind,
+	.post_bind	= dm_scan_fdt_dev,
 	.pre_probe	= pci_uclass_pre_probe,
 	.post_probe	= pci_uclass_post_probe,
 	.child_post_bind = pci_uclass_child_post_bind,
@@ -931,3 +1493,18 @@ U_BOOT_DRIVER(pci_generic_drv) = {
 	.id		= UCLASS_PCI_GENERIC,
 	.of_match	= pci_generic_ids,
 };
+
+void pci_init(void)
+{
+	struct udevice *bus;
+
+	/*
+	 * Enumerate all known controller devices. Enumeration has the side-
+	 * effect of probing them, so PCIe devices will be enumerated too.
+	 */
+	for (uclass_first_device(UCLASS_PCI, &bus);
+	     bus;
+	     uclass_next_device(&bus)) {
+		;
+	}
+}

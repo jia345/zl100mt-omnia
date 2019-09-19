@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Keystone2: pll initialization
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -31,7 +30,13 @@ const struct keystone_pll_regs keystone_pll_regs[] = {
 	[TETRIS_PLL]	= {KS2_ARMPLLCTL0, KS2_ARMPLLCTL1},
 	[DDR3A_PLL]	= {KS2_DDR3APLLCTL0, KS2_DDR3APLLCTL1},
 	[DDR3B_PLL]	= {KS2_DDR3BPLLCTL0, KS2_DDR3BPLLCTL1},
+	[UART_PLL]	= {KS2_UARTPLLCTL0, KS2_UARTPLLCTL1},
 };
+
+inline void pll_pa_clk_sel(void)
+{
+	setbits_le32(keystone_pll_regs[PASS_PLL].reg1, CFG_PLLCTL1_PAPLL_MASK);
+}
 
 static void wait_for_completion(const struct pll_init_data *data)
 {
@@ -157,14 +162,14 @@ void configure_secondary_pll(const struct pll_init_data *data)
 {
 	int pllod = data->pll_od - 1;
 
+	/* Enable Glitch free bypass for ARM PLL */
+	if (cpu_is_k2hk() && data->pll == TETRIS_PLL)
+		clrbits_le32(KS2_MISC_CTRL, MISC_CTL1_ARM_PLL_EN);
+
 	/* Enable Bypass mode */
 	setbits_le32(keystone_pll_regs[data->pll].reg1, CFG_PLLCTL1_ENSAT_MASK);
 	setbits_le32(keystone_pll_regs[data->pll].reg0,
 		     CFG_PLLCTL0_BYPASS_MASK);
-
-	/* Enable Glitch free bypass for ARM PLL */
-	if (cpu_is_k2hk() && data->pll == TETRIS_PLL)
-		clrbits_le32(KS2_MISC_CTRL, MISC_CTL1_ARM_PLL_EN);
 
 	configure_mult_div(data);
 
@@ -180,13 +185,8 @@ void configure_secondary_pll(const struct pll_init_data *data)
 	sdelay(21000);
 
 	/* Select the Output of PASS PLL as input to PASS */
-	if (data->pll == PASS_PLL)
-		setbits_le32(keystone_pll_regs[data->pll].reg1,
-			     CFG_PLLCTL1_PAPLL_MASK);
-
-	/* Select the Output of ARM PLL as input to ARM */
-	if (data->pll == TETRIS_PLL)
-		setbits_le32(KS2_MISC_CTRL, MISC_CTL1_ARM_PLL_EN);
+	if (data->pll == PASS_PLL && cpu_is_k2hk())
+		pll_pa_clk_sel();
 
 	clrbits_le32(keystone_pll_regs[data->pll].reg1, CFG_PLLCTL1_RST_MASK);
 	/* Wait for 500 * REFCLK cucles * (PLLD + 1) */
@@ -195,6 +195,10 @@ void configure_secondary_pll(const struct pll_init_data *data)
 	/* Switch to PLL mode */
 	clrbits_le32(keystone_pll_regs[data->pll].reg0,
 		     CFG_PLLCTL0_BYPASS_MASK);
+
+	/* Select the Output of ARM PLL as input to ARM */
+	if (cpu_is_k2hk() && data->pll == TETRIS_PLL)
+		setbits_le32(KS2_MISC_CTRL, MISC_CTL1_ARM_PLL_EN);
 }
 
 void init_pll(const struct pll_init_data *data)
@@ -223,18 +227,21 @@ void init_plls(void)
 	}
 }
 
-static int get_max_speed(u32 val, u32 speed_supported)
+static int get_max_speed(u32 val, u32 speed_supported, int *spds)
 {
 	int speed;
 
 	/* Left most setbit gives the speed */
 	for (speed = DEVSPEED_NUMSPDS; speed >= 0; speed--) {
 		if ((val & BIT(speed)) & speed_supported)
-			return speeds[speed];
+			return spds[speed];
 	}
 
-	/* If no bit is set, use SPD800 */
-	return SPD800;
+	/* If no bit is set, return minimum speed */
+	if (cpu_is_k2g())
+		return SPD200;
+	else
+		return SPD800;
 }
 
 static inline u32 read_efuse_bootrom(void)
@@ -245,24 +252,24 @@ static inline u32 read_efuse_bootrom(void)
 		return __raw_readl(KS2_EFUSE_BOOTROM);
 }
 
-int get_max_arm_speed(void)
+int get_max_arm_speed(int *spds)
 {
 	u32 armspeed = read_efuse_bootrom();
 
 	armspeed = (armspeed & DEVSPEED_ARMSPEED_MASK) >>
 		    DEVSPEED_ARMSPEED_SHIFT;
 
-	return get_max_speed(armspeed, ARM_SUPPORTED_SPEEDS);
+	return get_max_speed(armspeed, ARM_SUPPORTED_SPEEDS, spds);
 }
 
-int get_max_dev_speed(void)
+int get_max_dev_speed(int *spds)
 {
 	u32 devspeed = read_efuse_bootrom();
 
 	devspeed = (devspeed & DEVSPEED_DEVSPEED_MASK) >>
 		    DEVSPEED_DEVSPEED_SHIFT;
 
-	return get_max_speed(devspeed, DEV_SUPPORTED_SPEEDS);
+	return get_max_speed(devspeed, DEV_SUPPORTED_SPEEDS, spds);
 }
 
 /**
@@ -276,7 +283,7 @@ static unsigned long pll_freq_get(int pll)
 	u32 tmp, reg;
 
 	if (pll == MAIN_PLL) {
-		ret = external_clk[sys_clk];
+		ret = get_external_clk(sys_clk);
 		if (pllctl_reg_read(pll, ctl) & PLLCTL_PLLEN_MASK) {
 			/* PLL mode */
 			tmp = __raw_readl(KS2_MAINPLLCTL0);
@@ -294,20 +301,24 @@ static unsigned long pll_freq_get(int pll)
 	} else {
 		switch (pll) {
 		case PASS_PLL:
-			ret = external_clk[pa_clk];
+			ret = get_external_clk(pa_clk);
 			reg = KS2_PASSPLLCTL0;
 			break;
 		case TETRIS_PLL:
-			ret = external_clk[tetris_clk];
+			ret = get_external_clk(tetris_clk);
 			reg = KS2_ARMPLLCTL0;
 			break;
 		case DDR3A_PLL:
-			ret = external_clk[ddr3a_clk];
+			ret = get_external_clk(ddr3a_clk);
 			reg = KS2_DDR3APLLCTL0;
 			break;
 		case DDR3B_PLL:
-			ret = external_clk[ddr3b_clk];
+			ret = get_external_clk(ddr3b_clk);
 			reg = KS2_DDR3BPLLCTL0;
+			break;
+		case UART_PLL:
+			ret = get_external_clk(uart_clk);
+			reg = KS2_UARTPLLCTL0;
 			break;
 		default:
 			return 0;
@@ -329,7 +340,7 @@ static unsigned long pll_freq_get(int pll)
 	return ret;
 }
 
-unsigned long clk_get_rate(unsigned int clk)
+unsigned long ks_clk_get_rate(unsigned int clk)
 {
 	unsigned long freq = 0;
 
@@ -351,6 +362,10 @@ unsigned long clk_get_rate(unsigned int clk)
 		if (cpu_is_k2hk())
 			freq = pll_freq_get(DDR3B_PLL);
 		break;
+	case uart_pll_clk:
+		if (cpu_is_k2g())
+			freq = pll_freq_get(UART_PLL);
+		break;
 	case sys_clk0_1_clk:
 	case sys_clk0_clk:
 		freq = pll_freq_get(CORE_PLL) / pll0div_read(1);
@@ -365,37 +380,37 @@ unsigned long clk_get_rate(unsigned int clk)
 		freq = pll_freq_get(CORE_PLL) / pll0div_read(4);
 		break;
 	case sys_clk0_2_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 2;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 2;
 		break;
 	case sys_clk0_3_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 3;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 3;
 		break;
 	case sys_clk0_4_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 4;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 4;
 		break;
 	case sys_clk0_6_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 6;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 6;
 		break;
 	case sys_clk0_8_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 8;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 8;
 		break;
 	case sys_clk0_12_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 12;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 12;
 		break;
 	case sys_clk0_24_clk:
-		freq = clk_get_rate(sys_clk0_clk) / 24;
+		freq = ks_clk_get_rate(sys_clk0_clk) / 24;
 		break;
 	case sys_clk1_3_clk:
-		freq = clk_get_rate(sys_clk1_clk) / 3;
+		freq = ks_clk_get_rate(sys_clk1_clk) / 3;
 		break;
 	case sys_clk1_4_clk:
-		freq = clk_get_rate(sys_clk1_clk) / 4;
+		freq = ks_clk_get_rate(sys_clk1_clk) / 4;
 		break;
 	case sys_clk1_6_clk:
-		freq = clk_get_rate(sys_clk1_clk) / 6;
+		freq = ks_clk_get_rate(sys_clk1_clk) / 6;
 		break;
 	case sys_clk1_12_clk:
-		freq = clk_get_rate(sys_clk1_clk) / 12;
+		freq = ks_clk_get_rate(sys_clk1_clk) / 12;
 		break;
 	default:
 		break;

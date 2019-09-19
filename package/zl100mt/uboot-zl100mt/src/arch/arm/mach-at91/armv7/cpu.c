@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Reinhard Meyer, reinhard.meyer@emk-elektronik.de
@@ -5,15 +6,11 @@
  * Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  * (C) Copyright 2013
  * Bo Shen <voice.shen@atmel.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/at91_dbu.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_pit.h>
 #include <asm/arch/at91_gpbr.h>
 #include <asm/arch/clk.h>
@@ -65,12 +62,14 @@ void enable_caches(void)
 	dcache_enable();
 }
 
+#define ATMEL_CHIPID_CIDR_VERSION	0x1f
+
 unsigned int get_chip_id(void)
 {
-	return readl(ATMEL_BASE_DBGU + AT91_DBU_CIDR) & ~AT91_DBU_CIDR_MASK;
+	return readl(ATMEL_CHIPID_CIDR) & ~ATMEL_CHIPID_CIDR_VERSION;
 }
 
 unsigned int get_extension_chip_id(void)
 {
-	return readl(ATMEL_BASE_DBGU + AT91_DBU_EXID);
+	return readl(ATMEL_CHIPID_EXID);
 }

@@ -1,17 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Graeme Russ, graeme.russ@gmail.com
  *
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, daniel@omicron.se
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_INTERRUPT_H_
 #define __ASM_INTERRUPT_H_ 1
 
 #include <asm/types.h>
+
+#define SYS_NUM_IRQS	16
 
 /* Architecture defined exceptions */
 enum x86_exception {

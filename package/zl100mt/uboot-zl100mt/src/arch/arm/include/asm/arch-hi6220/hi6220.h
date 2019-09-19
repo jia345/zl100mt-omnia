@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015 Linaro
  * Peter Griffin <peter.griffin@linaro.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __HI6220_H__
@@ -12,6 +11,9 @@
 
 #define HI6220_MMC0_BASE			0xF723D000
 #define HI6220_MMC1_BASE			0xF723E000
+
+#define HI6220_UART0_BASE			0xF8015000
+#define HI6220_UART3_BASE			0xF7113000
 
 #define HI6220_PMUSSI_BASE			0xF8000000
 

@@ -1,20 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <hwconfig.h>
 #include <netdev.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
+#include <asm/fsl_fdt.h>
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
-#include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
 #include "../common/sleep.h"
@@ -28,7 +28,7 @@ int checkboard(void)
 	struct cpu_type *cpu = gd->arch.cpu;
 	u8 sw;
 
-#ifdef CONFIG_T104XD4RDB
+#if defined(CONFIG_TARGET_T1040D4RDB) || defined(CONFIG_TARGET_T1042D4RDB)
 	printf("Board: %sD4RDB\n", cpu->name);
 #else
 	printf("Board: %sRDB\n", cpu->name);
@@ -82,11 +82,6 @@ int board_early_init_r(void)
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
-	set_liodns();
-#ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_portals();
-#endif
-
 	return 0;
 }
 
@@ -109,7 +104,13 @@ int misc_init_r(void)
 		CPLD_WRITE(misc_ctl_status, CPLD_READ(misc_ctl_status) |
 					 MISC_CTL_SG_SEL | MISC_CTL_AURORA_SEL);
 
-#if defined(CONFIG_T1040D4RDB)
+#if defined(CONFIG_TARGET_T1040D4RDB)
+	if (hwconfig("qe-tdm")) {
+		CPLD_WRITE(sfp_ctl_status, CPLD_READ(sfp_ctl_status) |
+			   MISC_MUX_QE_TDM);
+		printf("QECSR : 0x%02x, mux to qe-tdm\n",
+		       CPLD_READ(sfp_ctl_status));
+	}
 	/* Mask all CPLD interrupt sources, except QSGMII interrupts */
 	if (CPLD_READ(sw_ver) < 0x03) {
 		debug("CPLD SW version 0x%02x doesn't support int_mask\n",
@@ -130,8 +131,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
@@ -142,12 +143,14 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_liodn(blob);
 
 #ifdef CONFIG_HAS_FSL_DR_USB
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_ethernet(blob);
 #endif
 
+	if (hwconfig("qe-tdm"))
+		fdt_del_diu(blob);
 	return 0;
 }

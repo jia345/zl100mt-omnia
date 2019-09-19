@@ -1,27 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_NS_ACCESS_H_
 #define __FSL_NS_ACCESS_H_
-
-enum csu_cslx_access {
-	CSU_NS_SUP_R = 0x08,
-	CSU_NS_SUP_W = 0x80,
-	CSU_NS_SUP_RW = 0x88,
-	CSU_NS_USER_R = 0x04,
-	CSU_NS_USER_W = 0x40,
-	CSU_NS_USER_RW = 0x44,
-	CSU_S_SUP_R = 0x02,
-	CSU_S_SUP_W = 0x20,
-	CSU_S_SUP_RW = 0x22,
-	CSU_S_USER_R = 0x01,
-	CSU_S_USER_W = 0x10,
-	CSU_S_USER_RW = 0x11,
-	CSU_ALL_RW = 0xff,
-};
 
 enum csu_cslx_ind {
 	CSU_CSLX_PCIE2_IO = 0,
@@ -98,21 +81,14 @@ enum csu_cslx_ind {
 	CSU_CSLX_FTM5,
 	CSU_CSLX_FTM8,
 	CSU_CSLX_FTM7,
-	CSU_CSLX_COP_DCSR,
 	CSU_CSLX_EPU,
-	CSU_CSLX_GDI,
+	CSU_CSLX_COP_DCSR,
 	CSU_CSLX_DDI,
+	CSU_CSLX_GDI,
 	CSU_CSLX_RESERVED1,
-	CSU_CSLX_USB3_PHY = 117,
+	CSU_CSLX_USB3_PHY = 116,
 	CSU_CSLX_RESERVED2,
 	CSU_CSLX_MAX,
 };
-
-struct csu_ns_dev {
-	unsigned long ind;
-	uint32_t val;
-};
-
-void enable_devices_ns_access(struct csu_ns_dev *ns_dev, uint32_t num);
 
 #endif

@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010
  * Reinhard Meyer, reinhard.meyer@emk-elektronik.de
  *
  * Debug Unit
  * Based on AT91SAM9XE datasheet
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef AT91_DBU_H
@@ -34,9 +33,5 @@ typedef struct at91_dbu {
 #define AT91_DBU_CID_ARCH_MASK		0x0ff00000
 #define AT91_DBU_CID_ARCH_9xx		0x01900000
 #define AT91_DBU_CID_ARCH_9XExx	0x02900000
-
-#define AT91_DBU_CIDR_MASK		0x1f
-#define AT91_DBU_CIDR			0x40
-#define AT91_DBU_EXID			0x44
 
 #endif

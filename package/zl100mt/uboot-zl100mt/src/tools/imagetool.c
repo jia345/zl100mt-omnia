@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  *
  * Written by Guilherme Maciel Ferreira <guilherme.maciel.ferreira@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "imagetool.h"
@@ -47,11 +46,12 @@ int imagetool_verify_print_header(
 
 			if (retval == 0) {
 				/*
-				 * Print the image information  if verify is
+				 * Print the image information if verify is
 				 * successful
 				 */
 				if ((*curr)->print_header) {
-					(*curr)->print_header(ptr);
+					if (!params->quiet)
+						(*curr)->print_header(ptr);
 				} else {
 					fprintf(stderr,
 						"%s: print_header undefined for %s\n",
@@ -60,6 +60,38 @@ int imagetool_verify_print_header(
 				break;
 			}
 		}
+	}
+
+	return retval;
+}
+
+int imagetool_verify_print_header_by_type(
+	void *ptr,
+	struct stat *sbuf,
+	struct image_type_params *tparams,
+	struct image_tool_params *params)
+{
+	int retval;
+
+	retval = tparams->verify_header((unsigned char *)ptr, sbuf->st_size,
+			params);
+
+	if (retval == 0) {
+		/*
+		 * Print the image information if verify is successful
+		 */
+		if (tparams->print_header) {
+			if (!params->quiet)
+				tparams->print_header(ptr);
+		} else {
+			fprintf(stderr,
+				"%s: print_header undefined for %s\n",
+				params->cmdname, tparams->name);
+		}
+	} else {
+		fprintf(stderr,
+			"%s: verify_header failed for %s with exit code %d\n",
+			params->cmdname, tparams->name, retval);
 	}
 
 	return retval;
@@ -90,4 +122,47 @@ int imagetool_save_subimage(
 	close(dfd);
 
 	return 0;
+}
+
+int imagetool_get_filesize(struct image_tool_params *params, const char *fname)
+{
+	struct stat sbuf;
+	int fd;
+
+	fd = open(fname, O_RDONLY | O_BINARY);
+	if (fd < 0) {
+		fprintf(stderr, "%s: Can't open %s: %s\n",
+			params->cmdname, fname, strerror(errno));
+		return -1;
+	}
+
+	if (fstat(fd, &sbuf) < 0) {
+		fprintf(stderr, "%s: Can't stat %s: %s\n",
+			params->cmdname, fname, strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return sbuf.st_size;
+}
+
+time_t imagetool_get_source_date(
+	 const char *cmdname,
+	 time_t fallback)
+{
+	char *source_date_epoch = getenv("SOURCE_DATE_EPOCH");
+
+	if (source_date_epoch == NULL)
+		return fallback;
+
+	time_t time = (time_t) strtol(source_date_epoch, NULL, 10);
+
+	if (gmtime(&time) == NULL) {
+		fprintf(stderr, "%s: SOURCE_DATE_EPOCH is not valid\n",
+			cmdname);
+		time = 0;
+	}
+
+	return time;
 }

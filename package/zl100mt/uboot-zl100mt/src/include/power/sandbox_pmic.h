@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Copyright (C) 2015 Samsung Electronics
  *  Przemyslaw Marczak  <p.marczak@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SANDBOX_PMIC_H_
@@ -13,7 +12,7 @@
 #define SANDBOX_BUCK_DRIVER		"sandbox_buck"
 #define SANDBOX_OF_BUCK_PREFIX		"buck"
 
-#define SANDBOX_BUCK_COUNT	2
+#define SANDBOX_BUCK_COUNT	3
 #define SANDBOX_LDO_COUNT	2
 /*
  * Sandbox PMIC registers:
@@ -109,6 +108,9 @@ enum {
 #define SANDBOX_BUCK1_PLATNAME	"SUPPLY_1.2V"
 #define SANDBOX_BUCK2_DEVNAME	"buck2"
 #define SANDBOX_BUCK2_PLATNAME	"SUPPLY_3.3V"
+/* BUCK3: for testing fallback regulator prefix matching during bind */
+#define SANDBOX_BUCK3_DEVNAME	"no_match_by_nodename"
+#define SANDBOX_BUCK3_PLATNAME	"buck_SUPPLY_1.5V"
 /* LDO names */
 #define SANDBOX_LDO1_DEVNAME	"ldo1"
 #define SANDBOX_LDO1_PLATNAME	"VDD_EMMC_1.8V"
@@ -125,6 +127,10 @@ enum {
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_UV	1200000
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_UA	200000
 #define SANDBOX_BUCK1_AUTOSET_EXPECTED_ENABLE	true
+
+/* BUCK2: for testing sandbox ADC's supply */
+#define SANDBOX_BUCK2_INITIAL_EXPECTED_UV	3000000
+#define SANDBOX_BUCK2_SET_UV			3300000
 
 /* LDO1/2 for testing regulator_list_autoset() */
 #define SANDBOX_LDO1_AUTOSET_EXPECTED_UV	1800000

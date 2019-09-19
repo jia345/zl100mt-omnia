@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004 Texas Insturments
  *
@@ -7,8 +8,6 @@
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -52,12 +51,7 @@ static void cache_flush(void)
 	asm volatile("mcr p15, 0, %0, c7, c10, 4" : : "r" (i));
 }
 
-#ifndef CONFIG_SYS_DCACHE_OFF
-
-#ifndef CONFIG_SYS_CACHELINE_SIZE
-#define CONFIG_SYS_CACHELINE_SIZE	32
-#endif
-
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 void invalidate_dcache_all(void)
 {
 	asm volatile("mcr p15, 0, %0, c7, c6, 0" : : "r" (0));
@@ -67,23 +61,6 @@ void flush_dcache_all(void)
 {
 	asm volatile("mcr p15, 0, %0, c7, c10, 0" : : "r" (0));
 	asm volatile("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
-}
-
-static int check_cache_range(unsigned long start, unsigned long stop)
-{
-	int ok = 1;
-
-	if (start & (CONFIG_SYS_CACHELINE_SIZE - 1))
-		ok = 0;
-
-	if (stop & (CONFIG_SYS_CACHELINE_SIZE - 1))
-		ok = 0;
-
-	if (!ok)
-		debug("CACHE: Misaligned operation at range [%08lx, %08lx]\n",
-			start, stop);
-
-	return ok;
 }
 
 void invalidate_dcache_range(unsigned long start, unsigned long stop)
@@ -110,7 +87,7 @@ void flush_dcache_range(unsigned long start, unsigned long stop)
 	asm volatile("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
 }
 
-#else /* #ifndef CONFIG_SYS_DCACHE_OFF */
+#else /* #if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
 void invalidate_dcache_all(void)
 {
 }
@@ -118,15 +95,15 @@ void invalidate_dcache_all(void)
 void flush_dcache_all(void)
 {
 }
-#endif /* #ifndef CONFIG_SYS_DCACHE_OFF */
+#endif /* #if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
 
-#if !defined(CONFIG_SYS_ICACHE_OFF) || !defined(CONFIG_SYS_DCACHE_OFF)
+#if !(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
 void enable_caches(void)
 {
-#ifndef CONFIG_SYS_ICACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
 	icache_enable();
 #endif
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 	dcache_enable();
 #endif
 }

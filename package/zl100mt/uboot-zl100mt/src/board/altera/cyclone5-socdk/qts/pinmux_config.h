@@ -1,27 +1,26 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Altera SoCFPGA PinMux configuration
- *
- * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #ifndef __SOCFPGA_PINMUX_CONFIG_H__
 #define __SOCFPGA_PINMUX_CONFIG_H__
 
 const u8 sys_mgr_init_table[] = {
-	3, /* EMACIO0 */
-	3, /* EMACIO1 */
-	3, /* EMACIO2 */
-	3, /* EMACIO3 */
-	3, /* EMACIO4 */
-	3, /* EMACIO5 */
-	3, /* EMACIO6 */
-	3, /* EMACIO7 */
-	3, /* EMACIO8 */
-	3, /* EMACIO9 */
-	3, /* EMACIO10 */
-	3, /* EMACIO11 */
-	3, /* EMACIO12 */
-	3, /* EMACIO13 */
+	0, /* EMACIO0 */
+	2, /* EMACIO1 */
+	2, /* EMACIO2 */
+	2, /* EMACIO3 */
+	2, /* EMACIO4 */
+	2, /* EMACIO5 */
+	2, /* EMACIO6 */
+	2, /* EMACIO7 */
+	2, /* EMACIO8 */
+	0, /* EMACIO9 */
+	2, /* EMACIO10 */
+	2, /* EMACIO11 */
+	2, /* EMACIO12 */
+	2, /* EMACIO13 */
 	0, /* EMACIO14 */
 	0, /* EMACIO15 */
 	0, /* EMACIO16 */
@@ -32,31 +31,31 @@ const u8 sys_mgr_init_table[] = {
 	0, /* FLASHIO1 */
 	3, /* FLASHIO2 */
 	3, /* FLASHIO3 */
-	3, /* FLASHIO4 */
-	3, /* FLASHIO5 */
-	3, /* FLASHIO6 */
-	3, /* FLASHIO7 */
+	0, /* FLASHIO4 */
+	0, /* FLASHIO5 */
+	0, /* FLASHIO6 */
+	0, /* FLASHIO7 */
 	0, /* FLASHIO8 */
 	3, /* FLASHIO9 */
 	3, /* FLASHIO10 */
 	3, /* FLASHIO11 */
-	0, /* GENERALIO0 */
-	1, /* GENERALIO1 */
-	1, /* GENERALIO2 */
-	0, /* GENERALIO3 */
-	0, /* GENERALIO4 */
-	1, /* GENERALIO5 */
-	1, /* GENERALIO6 */
-	1, /* GENERALIO7 */
-	1, /* GENERALIO8 */
-	0, /* GENERALIO9 */
-	0, /* GENERALIO10 */
-	0, /* GENERALIO11 */
-	0, /* GENERALIO12 */
+	3, /* GENERALIO0 */
+	3, /* GENERALIO1 */
+	3, /* GENERALIO2 */
+	3, /* GENERALIO3 */
+	3, /* GENERALIO4 */
+	3, /* GENERALIO5 */
+	3, /* GENERALIO6 */
+	3, /* GENERALIO7 */
+	3, /* GENERALIO8 */
+	3, /* GENERALIO9 */
+	3, /* GENERALIO10 */
+	3, /* GENERALIO11 */
+	3, /* GENERALIO12 */
 	2, /* GENERALIO13 */
 	2, /* GENERALIO14 */
-	0, /* GENERALIO15 */
-	0, /* GENERALIO16 */
+	3, /* GENERALIO15 */
+	3, /* GENERALIO16 */
 	2, /* GENERALIO17 */
 	2, /* GENERALIO18 */
 	0, /* GENERALIO19 */
@@ -72,27 +71,27 @@ const u8 sys_mgr_init_table[] = {
 	0, /* GENERALIO29 */
 	0, /* GENERALIO30 */
 	0, /* GENERALIO31 */
-	0, /* MIXED1IO0 */
-	1, /* MIXED1IO1 */
-	1, /* MIXED1IO2 */
-	1, /* MIXED1IO3 */
-	1, /* MIXED1IO4 */
-	0, /* MIXED1IO5 */
-	0, /* MIXED1IO6 */
-	0, /* MIXED1IO7 */
-	1, /* MIXED1IO8 */
-	1, /* MIXED1IO9 */
-	1, /* MIXED1IO10 */
-	1, /* MIXED1IO11 */
-	0, /* MIXED1IO12 */
-	0, /* MIXED1IO13 */
+	2, /* MIXED1IO0 */
+	2, /* MIXED1IO1 */
+	2, /* MIXED1IO2 */
+	2, /* MIXED1IO3 */
+	2, /* MIXED1IO4 */
+	2, /* MIXED1IO5 */
+	2, /* MIXED1IO6 */
+	2, /* MIXED1IO7 */
+	2, /* MIXED1IO8 */
+	2, /* MIXED1IO9 */
+	2, /* MIXED1IO10 */
+	2, /* MIXED1IO11 */
+	2, /* MIXED1IO12 */
+	2, /* MIXED1IO13 */
 	0, /* MIXED1IO14 */
-	1, /* MIXED1IO15 */
-	1, /* MIXED1IO16 */
-	1, /* MIXED1IO17 */
-	1, /* MIXED1IO18 */
-	0, /* MIXED1IO19 */
-	0, /* MIXED1IO20 */
+	3, /* MIXED1IO15 */
+	3, /* MIXED1IO16 */
+	3, /* MIXED1IO17 */
+	3, /* MIXED1IO18 */
+	3, /* MIXED1IO19 */
+	3, /* MIXED1IO20 */
 	0, /* MIXED1IO21 */
 	0, /* MIXED2IO0 */
 	0, /* MIXED2IO1 */

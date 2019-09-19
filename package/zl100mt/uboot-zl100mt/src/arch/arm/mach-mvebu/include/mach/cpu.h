@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MVEBU_CPU_H
@@ -35,8 +34,11 @@ enum cpu_target {
 	CPU_TARGET_PCIE02 = 0x4,
 	CPU_TARGET_ETH01 = 0x7,
 	CPU_TARGET_PCIE13 = 0x8,
+	CPU_TARGET_DFX = 0x8,
 	CPU_TARGET_SASRAM = 0x9,
+	CPU_TARGET_SATA01 = 0xa, /* A38X */
 	CPU_TARGET_NAND = 0xd,
+	CPU_TARGET_SATA23_DFX = 0xe, /* A38X */
 };
 
 enum cpu_attrib {
@@ -47,6 +49,9 @@ enum cpu_attrib {
 	CPU_ATTR_DRAM_CS3 = 0x07,
 	CPU_ATTR_NANDFLASH = 0x2f,
 	CPU_ATTR_SPIFLASH = 0x1e,
+	CPU_ATTR_SPI0_CS0 = 0x1e,
+	CPU_ATTR_SPI0_CS1 = 0x5e,
+	CPU_ATTR_SPI1_CS2 = 0x9a,
 	CPU_ATTR_BOOTROM = 0x1d,
 	CPU_ATTR_PCIE_IO = 0xe0,
 	CPU_ATTR_PCIE_MEM = 0xe8,
@@ -58,19 +63,25 @@ enum cpu_attrib {
 
 enum {
 	MVEBU_SOC_AXP,
+	MVEBU_SOC_A375,
 	MVEBU_SOC_A38X,
+	MVEBU_SOC_MSYS,
 	MVEBU_SOC_UNKNOWN,
 };
+
+#define MVEBU_SDRAM_SIZE_MAX	0xc0000000
 
 /*
  * Default Device Address MAP BAR values
  */
-#define MBUS_PCI_MEM_BASE	0xE8000000
+#define MBUS_PCI_MEM_BASE	MVEBU_SDRAM_SIZE_MAX
 #define MBUS_PCI_MEM_SIZE	(128 << 20)
 #define MBUS_PCI_IO_BASE	0xF1100000
 #define MBUS_PCI_IO_SIZE	(64 << 10)
 #define MBUS_SPI_BASE		0xF4000000
 #define MBUS_SPI_SIZE		(8 << 20)
+#define MBUS_DFX_BASE		0xF6000000
+#define MBUS_DFX_SIZE		(1 << 20)
 #define MBUS_BOOTROM_BASE	0xF8000000
 #define MBUS_BOOTROM_SIZE	(8 << 20)
 
@@ -86,7 +97,11 @@ struct mbus_win {
  * Ref: Datasheet sec:A.28
  */
 struct mvebu_system_registers {
+#if defined(CONFIG_ARMADA_375)
+	u8 pad1[0x54];
+#else
 	u8 pad1[0x60];
+#endif
 	u32 rstoutn_mask; /* 0x60 */
 	u32 sys_soft_rst; /* 0x64 */
 };
@@ -106,6 +121,14 @@ struct kwgpio_registers {
 	u32 irq_level;
 };
 
+struct sar_freq_modes {
+	u8 val;
+	u8 ffc;		/* Fabric Frequency Configuration */
+	u32 p_clk;
+	u32 nb_clk;
+	u32 d_clk;
+};
+
 /* Needed for dynamic (board-specific) mbus configuration */
 extern struct mvebu_mbus_state mbus_state;
 
@@ -118,11 +141,14 @@ void mvebu_sdram_size_adjust(enum memory_bank bank);
 int mvebu_mbus_probe(struct mbus_win windows[], int count);
 int mvebu_soc_family(void);
 u32 mvebu_get_nand_clock(void);
-void armada385_set_mac(const uchar *eth0, const uchar *eth1, const uchar *eth2);
 
 void return_to_bootrom(void);
 
+#ifndef CONFIG_DM_MMC
 int mv_sdh_init(unsigned long regbase, u32 max_clk, u32 min_clk, u32 quirks);
+#endif
+
+void get_sar_freq(struct sar_freq_modes *sar_freq);
 
 /*
  * Highspeed SERDES PHY config init, ported from bin_hdr
@@ -136,5 +162,13 @@ int serdes_phy_config(void);
  * drivers/ddr/marvell
  */
 int ddr3_init(void);
+
+/*
+ * get_ref_clk
+ *
+ * return: reference clock in MHz (25 or 40)
+ */
+u32 get_ref_clk(void);
+
 #endif /* __ASSEMBLY__ */
 #endif /* _MVEBU_CPU_H */

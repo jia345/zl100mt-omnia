@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014 DENX Software Engineering
  *     Heiko Schocher <hs@denx.de>
@@ -5,8 +6,6 @@
  * Based on:
  * Copyright (C) 2013 Atmel Corporation
  *		      Bo Shen <voice.shen@atmel.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -14,7 +13,6 @@
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91sam9_matrix.h>
 #include <asm/arch/at91_pit.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
 #include <asm/arch/at91_wdt.h>
 #include <asm/arch/clk.h>
@@ -77,16 +75,26 @@ void __weak spl_board_init(void)
 
 void board_init_f(ulong dummy)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+	int ret;
+
+	ret = spl_early_init();
+	if (ret) {
+		debug("spl_early_init() failed: %d\n", ret);
+		hang();
+	}
+#endif
 
 	lowlevel_clock_init();
+#if !defined(CONFIG_WDT_AT91)
 	at91_disable_wdt();
+#endif
 
 	/*
 	 * At this stage the main oscillator is supposed to be enabled
 	 * PCK = MCK = MOSC
 	 */
-	writel(0x00, &pmc->pllicpr);
+	at91_pllicpr_init(0x00);
 
 	/* Configure PLLA = MOSC * (PLL_MULA + 1) / PLL_DIVA */
 	at91_plla_init(CONFIG_SYS_AT91_PLLA);

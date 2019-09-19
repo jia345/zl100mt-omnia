@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * dfu.h - DFU flashable area description
  *
  * Copyright (C) 2012 Samsung Electronics
  * authors: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
  *	    Lukasz Majewski <l.majewski@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DFU_ENTITY_H_
@@ -81,7 +80,6 @@ struct sf_internal_data {
 };
 
 #define DFU_NAME_SIZE			32
-#define DFU_CMD_BUF_SIZE		128
 #ifndef CONFIG_SYS_DFU_DATA_BUF_SIZE
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE		(1024*1024*8)	/* 8 MiB */
 #endif
@@ -110,7 +108,7 @@ struct dfu_entity {
 		struct sf_internal_data sf;
 	} data;
 
-	long (*get_medium_size)(struct dfu_entity *dfu);
+	int (*get_medium_size)(struct dfu_entity *dfu, u64 *size);
 
 	int (*read_medium)(struct dfu_entity *dfu,
 			u64 offset, void *buf, long *len);
@@ -132,7 +130,7 @@ struct dfu_entity {
 	u8 *i_buf;
 	u8 *i_buf_start;
 	u8 *i_buf_end;
-	long r_left;
+	u64 r_left;
 	long b_left;
 
 	u32 bad_skip;	/* for nand use */
@@ -162,8 +160,48 @@ bool dfu_usb_get_reset(void);
 int dfu_read(struct dfu_entity *de, void *buf, int size, int blk_seq_num);
 int dfu_write(struct dfu_entity *de, void *buf, int size, int blk_seq_num);
 int dfu_flush(struct dfu_entity *de, void *buf, int size, int blk_seq_num);
+
+/*
+ * dfu_defer_flush - pointer to store dfu_entity for deferred flashing.
+ *		     It should be NULL when not used.
+ */
+extern struct dfu_entity *dfu_defer_flush;
+/**
+ * dfu_get_defer_flush - get current value of dfu_defer_flush pointer
+ *
+ * @return - value of the dfu_defer_flush pointer
+ */
+static inline struct dfu_entity *dfu_get_defer_flush(void)
+{
+	return dfu_defer_flush;
+}
+
+/**
+ * dfu_set_defer_flush - set the dfu_defer_flush pointer
+ *
+ * @param dfu - pointer to the dfu_entity, which should be written
+ */
+static inline void dfu_set_defer_flush(struct dfu_entity *dfu)
+{
+	dfu_defer_flush = dfu;
+}
+
+/**
+ * dfu_write_from_mem_addr - write data from memory to DFU managed medium
+ *
+ * This function adds support for writing data starting from fixed memory
+ * address (like $loadaddr) to dfu managed medium (e.g. NAND, MMC, file system)
+ *
+ * @param dfu - dfu entity to which we want to store data
+ * @param buf - fixed memory addres from where data starts
+ * @param size - number of bytes to write
+ *
+ * @return - 0 on success, other value on failure
+ */
+int dfu_write_from_mem_addr(struct dfu_entity *dfu, void *buf, int size);
+
 /* Device specific */
-#ifdef CONFIG_DFU_MMC
+#if CONFIG_IS_ENABLED(DFU_MMC)
 extern int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr, char *s);
 #else
 static inline int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr,
@@ -174,7 +212,7 @@ static inline int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr,
 }
 #endif
 
-#ifdef CONFIG_DFU_NAND
+#if CONFIG_IS_ENABLED(DFU_NAND)
 extern int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr, char *s);
 #else
 static inline int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr,
@@ -185,7 +223,7 @@ static inline int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr,
 }
 #endif
 
-#ifdef CONFIG_DFU_RAM
+#if CONFIG_IS_ENABLED(DFU_RAM)
 extern int dfu_fill_entity_ram(struct dfu_entity *dfu, char *devstr, char *s);
 #else
 static inline int dfu_fill_entity_ram(struct dfu_entity *dfu, char *devstr,
@@ -196,7 +234,7 @@ static inline int dfu_fill_entity_ram(struct dfu_entity *dfu, char *devstr,
 }
 #endif
 
-#ifdef CONFIG_DFU_SF
+#if CONFIG_IS_ENABLED(DFU_SF)
 extern int dfu_fill_entity_sf(struct dfu_entity *dfu, char *devstr, char *s);
 #else
 static inline int dfu_fill_entity_sf(struct dfu_entity *dfu, char *devstr,
@@ -204,6 +242,32 @@ static inline int dfu_fill_entity_sf(struct dfu_entity *dfu, char *devstr,
 {
 	puts("SF support not available!\n");
 	return -1;
+}
+#endif
+
+/**
+ * dfu_tftp_write - Write TFTP data to DFU medium
+ *
+ * This function is storing data received via TFTP on DFU supported medium.
+ *
+ * @param dfu_entity_name - name of DFU entity to write
+ * @param addr - address of data buffer to write
+ * @param len - number of bytes
+ * @param interface - destination DFU medium (e.g. "mmc")
+ * @param devstring - instance number of destination DFU medium (e.g. "1")
+ *
+ * @return 0 on success, otherwise error code
+ */
+#if CONFIG_IS_ENABLED(DFU_TFTP)
+int dfu_tftp_write(char *dfu_entity_name, unsigned int addr, unsigned int len,
+		   char *interface, char *devstring);
+#else
+static inline int dfu_tftp_write(char *dfu_entity_name, unsigned int addr,
+				 unsigned int len, char *interface,
+				 char *devstring)
+{
+	puts("TFTP write support for DFU not available!\n");
+	return -ENOSYS;
 }
 #endif
 

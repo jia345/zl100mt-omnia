@@ -1,24 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * NVIDIA Tegra SPI controller (T114 and later)
  *
  * Copyright (c) 2010-2013 NVIDIA Corporation
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -27,60 +11,57 @@
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/clk_rst.h>
 #include <spi.h>
-#include <fdtdec.h>
 #include "tegra_spi.h"
 
-DECLARE_GLOBAL_DATA_PTR;
-
 /* COMMAND1 */
-#define SPI_CMD1_GO			(1 << 31)
-#define SPI_CMD1_M_S			(1 << 30)
-#define SPI_CMD1_MODE_MASK		0x3
+#define SPI_CMD1_GO			BIT(31)
+#define SPI_CMD1_M_S			BIT(30)
+#define SPI_CMD1_MODE_MASK		GENMASK(1, 0)
 #define SPI_CMD1_MODE_SHIFT		28
-#define SPI_CMD1_CS_SEL_MASK		0x3
+#define SPI_CMD1_CS_SEL_MASK		GENMASK(1, 0)
 #define SPI_CMD1_CS_SEL_SHIFT		26
-#define SPI_CMD1_CS_POL_INACTIVE3	(1 << 25)
-#define SPI_CMD1_CS_POL_INACTIVE2	(1 << 24)
-#define SPI_CMD1_CS_POL_INACTIVE1	(1 << 23)
-#define SPI_CMD1_CS_POL_INACTIVE0	(1 << 22)
-#define SPI_CMD1_CS_SW_HW		(1 << 21)
-#define SPI_CMD1_CS_SW_VAL		(1 << 20)
-#define SPI_CMD1_IDLE_SDA_MASK		0x3
+#define SPI_CMD1_CS_POL_INACTIVE3	BIT(25)
+#define SPI_CMD1_CS_POL_INACTIVE2	BIT(24)
+#define SPI_CMD1_CS_POL_INACTIVE1	BIT(23)
+#define SPI_CMD1_CS_POL_INACTIVE0	BIT(22)
+#define SPI_CMD1_CS_SW_HW		BIT(21)
+#define SPI_CMD1_CS_SW_VAL		BIT(20)
+#define SPI_CMD1_IDLE_SDA_MASK		GENMASK(1, 0)
 #define SPI_CMD1_IDLE_SDA_SHIFT		18
-#define SPI_CMD1_BIDIR			(1 << 17)
-#define SPI_CMD1_LSBI_FE		(1 << 16)
-#define SPI_CMD1_LSBY_FE		(1 << 15)
-#define SPI_CMD1_BOTH_EN_BIT		(1 << 14)
-#define SPI_CMD1_BOTH_EN_BYTE		(1 << 13)
-#define SPI_CMD1_RX_EN			(1 << 12)
-#define SPI_CMD1_TX_EN			(1 << 11)
-#define SPI_CMD1_PACKED			(1 << 5)
-#define SPI_CMD1_BIT_LEN_MASK		0x1F
+#define SPI_CMD1_BIDIR			BIT(17)
+#define SPI_CMD1_LSBI_FE		BIT(16)
+#define SPI_CMD1_LSBY_FE		BIT(15)
+#define SPI_CMD1_BOTH_EN_BIT		BIT(14)
+#define SPI_CMD1_BOTH_EN_BYTE		BIT(13)
+#define SPI_CMD1_RX_EN			BIT(12)
+#define SPI_CMD1_TX_EN			BIT(11)
+#define SPI_CMD1_PACKED			BIT(5)
+#define SPI_CMD1_BIT_LEN_MASK		GENMASK(4, 0)
 #define SPI_CMD1_BIT_LEN_SHIFT		0
 
 /* COMMAND2 */
-#define SPI_CMD2_TX_CLK_TAP_DELAY	(1 << 6)
-#define SPI_CMD2_TX_CLK_TAP_DELAY_MASK	(0x3F << 6)
-#define SPI_CMD2_RX_CLK_TAP_DELAY	(1 << 0)
-#define SPI_CMD2_RX_CLK_TAP_DELAY_MASK	(0x3F << 0)
+#define SPI_CMD2_TX_CLK_TAP_DELAY	BIT(6)
+#define SPI_CMD2_TX_CLK_TAP_DELAY_MASK	GENMASK(11, 6)
+#define SPI_CMD2_RX_CLK_TAP_DELAY	BIT(0)
+#define SPI_CMD2_RX_CLK_TAP_DELAY_MASK	GENMASK(5, 0)
 
 /* TRANSFER STATUS */
-#define SPI_XFER_STS_RDY		(1 << 30)
+#define SPI_XFER_STS_RDY		BIT(30)
 
 /* FIFO STATUS */
-#define SPI_FIFO_STS_CS_INACTIVE	(1 << 31)
-#define SPI_FIFO_STS_FRAME_END		(1 << 30)
-#define SPI_FIFO_STS_RX_FIFO_FLUSH	(1 << 15)
-#define SPI_FIFO_STS_TX_FIFO_FLUSH	(1 << 14)
-#define SPI_FIFO_STS_ERR		(1 << 8)
-#define SPI_FIFO_STS_TX_FIFO_OVF	(1 << 7)
-#define SPI_FIFO_STS_TX_FIFO_UNR	(1 << 6)
-#define SPI_FIFO_STS_RX_FIFO_OVF	(1 << 5)
-#define SPI_FIFO_STS_RX_FIFO_UNR	(1 << 4)
-#define SPI_FIFO_STS_TX_FIFO_FULL	(1 << 3)
-#define SPI_FIFO_STS_TX_FIFO_EMPTY	(1 << 2)
-#define SPI_FIFO_STS_RX_FIFO_FULL	(1 << 1)
-#define SPI_FIFO_STS_RX_FIFO_EMPTY	(1 << 0)
+#define SPI_FIFO_STS_CS_INACTIVE	BIT(31)
+#define SPI_FIFO_STS_FRAME_END		BIT(30)
+#define SPI_FIFO_STS_RX_FIFO_FLUSH	BIT(15)
+#define SPI_FIFO_STS_TX_FIFO_FLUSH	BIT(14)
+#define SPI_FIFO_STS_ERR		BIT(8)
+#define SPI_FIFO_STS_TX_FIFO_OVF	BIT(7)
+#define SPI_FIFO_STS_TX_FIFO_UNR	BIT(6)
+#define SPI_FIFO_STS_RX_FIFO_OVF	BIT(5)
+#define SPI_FIFO_STS_RX_FIFO_UNR	BIT(4)
+#define SPI_FIFO_STS_TX_FIFO_FULL	BIT(3)
+#define SPI_FIFO_STS_TX_FIFO_EMPTY	BIT(2)
+#define SPI_FIFO_STS_RX_FIFO_FULL	BIT(1)
+#define SPI_FIFO_STS_RX_FIFO_EMPTY	BIT(0)
 
 #define SPI_TIMEOUT		1000
 #define TEGRA_SPI_MAX_FREQ	52000000
@@ -115,11 +96,9 @@ struct tegra114_spi_priv {
 static int tegra114_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct tegra_spi_platdata *plat = bus->platdata;
-	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
 
-	plat->base = dev_get_addr(bus);
-	plat->periph_id = clock_decode_periph_id(blob, node);
+	plat->base = dev_read_addr(bus);
+	plat->periph_id = clock_decode_periph_id(bus);
 
 	if (plat->periph_id == PERIPH_ID_NONE) {
 		debug("%s: could not decode periph id %d\n", __func__,
@@ -128,10 +107,10 @@ static int tegra114_spi_ofdata_to_platdata(struct udevice *bus)
 	}
 
 	/* Use 500KHz as a suitable default */
-	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
-					500000);
-	plat->deactivate_delay_us = fdtdec_get_int(blob, node,
-					"spi-deactivate-delay", 0);
+	plat->frequency = dev_read_u32_default(bus, "spi-max-frequency",
+					       500000);
+	plat->deactivate_delay_us = dev_read_u32_default(bus,
+						"spi-deactivate-delay", 0);
 	debug("%s: base=%#08lx, periph_id=%d, max-frequency=%d, deactivate_delay=%d\n",
 	      __func__, plat->base, plat->periph_id, plat->frequency,
 	      plat->deactivate_delay_us);
@@ -167,6 +146,7 @@ static int tegra114_spi_probe(struct udevice *bus)
 			       bus->name, priv->freq, rate);
 		}
 	}
+	udelay(plat->deactivate_delay_us);
 
 	/* Clear stale status here */
 	setbits_le32(&regs->fifo_status,

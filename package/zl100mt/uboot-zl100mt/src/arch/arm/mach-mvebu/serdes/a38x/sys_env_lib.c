@@ -1,11 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) Marvell International Ltd. and its affiliates
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
-#include <i2c.h>
 #include <spl.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -13,8 +11,6 @@
 
 #include "seq_exec.h"
 #include "sys_env_lib.h"
-
-#include "../../../drivers/ddr/marvell/a38x/ddr3_a38x.h"
 
 #ifdef CONFIG_ARMADA_38X
 enum unit_id sys_env_soc_unit_nums[MAX_UNITS_ID][MAX_DEV_ID_NUM] = {
@@ -46,7 +42,7 @@ u32 g_dev_id = -1;
 
 u32 mv_board_id_get(void)
 {
-#if defined(CONFIG_DB_88F6820_GP)
+#if defined(CONFIG_TARGET_DB_88F6820_GP)
 	return DB_GP_68XX_ID;
 #else
 	/*
@@ -237,160 +233,26 @@ u32 sys_env_device_id_get(void)
 	return g_dev_id;
 }
 
-#ifdef MV_DDR_TOPOLOGY_UPDATE_FROM_TWSI
 /*
-* sys_env_get_topology_update_info
-* DESCRIPTION: Read TWSI fields to update DDR topology structure
-* INPUT: None
-* OUTPUT: None, 0 means no topology update
-* RETURN:
-*       Bit mask of changes topology features
-*/
-#ifdef CONFIG_ARMADA_39X
-u32 sys_env_get_topology_update_info(
-	struct topology_update_info *tui)
+ * sys_env_device_rev_get - Get Marvell controller device revision number
+ *
+ * DESCRIPTION:
+ *       This function returns 8bit describing the device revision as defined
+ *       Revision ID Register.
+ *
+ * INPUT:
+ *       None.
+ *
+ * OUTPUT:
+ *       None.
+ *
+ * RETURN:
+ *       8bit desscribing Marvell controller revision number
+ */
+u8 sys_env_device_rev_get(void)
 {
-	/* Set 16/32 bit configuration*/
-	tui->update_width = 1;
-	tui->width = TOPOLOGY_UPDATE_WIDTH_32BIT;
+	u32 value;
 
-#ifdef CONFIG_DDR3
-	if (1 == sys_env_config_get(MV_CONFIG_DDR_BUSWIDTH)) {
-		/* 16bit */
-		tui->width = TOPOLOGY_UPDATE_WIDTH_16BIT;
-	} else {
-		/* 32bit */
-		tui->width = TOPOLOGY_UPDATE_WIDTH_32BIT;
-	}
-#endif
-
-	/* Set ECC/no ECC bit configuration */
-	tui->update_ecc = 1;
-	if (0 == sys_env_config_get(MV_CONFIG_DDR_ECC_EN)) {
-		/* NO ECC */
-		tui->ecc = TOPOLOGY_UPDATE_ECC_OFF;
-	} else {
-		/* ECC */
-		tui->ecc = TOPOLOGY_UPDATE_ECC_ON;
-	}
-
-	tui->update_ecc_pup3_mode = 1;
-	tui->ecc_pup_mode_offset = TOPOLOGY_UPDATE_ECC_OFFSET_PUP4;
-
-	return MV_OK;
+	value = reg_read(DEV_VERSION_ID_REG);
+	return (value & (REVISON_ID_MASK)) >> REVISON_ID_OFFS;
 }
-#else /*CONFIG_ARMADA_38X*/
-#ifdef CONFIG_TURRISOMNIA_SUPPORT
-u32 sys_env_get_topology_update_info(
-        struct topology_update_info *tui)
-{
-	return MV_OK;
-}
-#else
-u32 sys_env_get_topology_update_info(
-	struct topology_update_info *tui)
-{
-	u8 config_val;
-	u8 ecc_mode[A38X_MV_MAX_MARVELL_BOARD_ID -
-		    A38X_MARVELL_BOARD_ID_BASE][5] = TOPOLOGY_UPDATE;
-	u8 board_id = mv_board_id_get();
-	int ret;
-
-	board_id = mv_board_id_index_get(board_id);
-	ret = i2c_read(EEPROM_I2C_ADDR, 0, 2, &config_val, 1);
-	if (ret) {
-		DEBUG_INIT_S("sys_env_get_topology_update_info: TWSI Read failed\n");
-		return 0;
-	}
-
-	/* Set 16/32 bit configuration */
-	if ((0 == (config_val & DDR_SATR_CONFIG_MASK_WIDTH)) ||
-	    (ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT] == 0)) {
-		/* 16bit by SatR of 32bit mode not supported for the board */
-		if ((ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT] != 0)) {
-			tui->update_width = 1;
-			tui->width = TOPOLOGY_UPDATE_WIDTH_16BIT;
-		}
-	} else {
-		/* 32bit */
-		if ((ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT] != 0)) {
-			tui->update_width = 1;
-			tui->width = TOPOLOGY_UPDATE_WIDTH_32BIT;
-		}
-	}
-
-	/* Set ECC/no ECC bit configuration */
-	if (0 == (config_val & DDR_SATR_CONFIG_MASK_ECC)) {
-		/* NO ECC */
-		tui->update_ecc = 1;
-		tui->ecc = TOPOLOGY_UPDATE_ECC_OFF;
-	} else {
-		/* ECC */
-		if ((ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT_ECC] != 0) ||
-		    (ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT_ECC] != 0) ||
-		    (ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT_ECC_PUP3] != 0)) {
-			tui->update_ecc = 1;
-			tui->ecc = TOPOLOGY_UPDATE_ECC_ON;
-		}
-	}
-
-	/* Set ECC pup bit configuration */
-	if (0 == (config_val & DDR_SATR_CONFIG_MASK_ECC_PUP)) {
-		/* PUP3 */
-		/*
-		 * Check if PUP3 configuration allowed, if not -
-		 * force Pup4 with warning message
-		 */
-		if ((ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT_ECC_PUP3] != 0)) {
-			if (tui->width == TOPOLOGY_UPDATE_WIDTH_16BIT) {
-				tui->update_ecc_pup3_mode = 1;
-				tui->ecc_pup_mode_offset =
-					TOPOLOGY_UPDATE_ECC_OFFSET_PUP3;
-			} else {
-				if ((ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT_ECC] != 0)) {
-					printf("DDR Topology Update: ECC PUP3 not valid for 32bit mode, force ECC in PUP4\n");
-					tui->update_ecc_pup3_mode = 1;
-					tui->ecc_pup_mode_offset =
-						TOPOLOGY_UPDATE_ECC_OFFSET_PUP4;
-				}
-			}
-		} else {
-			if (ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT_ECC] !=
-			    0) {
-				printf("DDR Topology Update: ECC on PUP3 not supported, force ECC on PUP4\n");
-				tui->update_ecc_pup3_mode = 1;
-				tui->ecc_pup_mode_offset =
-					TOPOLOGY_UPDATE_ECC_OFFSET_PUP4;
-			}
-		}
-	} else {
-		/* PUP4 */
-		if ((ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT_ECC] != 0) ||
-		    (ecc_mode[board_id][TOPOLOGY_UPDATE_16BIT_ECC] != 0)) {
-			tui->update_ecc_pup3_mode = 1;
-			tui->ecc_pup_mode_offset =
-				TOPOLOGY_UPDATE_ECC_OFFSET_PUP4;
-		}
-	}
-
-	/*
-	 * Check for forbidden ECC mode,
-	 * if by default width and pup selection set 32bit ECC mode and this
-	 * mode not supported for the board - config 16bit with ECC on PUP3
-	 */
-	if ((tui->ecc == TOPOLOGY_UPDATE_ECC_ON) &&
-	    (tui->width == TOPOLOGY_UPDATE_WIDTH_32BIT)) {
-		if (ecc_mode[board_id][TOPOLOGY_UPDATE_32BIT_ECC] == 0) {
-			printf("DDR Topology Update: 32bit mode with ECC not allowed on this board, forced  16bit with ECC on PUP3\n");
-			tui->width = TOPOLOGY_UPDATE_WIDTH_16BIT;
-			tui->update_ecc_pup3_mode = 1;
-			tui->ecc_pup_mode_offset =
-				TOPOLOGY_UPDATE_ECC_OFFSET_PUP3;
-		}
-	}
-
-	return MV_OK;
-}
-#endif /* CONFIG_TURRISOMNIA_SUPPORT */
-#endif /* CONFIG_ARMADA_38X */
-#endif /* MV_DDR_TOPOLOGY_UPDATE_FROM_TWSI */

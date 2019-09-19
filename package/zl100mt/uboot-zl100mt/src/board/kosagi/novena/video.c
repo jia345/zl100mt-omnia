@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Novena video output support
  *
@@ -6,12 +7,10 @@
  * 3d85836ee1377d445531928361809612aa0a18db
  *
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -20,9 +19,9 @@
 #include <asm/arch/iomux.h>
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/video.h>
 #include <i2c.h>
 #include <input.h>
 #include <ipu_pixfmt.h>
@@ -271,6 +270,7 @@ static void enable_lvds(struct display_info_t const *dev)
 		return;
 
 	/* ITE IT6251 power enable. */
+	gpio_request(NOVENA_ITE6251_PWR_GPIO, "ite6251-power");
 	gpio_direction_output(NOVENA_ITE6251_PWR_GPIO, 0);
 	mdelay(10);
 	gpio_direction_output(NOVENA_ITE6251_PWR_GPIO, 1);
@@ -448,6 +448,8 @@ void setup_display_lvds(void)
 	/* Init the LVDS-to-eDP chip and if it succeeded, enable backlight. */
 	ret = it6251_init();
 	if (!ret) {
+		gpio_request(NOVENA_BACKLIGHT_PWR_GPIO, "backlight-power");
+		gpio_request(NOVENA_BACKLIGHT_PWM_GPIO, "backlight-pwm");
 		/* Backlight power enable. */
 		gpio_direction_output(NOVENA_BACKLIGHT_PWR_GPIO, 1);
 		/* PWM backlight pin, always on for full brightness. */

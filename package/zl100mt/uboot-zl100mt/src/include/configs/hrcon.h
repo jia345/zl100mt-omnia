@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014
- * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
+ * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
  *
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -13,105 +12,8 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83xx		1 /* MPC83xx family */
-#define CONFIG_MPC830x		1 /* MPC830x family */
-#define CONFIG_MPC8308		1 /* MPC8308 CPU specific */
-#define CONFIG_HRCON		1 /* HRCON board specific */
 
-#define	CONFIG_SYS_TEXT_BASE	0xFE000000
-
-#define CONFIG_IDENT_STRING	" hrcon 0.01"
-
-#define CONFIG_SYS_GENERIC_BOARD
-
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_BOARD_EARLY_INIT_R
-#define CONFIG_LAST_STAGE_INIT
-
-/* new uImage format support */
-#define CONFIG_FIT			1
-#define CONFIG_FIT_VERBOSE		1
-
-#define CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC83xx_ESDHC_ADDR
-#define CONFIG_SYS_FSL_ERRATUM_ESDHC111
-
-#define CONFIG_CMD_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
-
-#define CONFIG_CMD_FPGAD
-#define CONFIG_CMD_IOLOOP
-
-/*
- * System Clock Setup
- */
-#define CONFIG_83XX_CLKIN	33333333 /* in Hz */
-#define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
-
-/*
- * Hardware Reset Configuration Word
- * if CLKIN is 66.66MHz, then
- * CSB = 133MHz, DDRC = 266MHz, LBC = 133MHz
- * We choose the A type silicon as default, so the core is 400Mhz.
- */
-#define CONFIG_SYS_HRCW_LOW (\
-	HRCWL_LCL_BUS_TO_SCB_CLK_1X1 |\
-	HRCWL_DDR_TO_SCB_CLK_2X1 |\
-	HRCWL_SVCOD_DIV_2 |\
-	HRCWL_CSB_TO_CLKIN_4X1 |\
-	HRCWL_CORE_TO_CSB_3X1)
-/*
- * There are neither HRCWH_PCI_HOST nor HRCWH_PCI1_ARBITER_ENABLE bits
- * in 8308's HRCWH according to the manual, but original Freescale's
- * code has them and I've expirienced some problems using the board
- * with BDI3000 attached when I've tried to set these bits to zero
- * (UART doesn't work after the 'reset run' command).
- */
-#define CONFIG_SYS_HRCW_HIGH (\
-	HRCWH_PCI_HOST |\
-	HRCWH_PCI1_ARBITER_ENABLE |\
-	HRCWH_CORE_ENABLE |\
-	HRCWH_FROM_0XFFF00100 |\
-	HRCWH_BOOTSEQ_DISABLE |\
-	HRCWH_SW_WATCHDOG_DISABLE |\
-	HRCWH_ROM_LOC_LOCAL_16BIT |\
-	HRCWH_RL_EXT_LEGACY |\
-	HRCWH_TSEC1M_IN_RGMII |\
-	HRCWH_TSEC2M_IN_RGMII |\
-	HRCWH_BIG_ENDIAN)
-
-/*
- * System IO Config
- */
-#define CONFIG_SYS_SICRH (\
-	SICRH_ESDHC_A_SD |\
-	SICRH_ESDHC_B_SD |\
-	SICRH_ESDHC_C_SD |\
-	SICRH_GPIO_A_GPIO |\
-	SICRH_GPIO_B_GPIO |\
-	SICRH_IEEE1588_A_GPIO |\
-	SICRH_USB |\
-	SICRH_GTM_GPIO |\
-	SICRH_IEEE1588_B_GPIO |\
-	SICRH_ETSEC2_GPIO |\
-	SICRH_GPIOSEL_1 |\
-	SICRH_TMROBI_V3P3 |\
-	SICRH_TSOBI1_V2P5 |\
-	SICRH_TSOBI2_V2P5)	/* 0x0037f103 */
-#define CONFIG_SYS_SICRL (\
-	SICRL_SPI_PF0 |\
-	SICRL_UART_PF0 |\
-	SICRL_IRQ_PF0 |\
-	SICRL_I2C2_PF0 |\
-	SICRL_ETSEC1_GTX_CLK125)	/* 0x00000000 */
-
-/*
- * IMMR new address
- */
-#define CONFIG_SYS_IMMR		0xE0000000
 
 /*
  * SERDES
@@ -120,18 +22,9 @@
 #define CONFIG_FSL_SERDES1	0xe3000
 
 /*
- * Arbiter Setup
- */
-#define CONFIG_SYS_ACR_PIPE_DEP	3 /* Arbiter pipeline depth is 4 */
-#define CONFIG_SYS_ACR_RPTCNT	3 /* Arbiter repeat count is 4 */
-#define CONFIG_SYS_SPCR_TSECEP	3 /* eTSEC emergency priority is highest */
-
-/*
  * DDR Setup
  */
-#define CONFIG_SYS_DDR_BASE		0x00000000 /* DDR is system memory */
-#define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_BASE
-#define CONFIG_SYS_DDR_SDRAM_BASE	CONFIG_SYS_DDR_BASE
+#define CONFIG_SYS_SDRAM_BASE		0x00000000 /* DDR is system memory */
 #define CONFIG_SYS_DDR_SDRAM_CLK_CNTL	DDR_SDRAM_CLK_CNTL_CLK_ADJUST_05
 #define CONFIG_SYS_DDRCDR_VALUE	(DDRCDR_EN \
 				| DDRCDR_PZ_LOZ \
@@ -218,45 +111,17 @@
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /*
- * Local Bus Configuration & Clock Setup
- */
-#define CONFIG_SYS_LCRR_DBYP		LCRR_DBYP
-#define CONFIG_SYS_LCRR_CLKDIV		LCRR_CLKDIV_2
-#define CONFIG_SYS_LBC_LBCR		0x00040000
-
-/*
  * FLASH on the Local Bus
  */
 #if 1
-#define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
-#define CONFIG_FLASH_CFI_DRIVER		/* use the CFI driver */
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #define CONFIG_FLASH_CFI_LEGACY
 #define CONFIG_SYS_FLASH_LEGACY_512Kx16
-#else
-#define CONFIG_SYS_NO_FLASH
 #endif
 
 #define CONFIG_SYS_FLASH_BASE		0xFE000000 /* FLASH base address */
 #define CONFIG_SYS_FLASH_SIZE		8 /* FLASH size is up to 8M */
-#define CONFIG_SYS_FLASH_PROTECTION	1 /* Use h/w Flash protection. */
 
-/* Window base at flash base */
-#define CONFIG_SYS_LBLAWBAR0_PRELIM	CONFIG_SYS_FLASH_BASE
-#define CONFIG_SYS_LBLAWAR0_PRELIM	(LBLAWAR_EN | LBLAWAR_8MB)
-
-#define CONFIG_SYS_BR0_PRELIM	(CONFIG_SYS_FLASH_BASE \
-				| BR_PS_16	/* 16 bit port */ \
-				| BR_MS_GPCM	/* MSEL = GPCM */ \
-				| BR_V)		/* valid */
-#define CONFIG_SYS_OR0_PRELIM	(MEG_TO_AM(CONFIG_SYS_FLASH_SIZE) \
-				| OR_UPM_XAM \
-				| OR_GPCM_CSNT \
-				| OR_GPCM_ACS_DIV2 \
-				| OR_GPCM_XACS \
-				| OR_GPCM_SCY_15 \
-				| OR_GPCM_TRLX_SET \
-				| OR_GPCM_EHTR_SET)
 
 #define CONFIG_SYS_MAX_FLASH_BANKS	1 /* number of banks */
 #define CONFIG_SYS_MAX_FLASH_SECT	135
@@ -264,30 +129,6 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000 /* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500 /* Flash Write Timeout (ms) */
 
-/*
- * FPGA
- */
-#define CONFIG_SYS_FPGA0_BASE		0xE0600000
-#define CONFIG_SYS_FPGA0_SIZE		1 /* FPGA size is 1M */
-
-/* Window base at FPGA base */
-#define CONFIG_SYS_LBLAWBAR1_PRELIM	CONFIG_SYS_FPGA0_BASE
-#define CONFIG_SYS_LBLAWAR1_PRELIM	(LBLAWAR_EN | LBLAWAR_1MB)
-
-#define CONFIG_SYS_BR1_PRELIM	(CONFIG_SYS_FPGA0_BASE \
-				| BR_PS_16	/* 16 bit port */ \
-				| BR_MS_GPCM	/* MSEL = GPCM */ \
-				| BR_V)		/* valid */
-#define CONFIG_SYS_OR1_PRELIM	(MEG_TO_AM(CONFIG_SYS_FPGA0_SIZE) \
-				| OR_UPM_XAM \
-				| OR_GPCM_CSNT \
-				| OR_GPCM_ACS_DIV2 \
-				| OR_GPCM_XACS \
-				| OR_GPCM_SCY_15 \
-				| OR_GPCM_TRLX_SET \
-				| OR_GPCM_EHTR_SET)
-
-#define CONFIG_SYS_FPGA_BASE(k)		CONFIG_SYS_FPGA0_BASE
 #define CONFIG_SYS_FPGA_DONE(k)		0x0010
 
 #define CONFIG_SYS_FPGA_COUNT		1
@@ -300,8 +141,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	2
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -312,13 +151,7 @@
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR + 0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR + 0x4600)
 
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
 /* Pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -344,6 +177,22 @@
 #define CONFIG_SYS_I2C_IHS_SPEED_3		50000
 #define CONFIG_SYS_I2C_IHS_SLAVE_3		0x7F
 
+#ifdef CONFIG_HRCON_DH
+#define CONFIG_SYS_I2C_IHS_DUAL
+#define CONFIG_SYS_I2C_IHS_CH0_1
+#define CONFIG_SYS_I2C_IHS_SPEED_0_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_0_1		0x7F
+#define CONFIG_SYS_I2C_IHS_CH1_1
+#define CONFIG_SYS_I2C_IHS_SPEED_1_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_1_1		0x7F
+#define CONFIG_SYS_I2C_IHS_CH2_1
+#define CONFIG_SYS_I2C_IHS_SPEED_2_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_2_1		0x7F
+#define CONFIG_SYS_I2C_IHS_CH3_1
+#define CONFIG_SYS_I2C_IHS_SPEED_3_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_3_1		0x7F
+#endif
+
 /*
  * Software (bit-bang) I2C driver configuration
  */
@@ -359,34 +208,85 @@
 #define I2C_SOFT_DECLARATIONS4
 #define CONFIG_SYS_I2C_SOFT_SPEED_4		50000
 #define CONFIG_SYS_I2C_SOFT_SLAVE_4		0x7F
+#define I2C_SOFT_DECLARATIONS5
+#define CONFIG_SYS_I2C_SOFT_SPEED_5		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_5		0x7F
+#define I2C_SOFT_DECLARATIONS6
+#define CONFIG_SYS_I2C_SOFT_SPEED_6		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_6		0x7F
+#define I2C_SOFT_DECLARATIONS7
+#define CONFIG_SYS_I2C_SOFT_SPEED_7		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_7		0x7F
+#define I2C_SOFT_DECLARATIONS8
+#define CONFIG_SYS_I2C_SOFT_SPEED_8		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_8		0x7F
 
-#define CONFIG_SYS_ICS8N3QV01_I2C		{5, 6, 7, 8}
-#define CONFIG_SYS_CH7301_I2C			{5, 6, 7, 8}
+#ifdef CONFIG_HRCON_DH
+#define I2C_SOFT_DECLARATIONS9
+#define CONFIG_SYS_I2C_SOFT_SPEED_9		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_9		0x7F
+#define I2C_SOFT_DECLARATIONS10
+#define CONFIG_SYS_I2C_SOFT_SPEED_10		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_10		0x7F
+#define I2C_SOFT_DECLARATIONS11
+#define CONFIG_SYS_I2C_SOFT_SPEED_11		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_11		0x7F
+#define I2C_SOFT_DECLARATIONS12
+#define CONFIG_SYS_I2C_SOFT_SPEED_12		50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE_12		0x7F
+#endif
+
+#ifdef CONFIG_HRCON_DH
+#define CONFIG_SYS_ICS8N3QV01_I2C		{13, 14, 15, 16, 17, 18, 19, 20}
+#define CONFIG_SYS_DP501_I2C			{1, 3, 5, 7, 2, 4, 6, 8}
+#define CONFIG_HRCON_FANS			{ {10, 0x4c}, {11, 0x4c}, \
+						  {12, 0x4c} }
+#else
+#define CONFIG_SYS_ICS8N3QV01_I2C		{9, 10, 11, 12}
 #define CONFIG_SYS_DP501_I2C			{1, 2, 3, 4}
+#define CONFIG_HRCON_FANS			{ {6, 0x4c}, {7, 0x4c}, \
+						  {8, 0x4c} }
+#endif
 
 #ifndef __ASSEMBLY__
 void fpga_gpio_set(unsigned int bus, int pin);
 void fpga_gpio_clear(unsigned int bus, int pin);
 int fpga_gpio_get(unsigned int bus, int pin);
+void fpga_control_set(unsigned int bus, int pin);
+void fpga_control_clear(unsigned int bus, int pin);
 #endif
 
+#define I2C_SDA_GPIO	((I2C_ADAP_HWNR > 3) ? 0x0040 : 0x0200)
+#define I2C_SCL_GPIO	((I2C_ADAP_HWNR > 3) ? 0x0020 : 0x0100)
+#define I2C_FPGA_IDX	(I2C_ADAP_HWNR % 4)
+
+#ifdef CONFIG_HRCON_DH
+#define I2C_ACTIVE \
+	do { \
+		if (I2C_ADAP_HWNR > 7) \
+			fpga_control_set(I2C_FPGA_IDX, 0x0004); \
+		else \
+			fpga_control_clear(I2C_FPGA_IDX, 0x0004); \
+	} while (0)
+#else
 #define I2C_ACTIVE	{ }
+#endif
 #define I2C_TRISTATE	{ }
 #define I2C_READ \
-	(fpga_gpio_get(I2C_ADAP_HWNR, 0x0040) ? 1 : 0)
+	(fpga_gpio_get(I2C_FPGA_IDX, I2C_SDA_GPIO) ? 1 : 0)
 #define I2C_SDA(bit) \
 	do { \
 		if (bit) \
-			fpga_gpio_set(I2C_ADAP_HWNR, 0x0040); \
+			fpga_gpio_set(I2C_FPGA_IDX, I2C_SDA_GPIO); \
 		else \
-			fpga_gpio_clear(I2C_ADAP_HWNR, 0x0040); \
+			fpga_gpio_clear(I2C_FPGA_IDX, I2C_SDA_GPIO); \
 	} while (0)
 #define I2C_SCL(bit) \
 	do { \
 		if (bit) \
-			fpga_gpio_set(I2C_ADAP_HWNR, 0x0020); \
+			fpga_gpio_set(I2C_FPGA_IDX, I2C_SCL_GPIO); \
 		else \
-			fpga_gpio_clear(I2C_ADAP_HWNR, 0x0020); \
+			fpga_gpio_clear(I2C_FPGA_IDX, I2C_SCL_GPIO); \
 	} while (0)
 #define I2C_DELAY	udelay(25)	/* 1/4 I2C clock duration */
 
@@ -402,6 +302,10 @@ int fpga_gpio_get(unsigned int bus, int pin);
 #define CONFIG_SYS_OSD_SCREENS		1
 #define CONFIG_SYS_DP501_DIFFERENTIAL
 #define CONFIG_SYS_DP501_VCAPCTRL0	0x01 /* DDR mode 0, DE for H/VSYNC */
+
+#ifdef CONFIG_HRCON_DH
+#define CONFIG_SYS_OSD_DH
+#endif
 
 /*
  * General PCI
@@ -420,11 +324,8 @@ int fpga_gpio_get(unsigned int bus, int pin);
 /* enable PCIE clock */
 #define CONFIG_SYS_SCCR_PCIEXP1CM	1
 
-#define CONFIG_PCI
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_PCIE
-
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1957	/* Freescale */
 #define CONFIG_83XX_GENERIC_PCIE_REGISTER_HOSES 1
@@ -432,14 +333,12 @@ int fpga_gpio_get(unsigned int bus, int pin);
 /*
  * TSEC
  */
-#define CONFIG_TSEC_ENET	/* TSEC ethernet support */
 #define CONFIG_SYS_TSEC1_OFFSET	0x24000
 #define CONFIG_SYS_TSEC1	(CONFIG_SYS_IMMR+CONFIG_SYS_TSEC1_OFFSET)
 
 /*
  * TSEC ethernet configuration
  */
-#define CONFIG_MII		1 /* MII PHY management */
 #define CONFIG_TSEC1
 #define CONFIG_TSEC1_NAME	"eTSEC0"
 #define TSEC1_PHY_ADDR		1
@@ -453,7 +352,6 @@ int fpga_gpio_get(unsigned int bus, int pin);
  * Environment
  */
 #if 1
-#define CONFIG_ENV_IS_IN_FLASH	1
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
 				 CONFIG_SYS_MONITOR_LEN)
 #define CONFIG_ENV_SECT_SIZE	0x10000 /* 64K(one sector) for env */
@@ -461,7 +359,6 @@ int fpga_gpio_get(unsigned int bus, int pin);
 #define CONFIG_ENV_ADDR_REDUND	(CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE)
 #define CONFIG_ENV_SIZE_REDUND	CONFIG_ENV_SIZE
 #else
-#define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_SIZE		0x2000		/* 8KB */
 #endif
 
@@ -471,30 +368,15 @@ int fpga_gpio_get(unsigned int bus, int pin);
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history */
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR		0x2000000 /* default load address */
 #define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms ticks */
 
-#undef CONFIG_ZERO_BOOTDELAY_CHECK	/* ignore keypress on bootdelay==0 */
-
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
 
-#define CONFIG_SYS_CONSOLE_INFO_QUIET
-
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 /*
@@ -503,52 +385,6 @@ int fpga_gpio_get(unsigned int bus, int pin);
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20) /* Initial Memory map for Linux */
-
-/*
- * Core HID Setup
- */
-#define CONFIG_SYS_HID0_INIT	0x000000000
-#define CONFIG_SYS_HID0_FINAL	(HID0_ENABLE_MACHINE_CHECK | \
-				 HID0_ENABLE_INSTRUCTION_CACHE | \
-				 HID0_ENABLE_DYNAMIC_POWER_MANAGMENT)
-#define CONFIG_SYS_HID2		HID2_HBE
-
-/*
- * MMU Setup
- */
-
-/* DDR: cache cacheable */
-#define CONFIG_SYS_IBAT0L	(CONFIG_SYS_SDRAM_BASE | BATL_PP_RW | \
-					BATL_MEMCOHERENCE)
-#define CONFIG_SYS_IBAT0U	(CONFIG_SYS_SDRAM_BASE | BATU_BL_128M | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT0L	CONFIG_SYS_IBAT0L
-#define CONFIG_SYS_DBAT0U	CONFIG_SYS_IBAT0U
-
-/* IMMRBAR, PCI IO and FPGA: cache-inhibit and guarded */
-#define CONFIG_SYS_IBAT1L	(CONFIG_SYS_IMMR | BATL_PP_RW | \
-			BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT1U	(CONFIG_SYS_IMMR | BATU_BL_8M | BATU_VS | \
-					BATU_VP)
-#define CONFIG_SYS_DBAT1L	CONFIG_SYS_IBAT1L
-#define CONFIG_SYS_DBAT1U	CONFIG_SYS_IBAT1U
-
-/* FLASH: icache cacheable, but dcache-inhibit and guarded */
-#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_FLASH_BASE | BATL_PP_RW | \
-					BATL_MEMCOHERENCE)
-#define CONFIG_SYS_IBAT2U	(CONFIG_SYS_FLASH_BASE | BATU_BL_8M | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT2L	(CONFIG_SYS_FLASH_BASE | BATL_PP_RW | \
-					BATL_CACHEINHIBIT | \
-					BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_DBAT2U	CONFIG_SYS_IBAT2U
-
-/* Stack in dcache: cacheable, no memory coherence */
-#define CONFIG_SYS_IBAT3L	(CONFIG_SYS_INIT_RAM_ADDR | BATL_PP_RW)
-#define CONFIG_SYS_IBAT3U	(CONFIG_SYS_INIT_RAM_ADDR | BATU_BL_128K | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT3L	CONFIG_SYS_IBAT3L
-#define CONFIG_SYS_DBAT3U	CONFIG_SYS_IBAT3U
 
 /*
  * Environment Configuration
@@ -560,13 +396,10 @@ int fpga_gpio_get(unsigned int bus, int pin);
 #define CONFIG_HAS_ETH0
 #endif
 
-#define CONFIG_BAUDRATE 115200
-
 #define CONFIG_LOADADDR	800000	/* default location for tftp and bootm */
 
-#define CONFIG_BOOTDELAY	5	/* -1 disables auto-boot */
 
-#define CONFIG_HOSTNAME		hrcon
+#define CONFIG_HOSTNAME		"hrcon"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 
@@ -603,6 +436,5 @@ int fpga_gpio_get(unsigned int bus, int pin);
 	"bootm ${kernel_addr} - ${fdt_addr}"
 
 #define CONFIG_BOOTCOMMAND		CONFIG_MMCBOOTCOMMAND
-
 
 #endif	/* __CONFIG_H */

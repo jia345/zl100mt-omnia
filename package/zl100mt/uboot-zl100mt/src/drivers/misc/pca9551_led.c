@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -116,11 +115,15 @@ static int pca9551_led_set_blink_rate(int idx, struct pca9551_blink_rate rate)
 }
 
 /*
- * Functions referenced by cmd_led.c
+ * Functions referenced by cmd_led.c or status_led.c
  */
+void __led_init(led_id_t id, int state)
+{
+}
+
 void __led_set(led_id_t mask, int state)
 {
-	if (state == STATUS_LED_OFF)
+	if (state == CONFIG_LED_STATUS_OFF)
 		pca9551_led_set_state(mask, PCA9551_LED_STATE_OFF);
 	else
 		pca9551_led_set_state(mask, PCA9551_LED_STATE_ON);

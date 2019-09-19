@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Tegra clock control functions */
@@ -43,6 +42,9 @@ enum {
 
 /* return the current oscillator clock frequency */
 enum clock_osc_freq clock_get_osc_freq(void);
+
+/* return the clk_m frequency */
+unsigned int clk_m_get_rate(unsigned int parent_rate);
 
 /**
  * Start PLL using the provided configuration parameters.
@@ -184,6 +186,16 @@ void clock_ll_set_source_divisor(enum periph_id periph_id, unsigned source,
 		unsigned divisor);
 
 /**
+ * Returns the current parent clock ID of a given peripheral. This can be
+ * useful in order to call clock_*_periph_*() from generic code that has no
+ * specific knowledge of system-level clock tree structure.
+ *
+ * @param periph_id	peripheral to query
+ * @return clock ID of the peripheral's current parent clock
+ */
+enum clock_id clock_get_periph_parent(enum periph_id periph_id);
+
+/**
  * Start a peripheral PLL clock at the given rate. This also resets the
  * peripheral.
  *
@@ -253,7 +265,7 @@ void clock_ll_start_uart(enum periph_id periph_id);
  * @param node		Node to look at
  * @return peripheral ID, or PERIPH_ID_NONE if none
  */
-enum periph_id clock_decode_periph_id(const void *blob, int node);
+int clock_decode_periph_id(struct udevice *dev);
 
 /**
  * Checks if the oscillator bypass is enabled (XOBP bit)
@@ -275,11 +287,44 @@ void clock_init(void);
 /* Initialize the PLLs */
 void clock_early_init(void);
 
+/* @return true if hardware indicates that clock_early_init() was called */
+bool clock_early_init_done(void);
+
 /* Returns a pointer to the clock source register for a peripheral */
 u32 *get_periph_source_reg(enum periph_id periph_id);
 
 /* Returns a pointer to the given 'simple' PLL */
 struct clk_pll_simple *clock_get_simple_pll(enum clock_id clkid);
+
+/*
+ * Given a peripheral ID, determine where the mux bits are in the peripheral
+ * clock's register, the number of divider bits the clock has, and the SoC-
+ * specific clock type.
+ *
+ * This is an internal API between the core Tegra clock code and the SoC-
+ * specific clock code.
+ *
+ * @param periph_id     peripheral to query
+ * @param mux_bits      Set to number of bits in mux register
+ * @param divider_bits  Set to the relevant MASK_BITS_* value
+ * @param type          Set to the SoC-specific clock type
+ * @return 0 on success, -1 on error
+ */
+int get_periph_clock_info(enum periph_id periph_id, int *mux_bits,
+			  int *divider_bits, int *type);
+
+/*
+ * Given a peripheral ID and clock source mux value, determine the clock_id
+ * of that peripheral's parent.
+ *
+ * This is an internal API between the core Tegra clock code and the SoC-
+ * specific clock code.
+ *
+ * @param periph_id     peripheral to query
+ * @param source        raw clock source mux value
+ * @return the CLOCK_ID_* value @source represents
+ */
+enum clock_id get_periph_clock_id(enum periph_id periph_id, int source);
 
 /**
  * Given a peripheral ID and the required source clock, this returns which
@@ -321,7 +366,7 @@ enum periph_id clk_id_to_periph_id(int clk_id);
  * @param p post divider(DIVP)
  * @param cpcon base PLL charge pump(CPCON)
  * @return 0 if ok, -1 on error (the requested PLL is incorrect and cannot
- *              be overriden), 1 if PLL is already correct
+ *              be overridden), 1 if PLL is already correct
  */
 int clock_set_rate(enum clock_id clkid, u32 n, u32 m, u32 p, u32 cpcon);
 
@@ -338,8 +383,8 @@ void arch_timer_init(void);
 
 void tegra30_set_up_pllp(void);
 
-/* Number of PLL-based clocks (i.e. not OSC or 32KHz) */
-#define CLOCK_ID_PLL_COUNT	(CLOCK_ID_COUNT - 2)
+/* Number of PLL-based clocks (i.e. not OSC, MCLK or 32KHz) */
+#define CLOCK_ID_PLL_COUNT	(CLOCK_ID_COUNT - 3)
 
 struct clk_pll_info {
 	u32	m_shift:5;	/* DIVM_SHIFT */
@@ -358,6 +403,12 @@ struct clk_pll_info {
 	u32	rsvd2:6;
 };
 extern struct clk_pll_info tegra_pll_info_table[CLOCK_ID_PLL_COUNT];
+
+struct periph_clk_init {
+	enum periph_id periph_id;
+	enum clock_id parent_clock_id;
+};
+extern struct periph_clk_init periph_clk_init_table[];
 
 /**
  * Enable output clock for external peripherals

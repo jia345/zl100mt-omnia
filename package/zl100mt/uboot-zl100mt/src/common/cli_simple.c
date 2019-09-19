@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -5,13 +6,12 @@
  * Add to readline cmdline-editing by
  * (C) Copyright 2005
  * JinHua Luo, GuangDong Linux Center, <luo.jinhua@gd-linux.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <bootretry.h>
 #include <cli.h>
+#include <console.h>
 #include <linux/ctype.h>
 
 #define DEBUG_PARSER	0	/* set to 1 to debug */
@@ -130,7 +130,7 @@ void cli_simple_process_macros(const char *input, char *output)
 				envname[i] = 0;
 
 				/* Get its value */
-				envval = getenv(envname);
+				envval = env_get(envname);
 
 				/* Copy into the line if it exists */
 				if (envval != NULL)
@@ -167,7 +167,7 @@ void cli_simple_process_macros(const char *input, char *output)
  * WARNING:
  *
  * We must create a temporary copy of the command since the command we get
- * may be the result from getenv(), which returns a pointer directly to
+ * may be the result from env_get(), which returns a pointer directly to
  * the environment data, which may change magicly when the command we run
  * creates or modifies environment variables (like "bootp" does).
  */
@@ -258,7 +258,7 @@ int cli_simple_run_command(const char *cmd, int flag)
 
 void cli_simple_loop(void)
 {
-	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
+	static char lastcommand[CONFIG_SYS_CBSIZE + 1] = { 0, };
 
 	int len;
 	int flag;
@@ -275,7 +275,8 @@ void cli_simple_loop(void)
 
 		flag = 0;	/* assume no special flags for now */
 		if (len > 0)
-			strcpy(lastcommand, console_buffer);
+			strlcpy(lastcommand, console_buffer,
+				CONFIG_SYS_CBSIZE + 1);
 		else if (len == 0)
 			flag |= CMD_FLAG_REPEAT;
 #ifdef CONFIG_BOOT_RETRY_TIME

@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * DENX Software Engineering, Anatolij Gustschin, agust@denx.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -246,7 +245,8 @@ unsigned int card_init (void)
 	tmp = 0;
 	videomode = 0x310;
 	/* get video mode via environment */
-	if ((penv = getenv ("videomode")) != NULL) {
+	penv = env_get("videomode");
+	if (penv) {
 		/* decide if it is a string */
 		if (penv[0] <= '9') {
 			videomode = (int) simple_strtoul (penv, NULL, 16);
@@ -419,7 +419,8 @@ void *video_hw_init (void)
 	board_disp_init ();
 #endif
 
-#if defined(CONFIG_SOCRATES) && !(CONFIG_POST & CONFIG_SYS_POST_SYSMON)
+#if (defined(CONFIG_LWMON5) || \
+     defined(CONFIG_SOCRATES)) && !(CONFIG_POST & CONFIG_SYS_POST_SYSMON)
 	/* Lamp on */
 	board_backlight_switch (1);
 #endif

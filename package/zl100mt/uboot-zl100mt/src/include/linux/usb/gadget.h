@@ -11,7 +11,7 @@
  *
  * This software is licensed under the GNU GPL version 2.
  *
- * Ported to U-boot by: Thomas Smits <ts.smits@gmail.com> and
+ * Ported to U-Boot by: Thomas Smits <ts.smits@gmail.com> and
  *                      Remy Bohmer <linux@bohmer.net>
  */
 
@@ -19,6 +19,7 @@
 #define __LINUX_USB_GADGET_H
 
 #include <errno.h>
+#include <usb.h>
 #include <linux/compat.h>
 #include <linux/list.h>
 
@@ -925,5 +926,22 @@ extern struct usb_ep *usb_ep_autoconfig(struct usb_gadget *,
 extern void usb_ep_autoconfig_reset(struct usb_gadget *);
 
 extern int usb_gadget_handle_interrupts(int index);
+
+#if CONFIG_IS_ENABLED(DM_USB_GADGET)
+int usb_gadget_initialize(int index);
+int usb_gadget_release(int index);
+int dm_usb_gadget_handle_interrupts(struct udevice *dev);
+#else
+#include <usb.h>
+static inline int usb_gadget_initialize(int index)
+{
+	return board_usb_init(index, USB_INIT_DEVICE);
+}
+
+static inline int usb_gadget_release(int index)
+{
+	return board_usb_cleanup(index, USB_INIT_DEVICE);
+}
+#endif
 
 #endif	/* __LINUX_USB_GADGET_H */

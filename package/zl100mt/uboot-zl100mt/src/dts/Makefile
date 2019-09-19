@@ -1,8 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2011 The Chromium OS Authors.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 # This Makefile builds the internal U-Boot fdt if CONFIG_OF_CONTROL is
 # enabled. See doc/README.fdt-control for more details.
@@ -18,10 +16,13 @@ else
 DTB := arch/$(ARCH)/dts/$(DEVICE_TREE).dtb
 endif
 
+$(obj)/dt-spl.dtb: $(DTB) $(objtree)/tools/fdtgrep FORCE
+	$(call if_changed,fdtgrep)
+
 $(obj)/dt.dtb: $(DTB) FORCE
 	$(call if_changed,shipped)
 
-targets += dt.dtb
+targets += dt.dtb dt-spl.dtb
 
 $(DTB): arch-dtbs
 	$(Q)test -e $@ || (						\
@@ -32,17 +33,23 @@ $(DTB): arch-dtbs
 	echo >&2;							\
 	/bin/false)
 
+PHONY += arch-dtbs
 arch-dtbs:
 	$(Q)$(MAKE) $(build)=arch/$(ARCH)/dts dtbs
 
-.SECONDARY: $(obj)/dt.dtb.S
-
+ifeq ($(CONFIG_SPL_BUILD),y)
+obj-$(CONFIG_OF_EMBED) := dt-spl.dtb.o
+# support "out-of-tree" build for dtb-spl
+$(obj)/dt-spl.dtb.o: $(obj)/dt-spl.dtb.S FORCE
+	$(call if_changed_dep,as_o_S)
+else
 obj-$(CONFIG_OF_EMBED) := dt.dtb.o
+endif
 
-dtbs: $(obj)/dt.dtb
+dtbs: $(obj)/dt.dtb $(obj)/dt-spl.dtb
 	@:
 
-clean-files := dt.dtb.S
+clean-files := dt.dtb.S dt-spl.dtb.S
 
 # Let clean descend into dts directories
-subdir- += ../arch/arm/dts ../arch/microblaze/dts ../arch/sandbox/dts ../arch/x86/dts
+subdir- += ../arch/arm/dts ../arch/microblaze/dts ../arch/mips/dts ../arch/sandbox/dts ../arch/x86/dts ../arch/powerpc/dts ../arch/riscv/dts

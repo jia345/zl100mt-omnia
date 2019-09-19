@@ -1,6 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011-2012 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -66,6 +66,11 @@ int sandbox_early_getopt_check(void)
 	os_exit(0);
 }
 
+int misc_init_f(void)
+{
+	return sandbox_early_getopt_check();
+}
+
 static int sandbox_cmdline_cb_help(struct sandbox_state *state, const char *arg)
 {
 	/* just flag to sandbox_early_getopt_check to show usage */
@@ -73,6 +78,7 @@ static int sandbox_cmdline_cb_help(struct sandbox_state *state, const char *arg)
 }
 SANDBOX_CMDLINE_OPT_SHORT(help, 'h', 0, "Display help");
 
+#ifndef CONFIG_SPL_BUILD
 int sandbox_main_loop_init(void)
 {
 	struct sandbox_state *state = state_get_current();
@@ -83,19 +89,21 @@ int sandbox_main_loop_init(void)
 
 		cli_init();
 
+#ifdef CONFIG_CMDLINE
 		if (state->cmd)
 			retval = run_command_list(state->cmd, -1, 0);
 
 		if (state->run_distro_boot)
 			retval = cli_simple_run_command("run distro_bootcmd",
 							0);
-
+#endif
 		if (!state->interactive)
 			os_exit(retval);
 	}
 
 	return 0;
 }
+#endif
 
 static int sandbox_cmdline_cb_boot(struct sandbox_state *state,
 				      const char *arg)
@@ -169,9 +177,10 @@ static int sandbox_cmdline_cb_memory(struct sandbox_state *state,
 
 	err = os_read_ram_buf(arg);
 	if (err) {
-		printf("Failed to read RAM buffer\n");
+		printf("Failed to read RAM buffer '%s': %d\n", arg, err);
 		return err;
 	}
+	state->ram_buf_read = true;
 
 	return 0;
 }
@@ -257,11 +266,69 @@ static int sandbox_cmdline_cb_terminal(struct sandbox_state *state,
 SANDBOX_CMDLINE_OPT_SHORT(terminal, 't', 1,
 			  "Set terminal to raw/cooked mode");
 
+static int sandbox_cmdline_cb_verbose(struct sandbox_state *state,
+				      const char *arg)
+{
+	state->show_test_output = true;
+	return 0;
+}
+SANDBOX_CMDLINE_OPT_SHORT(verbose, 'v', 0, "Show test output");
+
+static int sandbox_cmdline_cb_log_level(struct sandbox_state *state,
+					const char *arg)
+{
+	state->default_log_level = simple_strtol(arg, NULL, 10);
+
+	return 0;
+}
+SANDBOX_CMDLINE_OPT_SHORT(log_level, 'L', 1,
+			  "Set log level (0=panic, 7=debug)");
+
+static int sandbox_cmdline_cb_show_of_platdata(struct sandbox_state *state,
+					       const char *arg)
+{
+	state->show_of_platdata = true;
+
+	return 0;
+}
+SANDBOX_CMDLINE_OPT(show_of_platdata, 0, "Show of-platdata in SPL");
+
+int board_run_command(const char *cmdline)
+{
+	printf("## Commands are disabled. Please enable CONFIG_CMDLINE.\n");
+
+	return 1;
+}
+
+static void setup_ram_buf(struct sandbox_state *state)
+{
+	/* Zero the RAM buffer if we didn't read it, to keep valgrind happy */
+	if (!state->ram_buf_read)
+		memset(state->ram_buf, '\0', state->ram_size);
+
+	gd->arch.ram_buf = state->ram_buf;
+	gd->ram_size = state->ram_size;
+}
+
+void state_show(struct sandbox_state *state)
+{
+	char **p;
+
+	printf("Arguments:\n");
+	for (p = state->argv; *p; p++)
+		printf("%s ", *p);
+	printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
 	struct sandbox_state *state;
 	gd_t data;
 	int ret;
+
+	memset(&data, '\0', sizeof(data));
+	gd = &data;
+	gd->arch.text_base = os_find_text_base();
 
 	ret = state_init();
 	if (ret)
@@ -275,15 +342,19 @@ int main(int argc, char *argv[])
 	if (ret)
 		goto err;
 
-	/* Remove old memory file if required */
-	if (state->ram_buf_rm && state->ram_buf_fname)
-		os_unlink(state->ram_buf_fname);
-
-	memset(&data, '\0', sizeof(data));
-	gd = &data;
-#ifdef CONFIG_SYS_MALLOC_F_LEN
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	gd->malloc_base = CONFIG_MALLOC_F_ADDR;
 #endif
+#if CONFIG_IS_ENABLED(LOG)
+	gd->default_log_level = state->default_log_level;
+#endif
+	setup_ram_buf(state);
+
+	/*
+	 * Set up the relocation offset here, since sandbox symbols are always
+	 * relocated by the OS before sandbox is entered.
+	 */
+	gd->reloc_off = (ulong)gd->arch.text_base;
 
 	/* Do pre- and post-relocation init */
 	board_init_f(0);

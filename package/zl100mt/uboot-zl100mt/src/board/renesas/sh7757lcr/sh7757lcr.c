@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011  Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <environment.h>
 #include <malloc.h>
 #include <asm/processor.h>
 #include <asm/io.h>
@@ -30,6 +30,7 @@ static void init_gctrl(void)
 
 static int init_pcie_bridge_from_spi(void *buf, size_t size)
 {
+#ifdef CONFIG_DEPRECATED
 	struct spi_flash *spi;
 	int ret;
 	unsigned long pcie_addr;
@@ -54,6 +55,10 @@ static int init_pcie_bridge_from_spi(void *buf, size_t size)
 	spi_flash_free(spi);
 
 	return 0;
+#else
+	printf("No SPI support so no PCIe support\n");
+	return 1;
+#endif
 }
 
 static void init_pcie_bridge(void)
@@ -224,31 +229,6 @@ int board_init(void)
 	return 0;
 }
 
-int dram_init(void)
-{
-	DECLARE_GLOBAL_DATA_PTR;
-
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
-	printf("    Physical address\n");
-	printf("    0x%08x - 0x%08x : Accessible Space as ECC Area\n",
-		SH7757LCR_SDRAM_PHYS_TOP,
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_SDRAM_SIZE - 1);
-	printf("    0x%08x - 0x%08x : No Access Area\n",
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_SDRAM_SIZE,
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_SDRAM_SIZE * 2 - 1);
-	printf("    0x%08x - 0x%08x : Non-ECC Area for DVC/AVC\n",
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_SDRAM_ECC_SETTING * 2,
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_SDRAM_ECC_SETTING * 2 +
-			SH7757LCR_SDRAM_DVC_SIZE - 1);
-	printf("    0x%08x - 0x%08x : Non-ECC Area for G200eR2\n",
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_GRA_OFFSET,
-		SH7757LCR_SDRAM_PHYS_TOP + SH7757LCR_GRA_OFFSET + 0x00ffffff);
-
-	return 0;
-}
-
 int board_mmc_init(bd_t *bis)
 {
 	return mmcif_mmc_init();
@@ -256,6 +236,7 @@ int board_mmc_init(bd_t *bis)
 
 static int get_sh_eth_mac_raw(unsigned char *buf, int size)
 {
+#ifdef CONFIG_DEPRECATED
 	struct spi_flash *spi;
 	int ret;
 
@@ -272,6 +253,7 @@ static int get_sh_eth_mac_raw(unsigned char *buf, int size)
 		return 1;
 	}
 	spi_flash_free(spi);
+#endif
 
 	return 0;
 }
@@ -303,10 +285,10 @@ static void init_ethernet_mac(void)
 	for (i = 0; i < SH7757LCR_ETHERNET_NUM_CH; i++) {
 		get_sh_eth_mac(i, mac_string, buf);
 		if (i == 0)
-			setenv("ethaddr", mac_string);
+			env_set("ethaddr", mac_string);
 		else {
 			sprintf(env_string, "eth%daddr", i);
-			setenv(env_string, mac_string);
+			env_set(env_string, mac_string);
 		}
 
 		set_mac_to_sh_eth_register(i, mac_string);
@@ -316,7 +298,7 @@ static void init_ethernet_mac(void)
 	for (i = 0; i < SH7757LCR_GIGA_ETHERNET_NUM_CH; i++) {
 		get_sh_eth_mac(i + SH7757LCR_ETHERNET_NUM_CH, mac_string, buf);
 		sprintf(env_string, "eth%daddr", i + SH7757LCR_ETHERNET_NUM_CH);
-		setenv(env_string, mac_string);
+		env_set(env_string, mac_string);
 
 		set_mac_to_sh_giga_eth_register(i, mac_string);
 	}
@@ -377,6 +359,7 @@ U_BOOT_CMD(
 	"enable SH-G200 bus (disable PCIe-G200)"
 );
 
+#ifdef CONFIG_DEPRECATED
 int do_write_mac(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int i, ret;
@@ -443,3 +426,4 @@ U_BOOT_CMD(
 	"write MAC address for ETHERC/GETHERC",
 	"[ETHERC ch0] [ETHERC ch1] [GETHERC ch0] [GETHERC ch1]\n"
 );
+#endif

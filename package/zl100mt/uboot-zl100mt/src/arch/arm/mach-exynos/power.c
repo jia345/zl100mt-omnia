@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Samsung Electronics
  * Donghwa Lee <dh09.lee@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -125,7 +124,7 @@ static void exynos5420_set_usbdev_phy_ctrl(unsigned int enable)
 void set_usbdrd_phy_ctrl(unsigned int enable)
 {
 	if (cpu_is_exynos5()) {
-		if (proid_is_exynos5420() || proid_is_exynos5800())
+		if (proid_is_exynos542x())
 			exynos5420_set_usbdev_phy_ctrl(enable);
 		else
 			exynos5_set_usbdrd_phy_ctrl(enable);
@@ -147,7 +146,7 @@ static void exynos5_dp_phy_control(unsigned int enable)
 	writel(cfg, &power->dptx_phy_control);
 }
 
-void set_dp_phy_ctrl(unsigned int enable)
+void exynos_dp_phy_ctrl(unsigned int enable)
 {
 	if (cpu_is_exynos5())
 		exynos5_dp_phy_control(enable);

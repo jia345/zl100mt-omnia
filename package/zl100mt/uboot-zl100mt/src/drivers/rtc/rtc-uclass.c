@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -60,6 +59,36 @@ int rtc_write8(struct udevice *dev, unsigned int reg, int val)
 	return ops->write8(dev, reg, val);
 }
 
+int rtc_read16(struct udevice *dev, unsigned int reg, u16 *valuep)
+{
+	u16 value = 0;
+	int ret;
+	int i;
+
+	for (i = 0; i < sizeof(value); i++) {
+		ret = rtc_read8(dev, reg + i);
+		if (ret < 0)
+			return ret;
+		value |= ret << (i << 3);
+	}
+
+	*valuep = value;
+	return 0;
+}
+
+int rtc_write16(struct udevice *dev, unsigned int reg, u16 value)
+{
+	int i, ret;
+
+	for (i = 0; i < sizeof(value); i++) {
+		ret = rtc_write8(dev, reg + i, (value >> (i << 3)) & 0xff);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 int rtc_read32(struct udevice *dev, unsigned int reg, u32 *valuep)
 {
 	u32 value = 0;
@@ -68,7 +97,7 @@ int rtc_read32(struct udevice *dev, unsigned int reg, u32 *valuep)
 
 	for (i = 0; i < sizeof(value); i++) {
 		ret = rtc_read8(dev, reg + i);
-		if (ret)
+		if (ret < 0)
 			return ret;
 		value |= ret << (i << 3);
 	}
@@ -93,4 +122,5 @@ int rtc_write32(struct udevice *dev, unsigned int reg, u32 value)
 UCLASS_DRIVER(rtc) = {
 	.name		= "rtc",
 	.id		= UCLASS_RTC,
+	.post_bind	= dm_scan_fdt_dev,
 };
