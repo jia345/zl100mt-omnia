@@ -33,6 +33,8 @@ make_defconfig() {
 	fi
 }
 
+#if false; then
+
 if [ -z "$SKIP_FEEDS" ]; then
 	# Clean feeds
 	./scripts/feeds clean
@@ -104,7 +106,7 @@ if [ -n "$PRIMARY_ONLY" ] ; then
 fi
 
 # Nice junit export
-./scripts/generate_junit.sh
+#./scripts/generate_junit.sh
 
 [ \! -d ./logs ] || cp ./.config logs/config
 [ \! -d ./logs ] || mv ./logs ./logs-nand
@@ -119,11 +121,14 @@ if [ "$TARGET_BOARD" = turris ]; then
 	find -type l ! -exec test -r {} \; -delete
 	cd ../../..
 fi
+echo ------PGPGPGPG----
 
 # Clean
 [ -d ./bin-nand ] && rm -rf ./bin-nand
 mv ./bin ./bin-nand
 [ -d ./tmp ] && rm -rf ./tmp
+
+#fi
 
 PUB_BIN_DIR="`ls -1d bin-nand/* | head -n1`"
 # Generate lists

@@ -37,13 +37,16 @@ static int g_sock = -1;
 uint32_t g_cancelled    = 0;
 uint32_t g_dbg_enabled  = 0;
 uint32_t g_local_sim_no = 0;
-uint32_t g_connection_status = 0;
+uint32_t g_rdss_status = 0;
+uint32_t g_rnss_status = 0;
 float    g_signal_strength = 0.0;
+uint8_t  g_latitude[16];
+uint8_t  g_longitude[16];
 uint32_t g_satellite_num = 0;
 uint32_t g_tx_total     = 0;
 uint32_t g_tx_succ      = 0;
 uint32_t g_tx_fail      = 0;
-bool g_is_relay_data_ready = false;
+bool     g_is_relay_data_ready = false;
 
 uint8_t g_DWXX[20];
 uint8_t g_ZJXX[10];
@@ -131,10 +134,21 @@ enum {
     GNSS_TARGET_SIM,
     __SET_GNSS_TARGET_SIM_MAX
 };
+
 static const struct blobmsg_policy set_gnss_target_sim_policy[] = {
     [GNSS_TARGET_SIM]      = { .name = "target_sim", .type = BLOBMSG_TYPE_INT32 },
 };
 
+enum {
+    RDSS_MSG,
+    __SEND_RDSS_MSG_MAX
+};
+
+static const struct blobmsg_policy send_rdss_msg_policy[] = {
+    [RDSS_MSG]      = { .name = "msg", .type = BLOBMSG_TYPE_STRING },
+};
+
+#if 0
 struct get_gnss_info_request {
     struct ubus_request_data req;
     struct uloop_timeout timeout;
@@ -146,6 +160,7 @@ struct set_gnss_target_sim_request {
     struct uloop_timeout timeout;
     int data[];
 };
+#endif
 
 static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *obj,
                                  struct ubus_request_data *req, const char *method,
@@ -158,8 +173,8 @@ static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *o
     char tmp[64];
     blob_buf_init(&b, 0);
     blobmsg_add_string(&b, "result", "ok");
-    //blobmsg_add_string(&b, "connection", g_connection_status ? "on" : "off");
-    blobmsg_add_string(&b, "connection", "on");
+    blobmsg_add_string(&b, "connection", g_rnss_status ? "off" : "on");
+    //blobmsg_add_string(&b, "connection", "on");
 
     char beam[10];
 
@@ -231,9 +246,34 @@ static int zl100mt_set_gnss_target_sim(struct ubus_context *ctx, struct ubus_obj
     return 0;
 }
 
+static int zl100mt_send_rdss_msg(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+    struct blob_attr *tb[__SEND_RDSS_MSG_MAX];
+    const char* data = NULL;
+
+    blobmsg_parse(send_rdss_msg_policy, ARRAY_SIZE(send_rdss_msg_policy), tb, blob_data(msg), blob_len(msg));
+
+    blob_buf_init(&b, 0);
+
+	if (tb[RDSS_MSG]) {
+		data = blobmsg_get_string(tb[RDSS_MSG]);
+        iot_dbg("data %s\n", data);
+        blobmsg_add_string(&b, "result", "ok");
+    } else {
+        blobmsg_add_string(&b, "result", "fail, please make sure 'target_sim' is integer number");
+    }
+
+    ubus_send_reply(ctx, req, b.head);
+
+    return 0;
+}
+
 static const struct ubus_method zl100mt_methods[] = {
     UBUS_METHOD("get_gnss_info", zl100mt_get_gnss_info, get_gnss_info_policy),
     UBUS_METHOD("set_gnss_target_sim", zl100mt_set_gnss_target_sim, set_gnss_target_sim_policy),
+    UBUS_METHOD("send_rdss_msg", zl100mt_send_rdss_msg, send_rdss_msg_policy),
 };
 
 static struct ubus_object_type zl100mt_object_type = UBUS_OBJECT_TYPE("zl100mt", zl100mt_methods);
@@ -952,29 +992,43 @@ static void bd_rnss_listener_cb(struct uloop_timeout *t)
         iot_dbg("xijia aaaa\n");
 
     char buf[1024];
-    char cmd[256];
+    char field[256];
     const char *delim = ",";
-    char *ptr = NULL;
+    char *ptr_prev = NULL;
+    char *ptr_next = NULL;
 
     memset(buf, 0, sizeof(buf));
-    memset(cmd, 0, sizeof(cmd));
+    memset(field, 0, sizeof(field));
 
     char* line = fgets(buf, sizeof(buf), fdopen(g_bd_inf.rnss_ttyfd, "r+"));
-    iot_dbg("okok %s\n", line);
-    if (0 == strncmp(line, "$GNGGA", 6)) {
-        iot_dbg("gngga\n");
-        ptr = strtok(line, delim);
-        int i = 0;
-        while (ptr != NULL && i < 7) {
-            ptr = strtok(NULL, delim);
-            i++;
+    if (line == NULL) {
+        iot_dbg("nonono %s\n", buf);
+    } else {
+        iot_dbg("okok %s\n", buf);
+        if (0 == strncmp(buf, "$GNGGA", 6)) {
+            // lattitude
+            iot_dbg("gngga\n");
+            ptr_prev = strtok(buf, delim);
+            ptr_next = strtok(NULL, delim); // skip ','
+            ptr_next = strtok(NULL, delim);
+            memset(g_latitude, 0, sizeof(g_latitude));
+            memcpy(g_latitude, ptr_prev, ptr_next - ptr_prev - 1);
+            // longitude
+            ptr_prev = ptr_next;
+            ptr_next = strtok(NULL, delim); // skip ','
+            ptr_next = strtok(NULL, delim);
+            memset(g_longitude, 0, sizeof(g_longitude));
+            memcpy(g_longitude, ptr_prev, ptr_next - ptr_prev - 1);
+            // RNSS status
+            g_rnss_status = atoi(ptr_next);
+            // satellite number
+            ptr_next = strtok(NULL, delim);
+            g_satellite_num = atoi(ptr_next);
+            iot_dbg("xijia rnss status %d satellite num %d\n", g_rnss_status, g_satellite_num);
         }
-
-        g_satellite_num = atoi(ptr);
     }
 
-        iot_dbg("xijia bbb\n");
-    uloop_timeout_set(t, 0);
+    uloop_timeout_set(t, 5);
 }
 
 static void bd_rdss_poller_cb(struct uloop_timeout *t)
@@ -1004,11 +1058,11 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
                         iot_dbg("INFO: sending fail, error code 0x%hhx\n", rxbuf[10]);
         iot_dbg("xijia 444\n");
                         g_tx_fail++;
-                        g_connection_status = 0;
+                        g_rdss_status = 0;
                     } else {
         iot_dbg("xijia 555\n");
                         g_tx_succ++;
-                        g_connection_status = 1;
+                        g_rdss_status = 1;
                     }
                     break;
                 }
@@ -1042,9 +1096,9 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
     if (ret > 0) {
         if (0 == memcmp(rxbuf, "$FKXX", 5)) {
             if (rxbuf[10]) { // check the feedback flag
-                g_connection_status = 0;
+                g_rdss_status = 0;
             } else {
-                g_connection_status = 1;
+                g_rdss_status = 1;
 
                 ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
                 if (ret > 0) {

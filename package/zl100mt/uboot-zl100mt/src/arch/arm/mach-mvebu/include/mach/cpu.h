@@ -142,6 +142,8 @@ int mvebu_mbus_probe(struct mbus_win windows[], int count);
 int mvebu_soc_family(void);
 u32 mvebu_get_nand_clock(void);
 
+void armada385_set_mac(const uchar *eth0, const uchar *eth1, const uchar *eth2);
+
 void return_to_bootrom(void);
 
 #ifndef CONFIG_DM_MMC

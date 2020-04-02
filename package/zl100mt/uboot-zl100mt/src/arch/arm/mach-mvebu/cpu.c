@@ -11,9 +11,17 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 #include <sdhci.h>
+#include <phy.h>
 
 #define DDR_BASE_CS_OFF(n)	(0x0000 + ((n) << 3))
 #define DDR_SIZE_CS_OFF(n)	(0x0004 + ((n) << 3))
+
+#define MVNETA_MAC_E0_LOW   MVEBU_REGISTER(0x00032414)
+#define MVNETA_MAC_E0_HIGH  MVEBU_REGISTER(0x00032418)
+#define MVNETA_MAC_E1_LOW   MVEBU_REGISTER(0x00036414)
+#define MVNETA_MAC_E1_HIGH  MVEBU_REGISTER(0x00036418)
+#define MVNETA_MAC_E2_LOW   MVEBU_REGISTER(0x00072414)
+#define MVNETA_MAC_E2_HIGH  MVEBU_REGISTER(0x00072418)
 
 static struct mbus_win windows[] = {
 	/* SPI */
@@ -677,4 +685,52 @@ void v7_outer_cache_disable(void)
 		(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
 
 	clrbits_le32(&pl310->pl310_ctrl, L2X0_CTRL_EN);
+}
+
+#ifdef CONFIG_MVNETA
+int cpu_eth_init(bd_t *bis)
+{
+    u32 enet_base[] = { MVEBU_EGIGA0_BASE, MVEBU_EGIGA1_BASE,
+        MVEBU_EGIGA2_BASE, MVEBU_EGIGA3_BASE };
+#ifndef CONFIG_TURRISOMNIA_SUPPORT
+    u8 phy_addr[] = CONFIG_PHY_ADDR;
+    phy_interface_t int_type[] = CONFIG_SYS_NETA_INTERFACE_TYPE;
+    int i;
+#endif /* CONFIG_TURRISOMNIA_SUPPORT */
+
+    /*
+     * Only Armada XP supports all 4 ethernet interfaces. A38x has
+     * slightly different base addresses for its 2-3 interfaces.
+     */
+    if (mvebu_soc_family() != MVEBU_SOC_AXP) {
+        enet_base[1] = MVEBU_EGIGA2_BASE;
+        enet_base[2] = MVEBU_EGIGA3_BASE;
+    }
+
+#ifdef CONFIG_TURRISOMNIA_SUPPORT
+    mvneta_initialize(bis, enet_base[2], 2, 1, PHY_INTERFACE_MODE_SGMII);
+#else
+    for (i = 0; i < ARRAY_SIZE(phy_addr); i++)
+        mvneta_initialize(bis, enet_base[i], i, phy_addr[i], int_type[i]);
+#endif /* CONFIG_TURRISOMNIA_SUPPORT */
+
+    return 0;
+}
+#endif
+
+#define NETA_MAC_LOW(addr) ((u32)((addr[4] << 8) | (addr[5])))
+#define NETA_MAC_HI(addr) ((u32)((addr[0] << 24) | (addr[1] << 16) | \
+(addr[2] << 8) | (addr[3] << 0)))
+
+void armada385_set_mac(const uchar *eth0, const uchar *eth1, const uchar *eth2) {
+    writel(NETA_MAC_LOW(eth0), MVNETA_MAC_E0_LOW);
+    writel(NETA_MAC_HI(eth0), MVNETA_MAC_E0_HIGH);
+
+    writel(NETA_MAC_LOW(eth1), MVNETA_MAC_E1_LOW);
+    writel(NETA_MAC_HI(eth1), MVNETA_MAC_E1_HIGH);
+
+    writel(NETA_MAC_LOW(eth2), MVNETA_MAC_E2_LOW);
+    writel(NETA_MAC_HI(eth2), MVNETA_MAC_E2_HIGH);
+
+    eth_setenv_enetaddr("ethaddr", eth1);
 }
