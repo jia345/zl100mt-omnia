@@ -18,7 +18,8 @@ var appCfg = {
         type: 'real',   //!!! IMPORTANT, 根据您的需求设置该值. e.g.实际量产时填写 'real'
         link: {         //!!! 请将以下链接填写为自己的真实链接 !!!
             'real': cur_url,
-            'mock':'./debug/mock',
-            'php':'./debug/action/action.test.php'}
+            // 'mock':'./debug/mock',
+            // 'php':'./debug/action/action.test.php'
+        }
     }
 };
