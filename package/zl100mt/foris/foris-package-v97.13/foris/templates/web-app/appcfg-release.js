@@ -21,5 +21,8 @@ var appCfg = {
             // 'mock':'./debug/mock',
             // 'php':'./debug/action/action.test.php'
         }
-    }
+    },
+    //
+    //2. timerout value, which to control the 'pull data from device' button
+    max_timeout_s: 10, //MAC_COUNTER_S
 };
