@@ -11,6 +11,13 @@ case "$1" in
             "sync_ntp_time": {
                 "server": "x.x.x.x"
             },
+            "set_local_time": {
+                "time_str": "2018-08-08 16:56:40"
+            },
+            "set_interface_on": {
+                "interface": "lte-z/lte-4g",
+                "on": "1/0"
+            },
             "get_ntp_info": {
             },
             "get_hw_id": {
@@ -65,20 +72,36 @@ case "$1" in
                 read input
                 logger -t "zl100mt-rpcd" "call" "$2" "$input"
                 json_load $input
-                json_get_var server server_ip
+                json_get_var server server
                 TIMEOUT=2 # seconds
                 DEFAULT_SERVER=210.72.145.44
                 /usr/sbin/ntpdate -s -b -u -t "$TIMEOUT" "$server" 
-                uci -q del_list system.ntp.server
+                uci -q delete system.ntp.server
                 uci add_list system.ntp.server=$server
                 uci add_list system.ntp.server=$DEFAULT_SERVER
                 uci commit system
                 /etc/init.d/sysntpd restart
-                rc = $?
-                ts = `date +%s`
-                ts = $((ts * 1000)) # we need ms
+                rc=$?
+                ts=`date +%s`
+                ts=$((ts * 1000)) # we need ms
                 echo "{
-                    'rc': '$rc',
+                    'rc': 0,
+                    'ts': '$ts'
+                }"
+            ;;
+            set_local_time)
+                read input
+                logger -t "zl100mt-rpcd" "call" "$2" "$input"
+                json_load $input
+                logger -t "zl100mt-rpcd" "input" "$input"
+                json_get_var time_var time_str
+                time_var=`echo $time_var | sed -e "s/T/ /"`
+                out=`date -s "$time_var"`
+                rc=$?
+                ts=`date +%s`
+                ts=$((ts * 1000)) # ms
+                echo "{
+                    'rc': 0,
                     'ts': '$ts'
                 }"
             ;;
@@ -149,7 +172,31 @@ case "$1" in
                 json="{ 'type':'LTE-4G', $json }"
                 echo $json
             ;;
-
+            set_interface_on)
+                read input
+                logger -t "zl100mt-rpcd" "call" "$2" "$input"
+                json_load $input
+                json_get_var interface interface
+                logger -t "zl100mt-rpcd" "hi $interface"
+                json_get_var on on
+                logger -t "zl100mt-rpcd" "hi $on"
+                if [ $on == 1 ]; then
+                    updown = "up"
+                    logger -t "zl100mt-rpcd" "updown $updown"
+                else
+                    updown = "down"
+                    logger -t "zl100mt-rpcd" "updown $updown"
+                fi
+                if [ $interface == "lte_z" ]; then
+                    ifconfig eth2 $updown
+                    logger -t "zl100mt-rpcd" "ifconfig eth2 $updown"
+                elif [ $interface == "lte_4g" ]; then
+                    ifconfig usb0 $updown
+                    logger -t "zl100mt-rpcd" "ifconfig eth2 $updown"
+                fi
+                json = "{ 'rc' : $? }"
+                echo $json
+            ;;
         esac
     ;;
 esac

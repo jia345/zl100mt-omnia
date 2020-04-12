@@ -61,8 +61,7 @@ class ChannelUpdateCmd() :
             name = "LTEZ_%s" % lan
             lans.append({
                     "src_zone": '' if state == 'on' else 'lan',
-                    "dest_zone": 'wan',
-                    "src_ip": "" if state == 'on' else '192.168.3.101',
+                    "dest_zone": 'lte_z',
                     "name": name,
                     "operate": 'add' if state == 'off' else 'del',
                 })
@@ -71,8 +70,7 @@ class ChannelUpdateCmd() :
             name = "LTE4G_%s" % lan
             lans.append({
                 "src_zone": '' if state == 'on' else 'lan',
-                "dest_zone": 'wan',
-                "src_ip": "" if state == 'on' else '192.168.3.101',
+                "dest_zone": 'lte_4g',
                 "name": name,
                 "operate": 'add' if state == 'off' else 'del',
             })

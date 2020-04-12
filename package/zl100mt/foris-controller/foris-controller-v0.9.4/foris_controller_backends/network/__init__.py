@@ -17,7 +17,7 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import logging, hashlib
+import logging, hashlib, os
 
 from foris_controller_backends.uci import (
     UciBackend, get_option_anonymous, get_option_named, parse_bool, store_bool, get_sections_by_type
@@ -42,6 +42,9 @@ class NetworkUciCommands(object):
                 print "route info get setting!!"
                 try:
                     routes = get_sections_by_type(network_data, "network", "route")
+                    data['data']['interface'] = data['data']['interface'].lower().replace('-', '_')
+                    for r in routes:
+                        r['data']['interface'] = r['data']['interface'].lower().replace('-', '_')
                     routes = [
                         e for e in routes if e['data']['interface'] == data['data']['interface']
                     ]
@@ -71,20 +74,30 @@ class NetworkUciCommands(object):
                 # routes = get_sections_by_type(network_data, "network", "route")
                 for route in data['routes']:
                     print route
-                    route['section'] = "%s_%s" % (route["interface"], route['target'].replace('.',''))
-                    content = '%s_%s_%s_%s_%s' % (route['interface'], route['target'], route['netmask'], route['gateway'], route['metric'])
+                    interface = route["interface"].lower().replace('-', '_')
+                    route['section'] = "%s_%s" % (interface, route['target'].replace('.',''))
+                    ipcalc_cmd = "ipcalc.sh %s %s|cut -d'=' -f 2" % (route['target'], route['netmask'])
+                    ipcalc_output = os.popen(ipcalc_cmd).read()
+                    ip, netmask, broadcast, network, prefix = ipcalc_output.split()
+                    target = network + '/' + prefix
+                    content = '%s_%s_%s_%s' % (interface, target, route['gateway'], route['metric'])
+
                     section_name = 'route_%s' % hashlib.md5(content).hexdigest()
                     backend.add_section('network','route', section_name)
-                    backend.set_option('network', section_name, 'interface', route['interface'])
-                    backend.set_option('network', section_name, 'target', route['target'])
-                    backend.set_option('network', section_name, 'netmask', route['netmask'])
+                    backend.set_option('network', section_name, 'interface', interface)
+                    backend.set_option('network', section_name, 'target', network + '/' + prefix)
                     backend.set_option('network', section_name, 'gateway', route['gateway'])
                     backend.set_option('network', section_name, 'metric', route['metric'])
             elif data['action'] == "route_del":
                 for route in data['routes']:
-                    content = '%s_%s_%s_%s_%s' % (route['interface'], route['target'], route['netmask'], route['gateway'], route['metric'])
+                    interface = route["interface"].lower().replace('-', '_')
+                    ipcalc_cmd = "ipcalc.sh %s %s|cut -d'=' -f 2" % (route['target'], route['netmask'])
+                    ipcalc_output = os.popen(ipcalc_cmd).read()
+                    ip, netmask, broadcast, network, prefix = ipcalc_output.split()
+                    target = network + '/' + prefix
+                    content = '%s_%s_%s_%s' % (interface, target, route['gateway'], route['metric'])
+
                     section_name = 'route_%s' % hashlib.md5(content).hexdigest()
-                    #section_name = "%s_%s" % (route["interface"], route['target'].replace('.',''))
                     backend.del_section("network",section_name)
 
             elif data['action'] == "interface_add":
@@ -160,5 +173,10 @@ class NetworkUciCommands(object):
                 forwarding = data['forwarding']
                 section_name = "forward_%s" % (forwarding['name'])
                 backend.del_section("network", section_name)
+            elif data['action'] == "set_host_cfg":                                               
+                host_ip = data['host_ip']
+                host_netmask = data['host_netmask']
+                backend.set_option('network', 'lan', 'ipaddr', host_ip)
+                backend.set_option('network', 'lan', 'netmask', host_netmask)
 
         return True

@@ -89,7 +89,7 @@ class DhcpUciCommands(object):
 
         dhcpCfg = {
             "ignore": int(dhcp_lan['data'].get('ignore', 0)),
-            "dynamic": int(dhcp_lan['data'].get('dynamicdhcp', 1)),
+            "dynamicdhcp": int(dhcp_lan['data'].get('dynamicdhcp', 1)),
             "start_ip": start_ip,
             "end_ip": end_ip,
             "leasetime_m": leasetime_m,
@@ -134,20 +134,22 @@ class DhcpUciCommands(object):
                         'netmask': netmask if netmask else '255.255.255.0'
                     })
 
-            cmd = "cut -d' ' -f 2,3,4 /tmp/dhcp.leases"
+            #cmd = "cut -d' ' -f 2,3,4 /tmp/dhcp.leases"
+            cmd = "tail -n+2 /proc/net/arp | awk -F' ' '{print $1,$2,$3,$4,$6}'"
             cmd_output = os.popen(cmd).read().split('\n')
             access_list = []
             port = 0
             for e in cmd_output:
                 if e:
-                    mac, ip, type = e.split()
-                    port += 1
-                    access_list.append({
-                        'port': 'LAN%s' % port,
-                        'mac': mac,
-                        'ip': ip,
-                        'type': type
-                    })
+                    ip, type, flag, mac, device = e.split()
+                    if device == 'br-lan':
+                        port += 1
+                        access_list.append({
+                            'port': 'LAN%s' % port,
+                            'mac': mac,
+                            'ip': ip,
+                            'type': 'Ethernet'
+                        })
 
         return { 'lan_cfg': lan_cfg, 'access_list': access_list }
 

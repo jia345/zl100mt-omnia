@@ -133,6 +133,7 @@ opengt
   putenv "GCOM_ZL100MT_VAR="$s
   system "echo -n 'dns1:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $3}'|sed -e 's/\"//g'"
   system "echo -n 'dns2:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $4}'|sed -e 's/\"//g'"
+  system "echo -n 'gw:';echo $GCOM_ZL100MT_VAR|awk -F'[:,]' '{print $3}'|sed -e 's/\"//g'"
   putenv "GCOM_ZL100MT_VAR="
   waitfor 1 "OK"
   return

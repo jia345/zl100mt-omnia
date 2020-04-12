@@ -17,8 +17,12 @@ class FirewallUciCommands(object):
 
         ip_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'ip_filter_enabled'))
         mac_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'mac_filter_enabled'))
-        dmz_enabled = parse_bool(get_option_named(cfg, 'firewall', 'dmz_host', 'enabled'))
-        dmz_ip = get_option_named(cfg, 'firewall', 'dmz_host', 'dest_ip')
+        try:
+            dmz_enabled = parse_bool(get_option_named(cfg, 'firewall', 'dmz_host', 'enabled'))
+            dmz_ip = get_option_named(cfg, 'firewall', 'dmz_host', 'dest_ip')
+        except:
+            dmz_enabled = False
+            dmz_ip = "0.0.0.0"
 
         try:
             rules = get_sections_by_type(cfg, 'firewall', 'rule')
@@ -35,7 +39,6 @@ class FirewallUciCommands(object):
                 'lan_ports': e['src_port'],
                 'wan_ips': e['dest_ip'],
                 'wan_ports': e['dest_port'],
-                'proto': e['proto'],
             })
 
         mac_filter_table = []
@@ -43,13 +46,11 @@ class FirewallUciCommands(object):
             mac_filter_table.append({
                 'enabled': parse_bool(e['enabled']),
                 'mac': e['src_mac'],
-                'desc': e['name'],
+                'desc': '' if 'name' not in e else e['name'],
             })
 
 
         res= {
-            'ip_filter_enabled': ip_filter_enabled,
-            'mac_filter_enabled': mac_filter_enabled,
             'dmz_enabled': dmz_enabled,
             'dmz_ip': dmz_ip,
             'ip_filter_table': ip_filter_table,
@@ -63,16 +64,10 @@ class FirewallUciCommands(object):
             cfg = backend.read('firewall')
             rules = get_sections_by_type(cfg, 'firewall', 'rule')
 
-            for e in rules:
-                if e['name'].startswith('ip_filter_'):
-                    backend.set_option('firewall', e['name'], 'enabled', store_bool(data['ip_filter_enabled']))
-                if e['name'].startswith('mac_filter_'):
-                    backend.set_option('firewall', e['name'], 'enabled', store_bool(data['mac_filter_enabled']))
-
-            backend.set_option('firewall', 'global', 'ip_filter_enabled', store_bool(data['ip_filter_enabled']))
-            backend.set_option('firewall', 'global', 'mac_filter_enabled', store_bool(data['mac_filter_enabled']))
-            backend.set_option('firewall', 'dmz_host', 'enabled', store_bool(data['dmz_enabled']))
-            backend.set_option('firewall', 'dmz_host', 'dest_ip', data['dmz_ip'])
+            backend.set_option('firewall', 'dmz_host_lte_z', 'enabled', store_bool(data['dmz_enabled']))
+            backend.set_option('firewall', 'dmz_host_lte_4g', 'enabled', store_bool(data['dmz_enabled']))
+            backend.set_option('firewall', 'dmz_host_lte_z', 'dest_ip', data['dmz_ip'])
+            backend.set_option('firewall', 'dmz_host_lte_4g', 'dest_ip', data['dmz_ip'])
 
         with OpenwrtServices() as services:
             services.restart("network", delay=2)
@@ -107,8 +102,10 @@ class FirewallUciCommands(object):
             '''
 
             for e in data['ip_filter_table']:
-                lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto = e['lan_ips'], e['lan_ports'], e['wan_ips'], e['wan_ports'], e['proto']
-                content = '%s %s %s %s %s' % (lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto)
+                #lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto = e['lan_ips'], e['lan_ports'], e['wan_ips'], e['wan_ports'], e['proto']
+                lan_iprange, lan_portrange, wan_iprange, wan_portrange = e['lan_ips'], e['lan_ports'], e['wan_ips'], e['wan_ports']
+                #content = '%s %s %s %s %s' % (lan_iprange, lan_portrange, wan_iprange, wan_portrange, proto)
+                content = '%s %s %s %s' % (lan_iprange, lan_portrange, wan_iprange, wan_portrange)
 
                 '''
                 ipset_lan_section_name = 'ip_filter_ipset_lan_%s' % hashlib.md5(content).hexdigest()
@@ -133,7 +130,6 @@ class FirewallUciCommands(object):
                 backend.set_option('firewall', rule_section_name, 'src_port', lan_portrange)
                 backend.set_option('firewall', rule_section_name, 'ipset', '%s dest' % ipset_wan_section_name)
                 backend.set_option('firewall', rule_section_name, 'dest_port', wan_portrange)
-                backend.set_option('firewall', rule_section_name, 'proto', proto)
                 '''
 
                 rule_section_name = 'ip_filter_%s' % hashlib.md5(content).hexdigest()
@@ -146,7 +142,6 @@ class FirewallUciCommands(object):
                 backend.set_option('firewall', rule_section_name, 'dest', 'wan')
                 backend.set_option('firewall', rule_section_name, 'dest_ip', wan_iprange)
                 backend.set_option('firewall', rule_section_name, 'dest_port', wan_portrange)
-                backend.set_option('firewall', rule_section_name, 'proto', proto)
                 #backend.set_option('firewall', rule_section_name, 'timeout', e['timeout'])
 
         with OpenwrtServices() as services:
@@ -170,7 +165,6 @@ class FirewallUciCommands(object):
                 section_name = 'mac_filter_%s' % hashlib.md5(content).hexdigest()
                 backend.add_section('firewall', 'rule', section_name)
                 backend.set_option('firewall', section_name, 'target', 'REJECT')
-                backend.set_option('firewall', section_name, 'proto', 'all')
                 backend.set_option('firewall', section_name, 'enabled', store_bool(e['enabled']))
                 backend.set_option('firewall', section_name, 'src', zone)
                 backend.set_option('firewall', section_name, 'src_mac', e['mac'])

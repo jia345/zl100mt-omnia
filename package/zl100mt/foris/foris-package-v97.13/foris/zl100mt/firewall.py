@@ -11,8 +11,7 @@ class GetSettingsCmd():
                 'LanPort': e['lan_ports'],
                 'WLanIPs': e['wan_ips'],
                 'WLanPort': e['wan_ports'],
-                'Protocol': e['proto'],
-                'Status': 'Enable' if e['enabled'] else 'Disable',
+                'Status': 'enable' if e['enabled'] else 'disable',
             }
             ipList.append(item)
 
@@ -21,13 +20,11 @@ class GetSettingsCmd():
             item = {
                 'Desc': e['desc'],
                 'MAC': e['mac'],
-                'Status': 'Enable' if e['enabled'] else 'Disable',
+                'Status': 'enable' if e['enabled'] else 'disable',
             }
             macList.append(item)
 
         settings = {
-            'ipFilter': 'on' if res['ip_filter_enabled'] else 'off',
-            'macFilter': 'on' if res['mac_filter_enabled'] else 'off',
             'DMZ': {
                 'IP': res['dmz_ip'],
                 'Status': 'on' if res['dmz_enabled'] else 'off'
@@ -39,11 +36,12 @@ class GetSettingsCmd():
 
 class SetFirewallCmd():
     def implement(self, data, session):
+        dmz_enabled = True if data['dat']['FireWall']['DMZ']['Status'] == 'on' else False
         msg = {
                 'ip_filter_enabled': True if data['dat']['FireWall']['ipFilter'] == 'on' else False,
                 'mac_filter_enabled': True if data['dat']['FireWall']['macFilter'] == 'on' else False,
-                'dmz_enabled': True if data['dat']['FireWall']['DMZ']['Status'] == 'on' else False,
-                'dmz_ip': data['dat']['FireWall']['DMZ']['IP'] if data['dat']['FireWall']['DMZ']['IP'] else '10.10.10.11'
+                'dmz_enabled': dmz_enabled,
+                'dmz_ip': data['dat']['FireWall']['DMZ']['IP'] if data['dat']['FireWall']['DMZ']['IP'] else '0.0.0.0'
         }
         rc = current_state.backend.perform('firewall', 'set_firewall', msg)['result']
         res = {'rc': 0, 'errCode': 'success', 'dat': None} if rc else {'rc': 1, 'errCode': 'Wrong parameter, please check your input', 'dat': 'Wrong parameters'}
@@ -58,8 +56,7 @@ class SetIpFilterCmd():
                     'lan_ports': ip['LanPort'],
                     'wan_ips': ip['WLanIPs'],
                     'wan_ports': ip['WLanPort'],
-                    'proto': ip['Protocol'],
-                    'enabled': True if ip['Status'] == 'Enable' else False
+                    'enabled': True if ip['Status'].lower() == 'enable' else False
             }
             ip_filter_table.append(item)
         msg = { 'ip_filter_table': ip_filter_table }
@@ -73,7 +70,7 @@ class SetMacFilterCmd():
         for mac in data['dat']['FireWall']['macList']:
             item = {
                     'mac': mac['MAC'],
-                    'enabled': True if mac['Status'] == 'Enable' else False,
+                    'enabled': True if mac['Status'].lower() == 'enable' else False,
                     'desc': mac['Desc']
             }
             mac_filter_table.append(item)

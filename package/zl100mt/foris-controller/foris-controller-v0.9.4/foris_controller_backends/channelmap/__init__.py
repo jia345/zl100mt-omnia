@@ -69,7 +69,7 @@ class ChannelmapUciCommands(object):
                     section_name = lan['name']
                     backend.set_option('firewall', section_name, 'target', 'REJECT')
                     backend.set_option('firewall', section_name, 'src', lan['src_zone'])
-                    backend.set_option('firewall', section_name, 'src_ip', lan['src_ip'])
+                    #backend.set_option('firewall', section_name, 'src_ip', lan['src_ip'])
                     backend.set_option('firewall', section_name, 'dest', lan['dest_zone'])
                     # backend.set_option('firewall', section_name, 'dest_ip', lan['dest_ip'])
                 else :

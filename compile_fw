@@ -34,6 +34,7 @@ make_defconfig() {
 }
 
 #if false; then
+#SKIP_FEEDS=1
 
 if [ -z "$SKIP_FEEDS" ]; then
 	# Clean feeds
@@ -87,7 +88,7 @@ if [ -d .git ] ; then
 	git log -n1 --format='%H' >files/etc/git-version
 fi
 
-make clean
+[ -n "$CLEAN" ] && make clean
 
 [ -z "$BUILD_ALL" ] || make dirclean
 

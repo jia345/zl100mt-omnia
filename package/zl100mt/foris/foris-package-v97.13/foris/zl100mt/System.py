@@ -1,4 +1,4 @@
-import bottle, os, ubus, time, re, glob
+import bottle, os, ubus
 from foris.state import current_state
 from foris.zl100mt.wan import cmdGetLteZ, cmdGetLte4G
 from foris.zl100mt.gnss import cmdGetGnssInfo
@@ -27,34 +27,6 @@ class SysReboot():
         else:
             bottle.redirect(reverse("/"))
         return res
-
-#class NtpSyncDatetime():
-#    def __init__(self):
-#        self.action = 'syncDatetime'
-#        self.default_data = {}
-#
-#    def implement(self, data,session=None):
-#        cfg = {
-#            "city": "Shanghai",
-#            "region": "Asia",
-#            "timezone": "CST-8",
-#            "time_settings": {
-#                "how_to_set_time": "ntp",
-#            }
-#        }
-#        rc = current_state.backend.perform("time", "update_settings", cfg)
-#        print rc
-#        rc = current_state.backend.perform("time", "ntpdate_trigger", {})
-#        print rc
-#        getdata = current_state.backend.perform("time", "get_settings", {})
-#        print getdata
-#        res = {
-#            "rc": 0,
-#            "errCode": "success",
-#            "dat": {"localDatetime": getdata["time_settings"]["time"]}
-#        }
-#
-#        return res
 
 class GetLogLinkCmd():
     def implement(self, data, session=None):
@@ -138,13 +110,29 @@ class NtpSyncDatetime():
 
     def implement(self, data, session=None):
         server_ip = data['dat']['NTP']['serverIP']
-        rc = ubus.call("zl100mt-rpcd", "sync_ntp_time", {'server': server_ip})[0]
+        rc = ubus.call("zl100mt-rpcd", "sync_ntp_time", {"server": server_ip})[0]
         res = {
             "rc": 0,
             "errCode": "success",
-            "dat": {"localDatetime": rc["time"]}
+            "dat": {"localDatetime": rc["ts"]}
         }
 
+        return res
+
+class SetLocalTime():
+    def __init__(self):
+        self.action = 'setLocalDateTime'
+        self.default_data = {}
+
+    def implement(self, data, session=None):
+        time_str = data['dat']['LocalDateTime']
+        rc = ubus.call("zl100mt-rpcd", "set_local_time", {"time_str": time_str})[0]
+        print rc
+        res = {
+            "rc": 0,
+            "errCode": "success",
+            "dat": {"localDatetime": rc["ts"]}
+        }
         return res
 
 class SetHwId():
@@ -299,9 +287,33 @@ class GetAllSysInforCmd() :
               }
         return res
 
+class SetHostCfg():
+    def __init__(self):
+        self.action = 'setHostCfg'
+        self.default_data = {}
+
+    def implement(self, data, session=None):
+        host_ip = data['dat']['hostCfg']['hostIP']
+        host_netmask = data['dat']['hostCfg']['subMask']
+        cfg = {
+            "action": "set_host_cfg",
+            "host_ip": host_ip,
+            "host_netmask": host_netmask
+        }
+        current_state.backend.perform('network', 'update_settings', cfg)
+
+        res = {
+            "rc": 0,
+            "errCode": "success"
+        }
+        return res
+
+
 cmdGetAllSysInfo = GetAllSysInforCmd()
 cmdReboot = SysReboot()
-cmdTime = NtpSyncDatetime()
+cmdSyncNtpTime = NtpSyncDatetime()
+cmdSetLocalTime = SetLocalTime()
+cmdSetHostCfg = SetHostCfg()
 cmdGetLogLink = GetLogLinkCmd()
 cmdGetSysInfo = GetSysInfoCmd()
 cmdGetNtpServerIp = GetNtpServerIpCmd()

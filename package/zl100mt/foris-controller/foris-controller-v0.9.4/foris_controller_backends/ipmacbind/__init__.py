@@ -58,9 +58,15 @@ class IpmacbindUciCommands(object):
         print 'IPMAC bind update_settings :'
         with UciBackend() as backend:
             dhcp_data = backend.read("dhcp")
-            hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
-            for i in range(0, len(hosts)):
-                backend.del_section('dhcp', '@host[%d]'%i)
+            try:
+                hosts = get_sections_by_type(dhcp_data, "dhcp", "host")
+                print "host number %d" % len(hosts)
+                for i in range(len(hosts)):
+                    section_name = '@host[0]'
+                    print "section_name %s" % section_name
+                    backend.del_section('dhcp', section_name)
+            except:
+                pass
 
             for host in data['ipmac_binds']:
                 backend.add_section('dhcp','host')

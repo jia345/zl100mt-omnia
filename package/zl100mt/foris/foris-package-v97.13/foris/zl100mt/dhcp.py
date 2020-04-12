@@ -53,7 +53,7 @@ class DhcpCmd():
         dhcp = {
             'startIP': dhcp_data['start_ip'],
             'endIP': dhcp_data['end_ip'],
-            'dhcpStatus': 'DHCP' if dhcp_data['dynamic'] else 'Statics',
+            'dhcpStatus': 'DHCP' if dhcp_data['dynamicdhcp'] else 'Statics',
             'leaseTerm': dhcp_data['leasetime_m'],
             'subMask': dhcp_data['netmask'],
             'defaultGwIP': dhcp_data['gw_ip'],

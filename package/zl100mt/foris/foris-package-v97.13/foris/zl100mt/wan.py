@@ -48,7 +48,7 @@ class GetLteZCmd():
         return {
             'type': 'LTE-Z',
             'connection': "on" if get_rc_data(rc,'connection_status')=="2" else "off",
-            'signal': get_rc_data(rc,'signal_strength'),
+            'signal': get_rc_data(rc,'signal_strength') if get_rc_data(rc,'connection_status')=="2" else "n/a",
             'wlanIP': rc['ipaddr'] if 'ipaddr' in rc else '----',
             'defaultGwIP': rc['gw'] if 'gw' in rc else '----',
             'mDnsIP': rc['dns1'] if 'dns1' in rc else '----',
@@ -69,7 +69,7 @@ class GetLte4GCmd():
         return {
             'type': 'LTE-4G',
             'connection': "on" if get_rc_data(rc,'connection_status')=="1" else "off",
-            'signal': get_rc_data(rc,'signal_strength'),
+            'signal': get_rc_data(rc,'signal_strength') if get_rc_data(rc,'connection_status')=="1" else "n/a",
             'wlanIP': get_ip(get_rc_data(rc,'ipaddr')),
             'defaultGwIP': get_ip(get_rc_data(rc,'gw')),
             'mDnsIP': get_ip(get_rc_data(rc,'dns1')),
@@ -86,12 +86,12 @@ class GetLte4GCmd():
 class SetWanCmd():
     def implement(self, data, session):
         msg = {
-                'interface': data['dat']['modulType'].lower(),
+                'interface': data['dat']['modulType'].lower().replace('-', '_'),
                 'on': 1 if data['dat']['operation'].lower() == 'on' else 0
         }
         rc = ubus.call('zl100mt-rpcd', 'set_interface_on', msg)[0]
         return {
-            'rc': 1,
+            'rc': 0,
             'errCode': ''
         }
 

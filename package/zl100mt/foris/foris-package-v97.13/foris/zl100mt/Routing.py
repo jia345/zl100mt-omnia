@@ -38,19 +38,19 @@ class RoutingInforCmd() :
         res = {"rc": 0, "errCode": "success", "dat": None}
         return res
 
-    def get_routes(self):
-        data = current_state.backend.perform("network", "get_settings", {})
-        routes = []
-        for route in data["routes"]:
-            routes.append({
-                "ifName": route['interface'],
-                "dstNet": route["target"],
-                "subMask": route["netmask"],
-                "gwIp": route["gateway"],
-                "Metric": route["metric"]
-            })
-        print routes
-        return routes
+    #def get_routes(self):
+    #    data = current_state.backend.perform("network", "get_settings", {})
+    #    routes = []
+    #    for route in data["routes"]:
+    #        routes.append({
+    #            "ifName": route['interface'],
+    #            "dstNet": route["target"],
+    #            "subMask": route["netmask"],
+    #            "gwIp": route["gateway"],
+    #            "Metric": route["metric"]
+    #        })
+    #    print routes
+    #    return routes
 
 cmdRoutingInfor = RoutingInforCmd()
 
@@ -69,10 +69,14 @@ class GetRoutingInforCmd():
         print 'GetRoutingInforCmd : \n'
         routes = []
         for route in data["data"]:
+            ip, prefix = route["target"].split('/')
+            ipcalc_cmd = "ipcalc.sh %s %s|cut -d'=' -f 2" % (ip, prefix)
+            ipcalc_output = os.popen(ipcalc_cmd).read()
+            ip, netmask, broadcast, network, prefix = ipcalc_output.split()
             routes.append({
-                "ifName": route['interface'],
-                "dstNet": route["target"],
-                "subMask": route["netmask"],
+                "ifName": route['interface'].upper().replace('_', '-'),
+                "dstNet": ip,
+                "subMask": netmask,
                 "gwIP": route["gateway"],
                 "Metric": route["metric"]
             })

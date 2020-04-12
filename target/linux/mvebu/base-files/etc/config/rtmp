@@ -1,0 +1,15 @@
+config server
+    option ip '192.168.3.154'
+
+config channel 'channel_2ed3071c13c80f3eabb48d693fc327f3'
+    option name 'Cam01'
+    option code 'left-1'
+
+config channel 'channel_af306884e13fcafffd5e2219d425c645'
+     option name 'Cam02'
+     option code 'right-1'
+
+config channel 'channel_b060d6a460b980fcf0c096ffae0f63b8'
+     option name 'Cam03'
+     option code 'top-1'
+

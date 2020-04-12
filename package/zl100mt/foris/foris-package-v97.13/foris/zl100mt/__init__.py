@@ -4,7 +4,7 @@ import base64
 import logging
 import time
 import uuid
-import os
+import os, hashlib
 import json
 import logging
 
@@ -18,7 +18,8 @@ from foris.middleware.bottle_csrf import get_csrf_token
 
 from foris.zl100mt.Login import cmdLogin, cmdGetUserInfo, cmdSetPwd, cmdResetPwd
 from foris.zl100mt.Routing import cmdRoutingInfor, cmdGetRoutingInfo
-from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdTime, cmdGetHostStatusInfo, cmdGetNetworkCfgInfo, cmdGetAllSysInfo, cmdSetHwId
+from foris.zl100mt.System import cmdReboot, cmdGetLogLink, cmdSyncNtpTime, cmdSetLocalTime, cmdGetHostStatusInfo, cmdGetNetworkCfgInfo
+from foris.zl100mt.System import cmdGetAllSysInfo, cmdSetHwId, cmdSetHostCfg
 from foris.zl100mt.ipmacbind import cmdIpmacbind
 from foris.zl100mt.testAjax import run_ajax_test
 from foris.zl100mt.wan import cmdSetWanOnOff
@@ -46,7 +47,9 @@ CONFIG_COMMANDS = {
     'setLanCfg': cmdLanCfg,
     'setDhcpCfg': cmdDhcpCfg,
     #'connectVPN': cmdDhcpCfg,
-    'syncDatetime': cmdTime,
+    'setHostCfg': cmdSetHostCfg,
+    'syncDatetime': cmdSyncNtpTime,
+    'setLocalDateTime': cmdSetLocalTime,
     'updateHwCode': cmdSetHwId,
     'setFirewall': cmdSetFirewall,
     'setIPFilterTable': cmdSetIpFilter,
@@ -99,15 +102,52 @@ def zl100mt_main():
     #str = bottle.request.POST.get('data_str')
     #data = json.loads(str)
     data = bottle.request.json
-    command = data['command']
-    print data
-    if command in CONFIG_COMMANDS:
-        handle = bottle.request.POST
-        res = CONFIG_COMMANDS[command].implement(data,session)
-	#res['csrf_token'] = get_csrf_token()
-	return res
+    if data is None:
+        # form data 
+        command = bottle.request.forms['command']
+        if command == "uploadFile":
+            file_name = bottle.request.forms['fileName']
+            file_size = bottle.request.forms['fileSize']
+            logger.debug("name {}".format(file_name))
+            logger.debug("size {}".format(file_size))
+            file_data = bottle.request.files['fileData']
+            name, ext = os.path.splitext(file_name)
+            if ext not in ('.tar.gz', '.zip'):
+                return {
+                    "rc": 1,
+                    "errCode": "Only .tar.gz or .zip file extension will be allowed",
+                    "dat": ""
+                }    
+            file_path = "/tmp/{file}".format(file=file_name)
+            file_data.save(file_path, overwrite=True)
+            return {
+                "rc": 0,
+                "errCode": "success",
+                "dat": {
+                    "fileName": file_name,
+                    "version": "1.0",
+                    "MD5": get_file_md5(file_path)
+                }
+            }
+    else:
+        command = data['command']
+        if command in CONFIG_COMMANDS:
+            handle = bottle.request.POST
+            res = CONFIG_COMMANDS[command].implement(data,session)
+            return res
 
-    return {"rc": 1,"errCode": "command({}) is wrong!!!".format(command),"dat": None,"csrf_token":get_csrf_token()}
+    return { "rc": 0, "errCode": "success", "dat": "" } 
+
+    def get_file_md5(file_path):
+        md5 = None 
+        if os.path.isfile(file_path):
+            f = open(file_path,'rb')
+            md5_obj = hashlib.md5()
+            md5_obj.update(f.read())
+            hash_code = md5_obj.hexdigest()
+            f.close()
+            md5 = str(hash_code).lower()
+        return md5
 
 def enable_cors():
     response.headers['Access-Control-Allow-Origin'] = '*'
