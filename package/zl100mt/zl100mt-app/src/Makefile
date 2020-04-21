@@ -1,11 +1,11 @@
 
-SOURCES = config.c zl100mt.c
-INCDPND = config.h zl100mt.h list.h
+SOURCES = config.c zl100mt.c util.c rdss.c
+INCDPND = config.h zl100mt.h list.h util.h rdss.h
 
 all: zl100mt-app ft4232_bitbang bd_dump bd_ubox ubus_client ubus_server
 
-zl100mt-app:$(SOURCES) $(INDDPND)
-	$(CC) -Wall -lubus -lubox -lblobmsg_json -ljson-c $(SOURCES) $(CFLAGS) $(LDFLAGS) -o zl100mt-app
+zl100mt-app: $(SOURCES) $(INDDPND)
+	$(CC) -Wall -lubus -lubox -lblobmsg_json -ljson-c -lpthread $(SOURCES) $(CFLAGS) $(LDFLAGS) -o zl100mt-app
 
 ft4232_bitbang: ft4232_bitbang.c
 	$(CC) -Wall -lftdi $^ $(CFLAGS) $(LDFLAGS) -o $@

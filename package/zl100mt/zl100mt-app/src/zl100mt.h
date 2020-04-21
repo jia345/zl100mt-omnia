@@ -1,7 +1,5 @@
-
-
-#ifndef _BD_RELAY_H_
-#define _BD_RELAY_H_
+#ifndef _ZL100MT_H_
+#define _ZL100MT_H_
 
 #include <stdlib.h>
 #include <inttypes.h>
@@ -19,8 +17,9 @@
 #define IOT_BD_SEC_PM               "PM"
 #define IOT_BD_KEY_DBG_MODE         "debug"
 #define IOT_BD_KEY_DATA_TTY         "rdss_ttypath"
+#define IOT_BD_KEY_RDSS_BDRATE      "rdss_baudrate"
 #define IOT_BD_KEY_RNSS_TTY         "rnss_ttypath"
-#define IOT_BD_KEY_BDRATE           "baudrate"
+#define IOT_BD_KEY_RNSS_BDRATE      "rnss_baudrate"
 #define IOT_BD_KEY_NUMBER           "number"
 #define IOT_BD_KEY_DRYRUN           "dryrun"
 #define IOT_BD_KEY_COUNTER_TX_TOTAL "counter_tx_total"
@@ -43,7 +42,8 @@ typedef struct _bd_info {
     const char  *rnss_ttypath;
     int         rdss_ttyfd;
     int         rnss_ttyfd;
-    uint32_t     ttybaudrate;
+    uint32_t     rnss_baudrate;
+    uint32_t     rdss_baudrate;
     uint32_t     local_sim;
     uint32_t     target_sim;
     uint32_t     is_dryrun;
