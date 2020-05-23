@@ -40,7 +40,8 @@ JS_MINIFIER = slimit -m
 SASS_COMPILER = compass compile -s compressed -e production
 
 
-all: branding sass js localization tpl
+#all: branding sass js localization tpl
+all: branding
 
 # target: js - Create minified JS files using slimit JS compressor.
 js: $(JS_FILES) $(JS_MINIFIED)

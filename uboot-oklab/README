@@ -1,0 +1,21 @@
+#
+#                   !!! CAUTION !!!
+# !!! PLEASE **REPLACE** CORRECT SD CARD DEVICE NAME IN BELOW COMMANDS !!!
+#                   !!! CAUTION !!!
+#
+
+# how to burn u-boot on MMC
+cd uboot-oklab
+sudo dd if=/dev/zero of=/dev/sdb count=6144 seek=1
+sudo dd if=uboot-zl100mt-spl-mmc-2020.01-factory.kwb of=/dev/sdb seek=1
+
+# how to burn u-boot on SPI NOR (you need to boot with MMC at first, then run below commands in u-boot)
+load mmc 0 0x2000000 uboot-zl100mt-spl-spinor-2015.10-rc2.kwb
+sf probe
+sf erase 0 0x200000
+sf write 0x2000000 0 $filesize
+
+# occasionally, you may need to boot from UART, then run below commands in Linux PC
+# if you want to quit kwboot, use 'CTRL+\', then press 'c'
+cd uboot-oklab
+sudo ./kwboot -t -B 115200 /dev/ttyUSB0 -b uboot-zl100mt-uart-spl-2015.10-rc2.kwb

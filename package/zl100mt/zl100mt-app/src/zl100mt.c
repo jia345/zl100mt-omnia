@@ -89,6 +89,7 @@ static rnss_info_t g_rnss_info = {
 };
 
 typedef struct {
+    eBeidouStatus rdss_status;
     uint8_t max_power;
     uint32_t tx_total;
     uint32_t tx_succ;
@@ -96,6 +97,7 @@ typedef struct {
 } rdss_info_t;
 
 static rdss_info_t g_rdss_info = {
+    .rdss_status  = UNINITIALIZED,
     .max_power    = 0,
     .tx_total     = 0,
     .tx_succ      = 0,
@@ -103,7 +105,13 @@ static rdss_info_t g_rdss_info = {
 };
 
 static eBeidouStatus g_beidou_status = UNINITIALIZED;
-static rdss_buffer_t g_rdss_rx_buf;
+static rdss_buffer_t g_rdss_rx_buf = {
+    .buf          = {0},
+    .raw_cursor   = NULL,
+    .pdu_cursor   = NULL,
+    .rest_size    = RDSS_BUF_SIZE,
+    .buf_lock     = 0,
+};
 BD_INFO g_bd_inf;
 
 int magic_key = 0xBD;
@@ -293,13 +301,16 @@ static void pop_front_rdss_tx_msg_q()
 
 static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** found)
 {
+    *found = NULL;
+
     char* pdu_list[] = {
        "$DWSQ", "$TXSQ", "$CKSC", "$ICJC", "$XTZJ", "$SJSC", "$BBDQ", "$GLJC", // TX
        "$DWXX", "$TXXX", "$FKXX", "$ICXX", "$ZJXX", "$SJXX", "$BBXX", "$GLZK"  // RX
     };
 
+    if (g_rdss_rx_buf.buf_lock == 1) return -1; // buf is locked, wait...
+
     size_t list_len = sizeof(pdu_list)/sizeof(pdu_list[0]);
-    *found = NULL;
     int i = 0;
     for (; i < list_len; i++) {
         char* tmp = find_str_in_buffer(pdu_list[i], buf, buf_size);
@@ -340,6 +351,20 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** foun
         } else {
             *found = NULL;
             pdu_len = -1;
+        }
+
+        if (pdu_len > 0) {
+            // check checksum
+            char* pdu = *found;
+            int checksum = 0;
+            int i = 0;
+            for (; i < pdu_len - 1; i++) {
+                checksum = checksum ^ pdu[i];
+            }
+            if (pdu[pdu_len - 1] != checksum || pdu[pdu_len - 1] == 0) {
+                *found = NULL;
+                pdu_len = -1;
+            }
         }
     }
     //if (*found != NULL) hexdump(LOG_DEBUG, "pdu <--", *found, pdu_len);
@@ -1093,6 +1118,13 @@ static const char* rdss_send_pdu(eRdssPduType pdu_type, const char* pdu, size_t 
 
     int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
     while (!is_timer_expired(&start, timeout_ms)) {
+
+        // if buffer is locked, wait 10 ms
+        if (g_rdss_rx_buf.buf_lock == 1) {
+            usleep(1000);
+            continue;
+        }
+
         // polling the RDSS receiving buffer continuously to see if response comes back
         char* p_found = NULL;
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
@@ -1161,6 +1193,7 @@ static const char* rdss_send_pdu(eRdssPduType pdu_type, const char* pdu, size_t 
                     return NULL;
             }
         }
+        usleep(50000);
     }
 
     return NULL;
@@ -1420,19 +1453,22 @@ static void rdss_thread_func(void *params)
         }
 
         // if buffer is full and no complete messages exist, move incomplete data to the start
-        size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
         if (g_rdss_rx_buf.rest_size == 0) {
+            iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
+            g_rdss_rx_buf.buf_lock = 1;
+
             char* p_found = NULL;
-            ssize_t pdu_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
-            if (p_found == NULL) { // re-arrange buffer space when all messages are handled
-                char tmp_buffer[RDSS_BUF_SIZE];
-                memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
-                memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
-                memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
-                g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf;
-                g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
-                g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
-            }
+            size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+            char tmp_buffer[RDSS_BUF_SIZE];
+            memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
+            memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
+            memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
+            g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf + unhandled_size;
+            g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
+            g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
+
+            iot_dbg("\n!!! receiving buffer is back !!!\n");
+            g_rdss_rx_buf.buf_lock = 0;
         }
     }
 }
@@ -1475,7 +1511,7 @@ static void rnss_thread_func(void *params)
         char* line = fgets(buf, sizeof(buf), ss);
         if (line != NULL) {
             if (0 == strncmp(line, "$GNGGA", 6)) {
-                iot_dbg("RNSS <--: %s", line);
+                iot_dbg("\nRNSS <--: %s", line);
                 // time_UTC
                 // latitude
                 ptr_prev = find_comma(line, strlen(line), 2);
@@ -1508,7 +1544,7 @@ static void rnss_thread_func(void *params)
                         g_rnss_info.longitude,
                         g_rnss_info.altitude);
             } else if (0 == strncmp(line, "$GNRMC", 6)) {
-                iot_dbg("RNSS <--: %s", line);
+                iot_dbg("\nRNSS <--: %s", line);
                 ptr_prev = find_comma(line, strlen(line), 1);
                 ptr_next = find_comma(line, strlen(line), 2);
                 memset(g_rnss_info.time_utc, 0, sizeof(g_rnss_info.time_utc));
@@ -1559,20 +1595,28 @@ static void rnss_thread_func(void *params)
 //    }
 //}
 //
-static void rdss_txxx_reader_cb(struct uloop_timeout *t)
+static void rdss_check_status_cb(struct uloop_timeout *t)
 {
-    size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+    g_rdss_info.rdss_status = check_beidou_status(&g_bd_inf);
+    uloop_timeout_set(t, 500);
+}
 
-    if (unhandled_size) iot_dbg("\ntxxx reader unhandled_size %d\n", unhandled_size);
+static void rdss_txxx_poller_cb(struct uloop_timeout *t)
+{
+    if (g_rdss_rx_buf.buf_lock == 0) {
+        size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
 
-    char* p_found = NULL;
-    ssize_t pdu_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
-    if (p_found != NULL) {
-        hexdump(LOG_DEBUG, "TXXX RDSS received...", p_found, pdu_len);
-        if (0 == memcmp(p_found, "$TXXX", 5)) {
+        //if (unhandled_size) iot_dbg("\ntxxx reader unhandled_size %d\n", unhandled_size);
+
+        char* p_found = NULL;
+        ssize_t pdu_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
+        if (p_found != NULL) {
+            hexdump(LOG_DEBUG, "TXXX RDSS received...", p_found, pdu_len);
+            if (0 == memcmp(p_found, "$TXXX", 5)) {
+            }
         }
     }
-    uloop_timeout_set(t, 0);
+    uloop_timeout_set(t, 50);
 }
 
 #if 0
@@ -1747,10 +1791,9 @@ static void bd_rdss_poller_cb(struct uloop_timeout *t)
 }
 #endif
 
-static void bd_relayer_cb(struct uloop_timeout *t)
+static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
 {
     //iot_dbg("beidou relay callback ... \n");
-        iot_dbg("xijia relay\n");
 
     unsigned char buf_ip[1600];
     struct iphdr* p_iphdr   = NULL;
@@ -1821,15 +1864,40 @@ static void bd_relayer_cb(struct uloop_timeout *t)
                     if (recv_size - tcpdata_offset >= 32) {
                         memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32); // move previous to current
                         memcpy(g_bd_relay_msg + 6 + 32, &(p_tcpdata[2]), 32); // fill current with new data
-                        g_is_relay_data_ready = true;
+                        //g_is_relay_data_ready = true;
                         iot_cfg_sync(g_bd_inf.pcfg);
+                        iot_dbg("relaying ...\n");
+                        char txbuf[256] = {0};
+                        rdss_msg_txsq_t msg = {
+                            .local_sim = g_bd_inf.local_sim,
+                            .target_sim = g_bd_inf.target_sim,
+                            .data = {0},
+                            .data_len = 0
+                        };
+                        size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
+                        strncpy(msg.data, g_bd_relay_msg, data_len);
+                        msg.data_len = data_len;
+                        //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
+                        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+                        ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
+                        if (txlen > 0) {
+                            const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+                            g_rdss_info.tx_total++;
+                            if (resp_pdu != NULL) {
+                                g_rdss_info.tx_succ++;
+                            } else {
+                                g_rdss_info.tx_fail++;
+                            }
+                        }
+                        //g_is_relay_data_ready = false;
+                        //g_tx_total++;
                     }
                 }
             }
         }
     }
 
-    uloop_timeout_set(t, 0);
+    uloop_timeout_set(t, 50);
 }
 
 #if 0
@@ -2139,15 +2207,21 @@ int main(int argc, char **argv)
 
     if (ret) fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
 
-    struct uloop_timeout rdss_poller_timeout = {
-        .cb = rdss_txxx_reader_cb
+    struct uloop_timeout rdss_check_status_timeout = {
+        .cb = rdss_check_status_cb
     };
-    uloop_timeout_set(&rdss_poller_timeout, 0);
+    uloop_timeout_set(&rdss_check_status_timeout, 0);
+
+    struct uloop_timeout rdss_txxx_poller_timeout = {
+        .cb = rdss_txxx_poller_cb
+    };
+    uloop_timeout_set(&rdss_txxx_poller_timeout, 0);
+
     // listen on 0xBDBD messages
-    //struct uloop_timeout relayer_timeout = {
-    //    .cb = bd_relayer_cb
-    //};
-    //uloop_timeout_set(&relayer_timeout, 0);
+    struct uloop_timeout relayer_timeout = {
+        .cb = rdss_bdbd_relayer_cb
+    };
+    uloop_timeout_set(&relayer_timeout, 0);
 
     // RDSS: poll beidou status and send relayed messages out
     //struct uloop_timeout rdss_poller_timeout = {

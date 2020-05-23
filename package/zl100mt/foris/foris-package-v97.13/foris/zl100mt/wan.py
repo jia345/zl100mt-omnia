@@ -92,7 +92,7 @@ class SetWanCmd():
         rc = ubus.call('zl100mt-rpcd', 'set_interface_on', msg)[0]
         return {
             'rc': 0,
-            'errCode': ''
+            'errCode': 'succeed'
         }
 
 cmdGetLteZ = GetLteZCmd()

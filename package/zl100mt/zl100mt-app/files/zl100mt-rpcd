@@ -177,24 +177,12 @@ case "$1" in
                 logger -t "zl100mt-rpcd" "call" "$2" "$input"
                 json_load $input
                 json_get_var interface interface
-                logger -t "zl100mt-rpcd" "hi $interface"
                 json_get_var on on
-                logger -t "zl100mt-rpcd" "hi $on"
-                if [ $on == 1 ]; then
-                    updown = "up"
-                    logger -t "zl100mt-rpcd" "updown $updown"
-                else
-                    updown = "down"
-                    logger -t "zl100mt-rpcd" "updown $updown"
-                fi
-                if [ $interface == "lte_z" ]; then
-                    ifconfig eth2 $updown
-                    logger -t "zl100mt-rpcd" "ifconfig eth2 $updown"
-                elif [ $interface == "lte_4g" ]; then
-                    ifconfig usb0 $updown
-                    logger -t "zl100mt-rpcd" "ifconfig eth2 $updown"
-                fi
-                json = "{ 'rc' : $? }"
+                value=$((on==1?0:1))
+                uci set network.${interface}.disabled=${value}
+                uci commit network
+                /etc/init.d/network restart
+                json="{ 'rc' : 0 }"
                 echo $json
             ;;
         esac

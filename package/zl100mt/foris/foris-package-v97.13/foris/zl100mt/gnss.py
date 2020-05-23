@@ -5,7 +5,36 @@ logger = logging.getLogger(__name__)
 
 class GetGnssInfoCmd():
     def implement(self, session):
-        return ubus.call('zl100mt', 'get_gnss_info', {})[0]
+        res = ubus.call('zl100mt', 'get_gnss_info', {})[0]
+        if res['result'] == 'ok':
+            data = {
+                'rc': 0,
+                'errCode': 'success',
+                'GPS': {
+                    'altitude': res['altitude'],
+                    'longitude': res['longitude'],
+                    'latitude': res['latitude'],
+                    'heading': res['heading'],
+                    'speed': res['speed']
+                },
+                'beam1': res['beam1'],
+                'beam2': res['beam2'],
+                'beam3': res['beam3'],
+                'beam4': res['beam4'],
+                'beam5': res['beam5'],
+                'beam6': res['beam6'],
+                'connection': res['connection'],
+                'failMsg': res['failMsg'],
+                'localSim': res['localSim'],
+                'satelliteNum': res['satelliteNum'],
+                'signal': res['signal'],
+                'succMsg': res['succMsg'],
+                'targetSim': res['targetSim'],
+                'totalMsg': res['totalMsg']
+            }
+            return data
+        else:
+            return {'rc': 1, 'errCode': 'failure', 'dat': None}
 
 class SetGnssRemoteCmd():
     def implement(self, data, session):

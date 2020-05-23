@@ -11,6 +11,7 @@ typedef struct {
     char* raw_cursor; // pointer to free space
     char* pdu_cursor; // pointer to first unhandled message
     size_t rest_size;
+    int buf_lock;
 } rdss_buffer_t;
 
 #if 0
