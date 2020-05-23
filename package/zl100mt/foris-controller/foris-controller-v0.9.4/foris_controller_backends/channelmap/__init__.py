@@ -77,6 +77,6 @@ class ChannelmapUciCommands(object):
                     backend.del_section('firewall', lan['name'])
 
         with OpenwrtServices() as services:
-            services.restart("resolver")
+            services.restart("firewall")
 
         return True

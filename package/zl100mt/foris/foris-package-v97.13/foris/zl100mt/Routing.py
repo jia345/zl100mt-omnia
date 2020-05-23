@@ -8,6 +8,8 @@ from foris.zl100mt.wan import cmdGetLteZ, cmdGetLte4G
 
 from foris.state import current_state
 
+import logging, os
+
 class RoutingInforCmd() :
     def __init__(self) :
         self.action = 'getRoutingInfor'

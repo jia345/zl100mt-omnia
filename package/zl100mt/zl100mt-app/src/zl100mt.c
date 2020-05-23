@@ -704,7 +704,8 @@ static struct ubus_object zl100mt_object = {
     .n_methods = ARRAY_SIZE(zl100mt_methods),
 };
 
-#if !(BD_DBG)
+//#if !(BD_DBG)
+#if 0
 /*
  * close all fds but 'exclude_fd'
  */
@@ -815,7 +816,8 @@ static void iot_log(int pri, const char *buf1)
 #else
 static void iot_log(int pri, const char *buf1)
 {
-    printf("%s\n", buf1);
+    //printf("%s\n", buf1);
+	syslog(LOG_LOCAL7 | pri, "%s", buf1);
 }
 #endif
 
@@ -1611,7 +1613,7 @@ static void rdss_txxx_poller_cb(struct uloop_timeout *t)
         char* p_found = NULL;
         ssize_t pdu_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
         if (p_found != NULL) {
-            hexdump(LOG_DEBUG, "TXXX RDSS received...", p_found, pdu_len);
+            hexdump(LOG_DEBUG, "RDSS TXXX received...", p_found, pdu_len);
             if (0 == memcmp(p_found, "$TXXX", 5)) {
             }
         }
@@ -2153,7 +2155,8 @@ int main(int argc, char **argv)
     g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
     memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
 
-#if !(BD_DBG)
+//#if !(BD_DBG)
+#if 0
     //if (!g_dbg_enabled) {
         /* daemonize */
         if ((ret = daemon(0, 1))) {

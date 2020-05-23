@@ -38,8 +38,6 @@ class SetFirewallCmd():
     def implement(self, data, session):
         dmz_enabled = True if data['dat']['FireWall']['DMZ']['Status'] == 'on' else False
         msg = {
-                'ip_filter_enabled': True if data['dat']['FireWall']['ipFilter'] == 'on' else False,
-                'mac_filter_enabled': True if data['dat']['FireWall']['macFilter'] == 'on' else False,
                 'dmz_enabled': dmz_enabled,
                 'dmz_ip': data['dat']['FireWall']['DMZ']['IP'] if data['dat']['FireWall']['DMZ']['IP'] else '0.0.0.0'
         }

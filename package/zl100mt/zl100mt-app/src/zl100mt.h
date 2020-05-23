@@ -8,7 +8,7 @@
 
 #define IOT_BD_PID_PATH "/run/zl100mt-app.pid"
 
-#define BD_DBG 1
+#define BD_DBG 0
 
 #define IOT_BD_CONF                 "/etc/zl100mt-app/zl100mt-app.conf"
 #define IOT_BD_SEC_GENERAL          "GENERAL"

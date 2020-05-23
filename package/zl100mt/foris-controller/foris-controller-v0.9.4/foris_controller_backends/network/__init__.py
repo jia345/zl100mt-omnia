@@ -98,7 +98,10 @@ class NetworkUciCommands(object):
                     content = '%s_%s_%s_%s' % (interface, target, route['gateway'], route['metric'])
 
                     section_name = 'route_%s' % hashlib.md5(content).hexdigest()
-                    backend.del_section("network",section_name)
+                    try:
+                        backend.del_section("network",section_name)
+                    except:
+                        return False
 
             elif data['action'] == "interface_add":
                 interface = data['interface']
@@ -114,7 +117,10 @@ class NetworkUciCommands(object):
                 # interfaces = get_sections_by_type(network_data, "network", "interface")
                 interface = data['interface']
                 section_name = "IFlan_%s_%s" % (interface['ifname'], interface['ipaddr'])
-                backend.del_section("network",section_name)
+                try:
+                    backend.del_section("network",section_name)
+                except:
+                    return False
 
             elif data['action'] == "zone_add":
                 zone = data['zone']
@@ -131,7 +137,10 @@ class NetworkUciCommands(object):
             elif data['action'] == "zone_del":
                 zone = data['interface']
                 section_name = "IFlan_%s_%s" % (zone['ifname'], zone['ipaddr'])
-                backend.del_section("network",section_name)
+                try:
+                    backend.del_section("network",section_name)
+                except:
+                    return False
 
             elif data["action"] == "redirect_add":
                 redirect = data['redirect']
@@ -151,6 +160,7 @@ class NetworkUciCommands(object):
                 backend.set_option('network', redirect['section'], 'dest', redirect['dest'])
                 backend.set_option('network', redirect['section'], 'dest_port', redirect['dest_port'])
                 backend.set_option('network', redirect['section'], 'dest_ip',redirect['dest_ip'])
+
             elif data['action'] == "zone_del":
                 redirect = data['redirect']
                 if redirect['target'] == 'DNAT':
@@ -161,7 +171,11 @@ class NetworkUciCommands(object):
                     section_name = "redirect_%s_%s:%s_To_%s:%s" % (
                     redirect['target'], redirect['src_ip'], redirect['src_dport'], redirect['dest'],
                     redirect['dest_port'])
-                backend.del_section("network",section_name)
+                try:
+                    backend.del_section("network",section_name)
+                except:
+                    return False
+
             elif data['action'] == "forwarding_add" :
                 forwarding = data['forwarding']
                 forwarding['section'] = "forward_%s" % (forwarding['name'])
@@ -169,10 +183,15 @@ class NetworkUciCommands(object):
                 backend.set_option('network', forwarding['section'], 'name', forwarding['name'])
                 backend.set_option('network', forwarding['section'], 'src', forwarding['src'])
                 backend.set_option('network', forwarding['section'], 'dest', forwarding['dest'])
+
             elif data['action'] == "forwarding_del" :
                 forwarding = data['forwarding']
                 section_name = "forward_%s" % (forwarding['name'])
-                backend.del_section("network", section_name)
+                try:
+                    backend.del_section("network", section_name)
+                except:
+                    return False
+
             elif data['action'] == "set_host_cfg":                                               
                 host_ip = data['host_ip']
                 host_netmask = data['host_netmask']

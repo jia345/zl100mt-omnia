@@ -1,4 +1,5 @@
 #include <sys/time.h>
+#include <syslog.h>
 #include "util.h"
 
 bool is_timer_expired(struct timeval *start, uint32_t ms) {
@@ -9,6 +10,7 @@ bool is_timer_expired(struct timeval *start, uint32_t ms) {
     return (now_ms - start_ms) > ms;
 }
 
+#if 0
 void hexdump(int pri, const char * desc, const void * addr, const int len) {
     int i;
     unsigned char buff[17];
@@ -16,15 +18,15 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
 
     // Output description if given.
     if (desc != NULL)
-        ulog(pri, "%s\n", desc);
+        syslog(pri, "%s\n", desc);
 
     // Length checks.
     if (len == 0) {
-        ulog(pri, "  ZERO LENGTH\n");
+        syslog(pri, "  ZERO LENGTH\n");
         return;
     }
     else if (len < 0) {
-        ulog(pri, "  NEGATIVE LENGTH: %d\n", len);
+        syslog(pri, "  NEGATIVE LENGTH: %d\n", len);
         return;
     }
 
@@ -33,13 +35,13 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
         // Multiple of 16 means new line (with line offset).
         if ((i % 16) == 0) {
             // Don't print ASCII buffer for the "zeroth" line.
-            if (i != 0) ulog(pri, "  %s\n", buff);
+            if (i != 0) syslog(pri, "  %s\n", buff);
             // Output the offset.
-            ulog(pri, "  %04x ", i);
+            syslog(pri, "  %04x ", i);
         }
 
         // Now the hex code for the specific character.
-        ulog(pri, " %02x", pc[i]);
+        syslog(pri, " %02x", pc[i]);
 
         // And buffer a printable ASCII character for later.
 
@@ -52,12 +54,76 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
 
     // Pad out last line if not exactly 16 characters.
     while ((i % 16) != 0) {
-        ulog(pri, "   ");
+        syslog(pri, "   ");
         i++;
     }
     // And print the final ASCII buffer.
-    ulog(pri, "  %s\n", buff);
+    syslog(pri, "  %s\n", buff);
 }
+#else
+void hexdump(int pri, const char * desc, const void * addr, const int len) {
+    int i;
+    unsigned char out_buff[512] = {0};
+    unsigned char buff[17] = {0};
+    const unsigned char * pc = (const unsigned char *)addr;
+    int out_len = 0;
+    char* tmp = out_buff;
+
+    // Output description if given.
+    if (desc != NULL)
+        out_len = sprintf(tmp, "%s\n", desc);
+
+    tmp += out_len;
+
+    // Length checks.
+    if (len == 0) {
+        out_len = sprintf(tmp, "  ZERO LENGTH\n");
+        return;
+    } else if (len < 0) {
+        out_len = sprintf(tmp, "  NEGATIVE LENGTH: %d\n", len);
+        return;
+    }
+
+    tmp += out_len;
+
+    // Process every byte in the data.
+    for (i = 0; i < len; i++) {
+        // Multiple of 16 means new line (with line offset).
+        if ((i % 16) == 0) {
+            // Don't print ASCII buffer for the "zeroth" line.
+            if (i != 0) {
+                out_len = sprintf(tmp, "  %s\n", buff);
+                tmp += out_len;
+            }
+            // Output the offset.
+            out_len = sprintf(tmp, "  %04x ", i);
+            tmp += out_len;
+        }
+
+        // Now the hex code for the specific character.
+        out_len = sprintf(tmp, " %02x", pc[i]);
+        tmp += out_len;
+
+        // And buffer a printable ASCII character for later.
+
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) // isprint() may be better.
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    // Pad out last line if not exactly 16 characters.
+    while ((i % 16) != 0) {
+        out_len = sprintf(tmp, "   ");
+        tmp += out_len;
+        i++;
+    }
+    // And print the final ASCII buffer.
+    out_len = sprintf(tmp, "  %s\n", buff);
+    syslog(pri, "  %s\n", out_buff);
+}
+#endif
 
 /* params:
  *  str: string which is end with '\0'

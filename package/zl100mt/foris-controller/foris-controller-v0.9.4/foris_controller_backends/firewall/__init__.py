@@ -15,8 +15,8 @@ class FirewallUciCommands(object):
         with UciBackend() as backend:
             cfg = backend.read('firewall')
 
-        ip_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'ip_filter_enabled'))
-        mac_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'mac_filter_enabled'))
+        #ip_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'ip_filter_enabled'))
+        #mac_filter_enabled = parse_bool(get_option_named(cfg, 'firewall', 'global', 'mac_filter_enabled'))
         try:
             dmz_enabled = parse_bool(get_option_named(cfg, 'firewall', 'dmz_host', 'enabled'))
             dmz_ip = get_option_named(cfg, 'firewall', 'dmz_host', 'dest_ip')
