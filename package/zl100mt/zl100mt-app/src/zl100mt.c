@@ -1572,6 +1572,59 @@ static void rnss_thread_func(void *params)
                         g_rnss_info.date_utc,
                         g_rnss_info.speed_kn,
                         g_rnss_info.heading);
+                // if date_utc is not empty string and time_utc has different more than 3s
+                // root@zl100mt-100:~# date -u -s "201905242134.03"
+                // Fri May 24 21:34:03 UTC 2019
+                // date -u +%Y%m%d%H%M.%S
+                // date -u -d '201905242134.03' +%s // precision to second level
+                // root@zl100mt-100:~# date -u +%Y%m%d%H%M.%S
+                // 201905242137.30
+                char* cmd_str = "date -u -d ";
+                int len_date = strlen(g_rnss_info.date_utc);
+                int len_time = strlen(g_rnss_info.time_utc);
+                int len_cmd = strlen(cmd_str);
+                if ((0 != len_date) && (0 != len_time)) {
+                    char time_buf[32] = {0};
+                    char cmd_buf[64] = {0};
+                    char out_buf[64] = {0};
+                    char* tmp = time_buf;
+                    memcpy(tmp, g_rnss_info.date_utc, len_date); // YYMMDD
+                    tmp += len_date;
+                    memcpy(tmp, g_rnss_info.time_utc, 4); // hhmm
+                    tmp += 4;
+                    memcpy(tmp, ".", 1); // .
+                    tmp += 1;
+                    memcpy(tmp, g_rnss_info.time_utc + 4, 2); // ss
+                    tmp += 2;
+
+                    tmp = cmd_buf;
+                    memcpy(tmp, cmd_str, len_cmd);
+                    tmp += len_cmd;
+                    int len_YYMMDDhhmmss = strlen(time_buf);
+                    memcpy(tmp, time_buf, len_YYMMDDhhmmss); // YYMMDDhhmm.ss
+                    tmp += len_YYMMDDhhmmss;
+                    memcpy(tmp, " +%s", 4);
+                    FILE* fp = NULL;
+                    // compare epoch time, if gap is more than 3s, set the time
+                    fp = popen(cmd_buf, "r");
+                    int now_utc_s = (unsigned)time(NULL);
+                    if (fp != NULL) {
+                        fgets(out_buf, sizeof(out_buf), fp);
+                        int ts = strtol(out_buf, NULL, 10);
+                        if (abs(ts - now_utc_s) > 3) {
+                            memset(cmd_buf, 0, sizeof(cmd_buf));
+                            snprintf(cmd_buf, sizeof(cmd_buf), "date -u -s %s", time_buf);
+                            system(cmd_buf);
+                        }
+                    } else {
+                        printf("Failed to run date command to set time\n" );
+                    }
+
+                    /* close */
+                    pclose(fp);
+
+                }    
+
             }
         }
     }
