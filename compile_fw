@@ -24,13 +24,13 @@ fi
 make_defconfig() {
 	make defconfig "$@"
 	egrep '^(#[[:space:]]+)?CONFIG_KERNEL' configs/common configs/$TARGET_BOARD | sed 's|.*:||' >> ./.config
-	if [ -n "${PKG_BRANCH}" ] && [ "${PKG_BRANCH}" \!= master ] && [ "${PKG_BRANCH}" \!= stable ] && [ "${PKG_BRANCH}" \!= stable-omnia ]; then
-		echo CONFIG_PACKAGE_cznic-repo-keys-test=y >> .config
-		echo CONFIG_PACKAGE_getbranch-test=y >> .config
-	else
-		echo CONFIG_PACKAGE_cznic-repo-keys-test=m >> .config
-		echo CONFIG_PACKAGE_getbranch-deploy=y >> .config
-	fi
+	#if [ -n "${PKG_BRANCH}" ] && [ "${PKG_BRANCH}" \!= master ] && [ "${PKG_BRANCH}" \!= stable ] && [ "${PKG_BRANCH}" \!= stable-omnia ]; then
+	#	echo CONFIG_PACKAGE_cznic-repo-keys-test=y >> .config
+	#	echo CONFIG_PACKAGE_getbranch-test=y >> .config
+	#else
+	#	echo CONFIG_PACKAGE_cznic-repo-keys-test=m >> .config
+	#	echo CONFIG_PACKAGE_getbranch-deploy=y >> .config
+	#fi
 }
 
 #if false; then
@@ -38,20 +38,20 @@ make_defconfig() {
 
 if [ -z "$SKIP_FEEDS" ]; then
 	# Clean feeds
-	./scripts/feeds clean
-	./scripts/feeds update -a
+	#./scripts/feeds clean
+	#./scripts/feeds update -a
 	# Patch feeds
-	pushd patches
-	for feed in *; do
-		pushd $feed
-		for patch in *; do
-			pushd ../../feeds/$feed
-			patch -p1 < ../../patches/$feed/$patch
-			popd
-		done
-		popd
-	done
-	popd
+	#pushd patches
+	#for feed in *; do
+	#	pushd $feed
+	#	for patch in *; do
+	#		pushd ../../feeds/$feed
+	#		patch -p1 < ../../patches/$feed/$patch
+	#		popd
+	#	done
+	#	popd
+	#done
+	#popd
 	./scripts/feeds update -i
 	./scripts/feeds install -a
 	
@@ -81,8 +81,9 @@ if [ -f "$HOME"/mime.key ]; then
 	cp "$HOME/mime.pub" key-build.pub
 fi
 
-
 make_defconfig
+
+[ -n "$CONFIG_ONLY" ] && exit
 
 if [ -d .git ] ; then
 	git log -n1 --format='%H' >files/etc/git-version
@@ -122,7 +123,6 @@ if [ "$TARGET_BOARD" = turris ]; then
 	find -type l ! -exec test -r {} \; -delete
 	cd ../../..
 fi
-echo ------PGPGPGPG----
 
 # Clean
 [ -d ./bin-nand ] && rm -rf ./bin-nand
@@ -182,8 +182,8 @@ fi
 if [ "$TARGET_BOARD" = omnia ]; then
 	cp configs/config-omnia-rescue .config
 	[ -n "$USE_CCACHE" ] && echo "CONFIG_CCACHE=y" >> .config
-    # Ugly hack, make python compile first to avoid possible race
-    ./scripts/feeds uninstall python
+        # Ugly hack, make python compile first to avoid possible race
+        ./scripts/feeds uninstall python
 	make defconfig CONFDEFAULT=n
 	make clean
 	make "$@"
