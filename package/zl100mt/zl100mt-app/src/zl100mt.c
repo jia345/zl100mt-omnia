@@ -1666,8 +1666,9 @@ static void rdss_txxx_poller_cb(struct uloop_timeout *t)
         char* p_found = NULL;
         ssize_t pdu_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
         if (p_found != NULL) {
-            hexdump(LOG_DEBUG, "RDSS TXXX received...", p_found, pdu_len);
             if (0 == memcmp(p_found, "$TXXX", 5)) {
+                hexdump(LOG_DEBUG, "RDSS TXXX received...", p_found, pdu_len);
+                g_rdss_rx_buf.pdu_cursor = p_found + pdu_len;
             }
         }
     }
