@@ -110,13 +110,13 @@ static rdss_info_t g_rdss_info = {
     .tx_fail      = 0,
 };
 
+static pthread_mutex_t g_rdss_rx_buf_lock;
 static eBeidouStatus g_beidou_status = UNINITIALIZED;
 static rdss_buffer_t g_rdss_rx_buf = {
     .buf          = {0},
     .raw_cursor   = NULL,
     .pdu_cursor   = NULL,
     .rest_size    = RDSS_BUF_SIZE,
-    .buf_lock     = 0,
 };
 BD_INFO g_bd_inf;
 
@@ -314,7 +314,8 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** foun
        "$DWXX", "$TXXX", "$FKXX", "$ICXX", "$ZJXX", "$SJXX", "$BBXX", "$GLZK"  // RX
     };
 
-    if (g_rdss_rx_buf.buf_lock == 1) return -1; // buf is locked, wait...
+    //if (g_rdss_rx_buf.buf_lock == 1) return -1; // buf is locked, wait...
+    //pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
     size_t list_len = sizeof(pdu_list)/sizeof(pdu_list[0]);
     int i = 0;
@@ -374,6 +375,8 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** foun
         }
     }
     //if (*found != NULL) hexdump(LOG_DEBUG, "pdu <--", *found, pdu_len);
+    //pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+
     return pdu_len;
 }
 
@@ -1153,10 +1156,11 @@ static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms)
 
     while (!is_timer_expired(&start, timeout_ms)) {
         // if buffer is locked, wait 1 ms
-        if (g_rdss_rx_buf.buf_lock == 1) {
-            usleep(1000);
-            continue;
-        }
+        //if (g_rdss_rx_buf.buf_lock == 1) {
+        //    usleep(1000);
+        //    continue;
+        //}
+        pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
         // polling the RDSS receiving buffer continuously to see if response comes back
         char* p_found = NULL;
@@ -1204,6 +1208,8 @@ static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms)
                 hexdump(LOG_DEBUG, "WARNING: dropping <--", p_found, rx_len);
             }
         }
+        pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+
         usleep(5000);
     }
 
@@ -1220,7 +1226,7 @@ static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms)
 //  pdu_len: length of pdu
 // return:
 //  pointer to the response PDU in RDSS receiving buffer. return NULL means no response
-//
+// DEPRECATED!!!
 static const char* rdss_send_pdu_w_rsp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms)
 {
     hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
@@ -1232,10 +1238,10 @@ static const char* rdss_send_pdu_w_rsp(eRdssPduType pdu_type, const char* pdu, s
     while (!is_timer_expired(&start, timeout_ms)) {
 
         // if buffer is locked, wait 10 ms
-        if (g_rdss_rx_buf.buf_lock == 1) {
-            usleep(1000);
-            continue;
-        }
+        //if (g_rdss_rx_buf.buf_lock == 1) {
+        //    usleep(1000);
+        //    continue;
+        //}
 
         // polling the RDSS receiving buffer continuously to see if response comes back
         char* p_found = NULL;
@@ -1570,7 +1576,8 @@ static void rdss_thread_func(void *params)
         // if buffer is full and no complete messages exist, move incomplete data to the start
         if (g_rdss_rx_buf.rest_size == 0) {
             iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
-            g_rdss_rx_buf.buf_lock = 1;
+            //g_rdss_rx_buf.buf_lock = 1;
+            pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
             size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
             char tmp_buffer[RDSS_BUF_SIZE] = {0};
@@ -1582,7 +1589,8 @@ static void rdss_thread_func(void *params)
             g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
 
             iot_dbg("\n!!! receiving buffer is back !!!\n");
-            g_rdss_rx_buf.buf_lock = 0;
+            pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            //g_rdss_rx_buf.buf_lock = 0;
         }
     }
 }
@@ -1776,7 +1784,8 @@ static void rdss_check_status_cb(struct uloop_timeout *t)
 
 static void rdss_txxx_poller_cb(struct uloop_timeout *t)
 {
-    if (g_rdss_rx_buf.buf_lock == 0) {
+    //if (g_rdss_rx_buf.buf_lock == 0) {
+        pthread_mutex_lock(&g_rdss_rx_buf_lock);
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
 
         //if (unhandled_size) iot_dbg("\ntxxx reader unhandled_size %d\n", unhandled_size);
@@ -1789,7 +1798,8 @@ static void rdss_txxx_poller_cb(struct uloop_timeout *t)
                 g_rdss_rx_buf.pdu_cursor = p_found + pdu_len;
             }
         }
-    }
+        pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+    //}
     uloop_timeout_set(t, 50);
 }
 
@@ -2333,6 +2343,11 @@ int main(int argc, char **argv)
     g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
     memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
 
+    if (pthread_mutex_init(&g_rdss_rx_buf_lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return -1;
+    } 
+
 //#if !(BD_DBG)
 #if 0
     //if (!g_dbg_enabled) {
@@ -2423,5 +2438,6 @@ out:
         pid_fd = -1;
     }
 
+    pthread_mutex_destroy(&g_rdss_rx_buf_lock);
     return 0;
 }
