@@ -1,17 +1,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "rdss.h"
 
-static void pack_addr(uint8_t *buf, uint32_t no)
+static void pack_addr(char *buf, uint32_t no)
 {
     buf[0] = (uint8_t)((no & 0xFF0000) >> 16);
     buf[1] = (uint8_t)((no & 0x00FF00) >> 8);
     buf[2] = (uint8_t)( no & 0x0000FF);
 }
 
-static void pack_uint16(uint8_t *buf, uint16_t u16)
+static void pack_uint16(char *buf, uint16_t u16)
 {
     buf[0] = (uint8_t)(u16 >> 8);
     buf[1] = (uint8_t)(u16 & 0xFF);

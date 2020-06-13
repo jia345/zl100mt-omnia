@@ -43,14 +43,14 @@ static const char* ERRMSG_SEND_FAIL = "sending failed, please try again later";
 
 static struct ubus_context *ctx;
 static struct blob_buf b;
-static struct runqueue q;
+//static struct runqueue q;
 
-#define RDSS_RESPONSE_TIMEOUT_MS 1000
+#define RDSS_RESPONSE_TIMEOUT_MS 100
 //static const char* rdss_send_pdu_w_resp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms);
 static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len);
-static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms);
+static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeout_ms);
 
-static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** found);
+static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, const char** found);
 
 struct relayer {
     struct runqueue_process proc;
@@ -132,7 +132,7 @@ uint8_t g_DWXX[20];
 uint8_t g_ZJXX[10];
 uint8_t g_SJXX[7];
 
-uint8_t g_bd_relay_msg[] = {
+char g_bd_relay_msg[] = {
     /* section ID */
     0xBD, 0xBD,
     /* local SIM no */
@@ -305,7 +305,60 @@ static void pop_front_rdss_tx_msg_q()
 }
 #endif
 
-static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** found)
+void buf_hexdump(char* out_buff, const void * addr, const int len) {
+    int i;
+    //char out_buff[512] = {0};
+    char buff[17] = {0};
+    const unsigned char * pc = (const unsigned char *)addr;
+    int out_len = 0;
+    char* tmp = out_buff;
+
+    // Length checks.
+    if (len == 0) {
+        out_len = sprintf(tmp, "  ZERO LENGTH\n");
+        return;
+    } else if (len < 0) {
+        out_len = sprintf(tmp, "  NEGATIVE LENGTH: %d\n", len);
+        return;
+    }
+
+    // Process every byte in the data.
+    for (i = 0; i < len; i++) {
+        // Multiple of 16 means new line (with line offset).
+        if ((i % 16) == 0) {
+            // Don't print ASCII buffer for the "zeroth" line.
+            if (i != 0) {
+                out_len = sprintf(tmp, "  %s\n", buff);
+                tmp += out_len;
+            }
+            // Output the offset.
+            out_len = sprintf(tmp, "  %04x ", i);
+            tmp += out_len;
+        }
+
+        // Now the hex code for the specific character.
+        out_len = sprintf(tmp, " %02x", pc[i]);
+        tmp += out_len;
+
+        // And buffer a printable ASCII character for later.
+
+        if ((pc[i] < 0x20) || (pc[i] > 0x7e)) // isprint() may be better.
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    // Pad out last line if not exactly 16 characters.
+    while ((i % 16) != 0) {
+        out_len = sprintf(tmp, "   ");
+        tmp += out_len;
+        i++;
+    }
+    // And print the final ASCII buffer.
+    out_len = sprintf(tmp, "  %s", buff);
+}
+static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, const char** found)
 {
     *found = NULL;
 
@@ -320,7 +373,7 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** foun
     size_t list_len = sizeof(pdu_list)/sizeof(pdu_list[0]);
     int i = 0;
     for (; i < list_len; i++) {
-        char* tmp = find_str_in_buffer(pdu_list[i], buf, buf_size);
+        const char* tmp = find_str_in_buffer(pdu_list[i], buf, buf_size);
 
         if (tmp != NULL) { // find some message header
             if (*found == NULL || (tmp - *found < 0)) {
@@ -362,7 +415,7 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, char** foun
 
         if (pdu_len > 0) {
             // check checksum
-            char* pdu = *found;
+            const char* pdu = *found;
             int checksum = 0;
             int i = 0;
             for (; i < pdu_len - 1; i++) {
@@ -384,7 +437,7 @@ static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *o
                                  struct ubus_request_data *req, const char *method,
                                  struct blob_attr *msg)
 {
-    struct blob_attr *tb[__GET_GNSS_INFO_MAX];
+    //struct blob_attr *tb[__GET_GNSS_INFO_MAX];
 
     //blobmsg_parse(get_gnss_info_policy, ARRAY_SIZE(get_gnss_info_policy), tb, blob_data(msg), blob_len(msg));
 
@@ -522,18 +575,19 @@ static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *
                 blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
             } else {
                 g_rdss_info.tx_total++;
-                const char* resp_pdu = rdss_recv_pdu(RDSS_FKXX, RDSS_RESPONSE_TIMEOUT_MS);
-                if (NULL == resp_pdu) {
+                char rxbuf[512] = {0};
+                ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+                if (rxlen <= 0) {
                     blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
                     g_rdss_info.tx_fail++;
                 } else {
                     g_rdss_info.tx_succ++;
                     blobmsg_add_string(&b, "result", "ok");
-                    char* flag[16] = {0};
-                    snprintf(flag, sizeof(flag), "0x%x", resp_pdu[10]);
+                    char flag[16] = {0};
+                    snprintf(flag, sizeof(flag), "0x%x", rxbuf[10]);
                     blobmsg_add_string(&b, "flag", flag);
-                    char* additional_info[16] = {0};
-                    strncpy(additional_info, &(resp_pdu[11]), 4);
+                    char additional_info[16] = {0};
+                    strncpy(additional_info, &(rxbuf[11]), 4);
                     blobmsg_add_string(&b, "additional_info", additional_info);
                 }
             }
@@ -563,15 +617,16 @@ static int zl100mt_send_rdss_icjc(struct ubus_context *ctx, struct ubus_object *
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
     } else {
-        const char* resp_pdu = rdss_recv_pdu(RDSS_ICXX, RDSS_RESPONSE_TIMEOUT_MS);
-        if (NULL == resp_pdu) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ICXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
             blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
             g_beidou_status = DISCONNECTED;
         } else {
             uint32_t local_sim = (
-                    (resp_pdu[7] << 16)
-                    | (resp_pdu[8] << 8)
-                    | resp_pdu[9]
+                    ((rxbuf[7] << 16)
+                    | (rxbuf[8] << 8)
+                    | rxbuf[9])
                     & 0x1FFFFF);
             if (g_bd_inf.local_sim != local_sim) {
                 g_bd_inf.local_sim = local_sim;
@@ -605,16 +660,17 @@ static int zl100mt_send_rdss_gljc(struct ubus_context *ctx, struct ubus_object *
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
     } else {
-        const char* resp_pdu = rdss_recv_pdu(RDSS_GLZK, RDSS_RESPONSE_TIMEOUT_MS);
-        if (NULL == resp_pdu) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_GLZK, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
             blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
-            uint8_t power_beam1 = resp_pdu[10];
-            uint8_t power_beam2 = resp_pdu[11];
-            uint8_t power_beam3 = resp_pdu[12];
-            uint8_t power_beam4 = resp_pdu[13];
-            uint8_t power_beam5 = resp_pdu[14];
-            uint8_t power_beam6 = resp_pdu[15];
+            uint8_t power_beam1 = rxbuf[10];
+            uint8_t power_beam2 = rxbuf[11];
+            uint8_t power_beam3 = rxbuf[12];
+            uint8_t power_beam4 = rxbuf[13];
+            uint8_t power_beam5 = rxbuf[14];
+            uint8_t power_beam6 = rxbuf[15];
             blobmsg_add_string(&b, "result", "succeed");
             char tmp[16] = {0};
             snprintf(tmp, sizeof(tmp), "0x%x", power_beam1);
@@ -651,20 +707,21 @@ static int zl100mt_send_rdss_xtzj(struct ubus_context *ctx, struct ubus_object *
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
     } else {
-        const char* resp_pdu = rdss_recv_pdu(RDSS_ZJXX, RDSS_RESPONSE_TIMEOUT_MS);
-        if (NULL == resp_pdu) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
             blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
-            uint8_t ic_status = resp_pdu[10];
-            uint8_t hw_status = resp_pdu[11];
-            uint8_t battery_status = resp_pdu[12];
-            uint8_t station_status = resp_pdu[13];
-            uint8_t power_beam1 = resp_pdu[14];
-            uint8_t power_beam2 = resp_pdu[15];
-            uint8_t power_beam3 = resp_pdu[16];
-            uint8_t power_beam4 = resp_pdu[17];
-            uint8_t power_beam5 = resp_pdu[18];
-            uint8_t power_beam6 = resp_pdu[19];
+            uint8_t ic_status = rxbuf[10];
+            uint8_t hw_status = rxbuf[11];
+            uint8_t battery_status = rxbuf[12];
+            uint8_t station_status = rxbuf[13];
+            uint8_t power_beam1 = rxbuf[14];
+            uint8_t power_beam2 = rxbuf[15];
+            uint8_t power_beam3 = rxbuf[16];
+            uint8_t power_beam4 = rxbuf[17];
+            uint8_t power_beam5 = rxbuf[18];
+            uint8_t power_beam6 = rxbuf[19];
             blobmsg_add_string(&b, "result", "succeed");
             char tmp[16] = {0};
             snprintf(tmp, sizeof(tmp), "0x%x", ic_status);
@@ -708,15 +765,16 @@ static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
     } else {
-        const char* resp_pdu = rdss_recv_pdu(RDSS_BBXX, RDSS_RESPONSE_TIMEOUT_MS);
-        if (NULL == resp_pdu) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_BBXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
             blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
             char tmp[256] = {0};
             size_t max_buf_size = sizeof(tmp) - 1;
-            size_t version_len = resp_pdu[5] << 8 | resp_pdu[6] - 11;
+            size_t version_len = ((rxbuf[5] << 8) | rxbuf[6]) - 11;
             size_t tmp_size = version_len > max_buf_size ? max_buf_size : version_len;
-            strncpy(tmp, &(resp_pdu[10]), tmp_size);
+            strncpy(tmp, &(rxbuf[10]), tmp_size);
             blobmsg_add_string(&b, "result", "succeed");
             blobmsg_add_string(&b, "version", tmp);
         }
@@ -1094,8 +1152,8 @@ static int init_bdinf(BD_INFO *pinf)
         goto out;
     }
 
-    if (pinf->rdss_baudrate == NULL) pinf->rdss_baudrate = 115200;
-    if (pinf->rnss_baudrate == NULL) pinf->rnss_baudrate = 9600;
+    if (pinf->rdss_baudrate <= 0) pinf->rdss_baudrate = 115200;
+    if (pinf->rnss_baudrate <= 0) pinf->rnss_baudrate = 9600;
 
     iot_inf("Configuration:");
     iot_inf("\trdss_ttypath       = %s", pinf->rdss_ttypath);
@@ -1116,6 +1174,7 @@ out:
     return ret;
 }
 
+#if 0
 static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
 {
     size_t rest_size = (size_t)number;
@@ -1140,6 +1199,7 @@ static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
 
     return ret;
 }
+#endif
 
 static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len)
 {
@@ -1149,71 +1209,100 @@ static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len)
     return ret;
 }
 
-static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms)
+static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeout_ms)
 {
     struct timeval start;
     gettimeofday(&start, NULL);
+    ssize_t rxlen = -1;
 
-    while (!is_timer_expired(&start, timeout_ms)) {
+    //while (!is_timer_expired(&start, timeout_ms)) {
+    while (!g_cancelled) {
+        if (is_timer_expired(&start, timeout_ms)) {
+            iot_inf("!!!recv_pdu timeout!!!!");
+            break;
+        }
         // if buffer is locked, wait 1 ms
         //if (g_rdss_rx_buf.buf_lock == 1) {
         //    usleep(1000);
         //    continue;
         //}
+            iot_inf("ok recv_pdu locking");
         pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
+            iot_inf("ok recv_pdu locked");
         // polling the RDSS receiving buffer continuously to see if response comes back
-        char* p_found = NULL;
+        const char* p_found = NULL;
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
-        ssize_t rx_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
+        rxlen = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
         if (p_found != NULL) {
-            hexdump(LOG_DEBUG, "RDSS received...", p_found, rx_len);
-            g_rdss_rx_buf.pdu_cursor = p_found + rx_len;
+            hexdump(LOG_DEBUG, "RDSS received...", p_found, rxlen);
+            g_rdss_rx_buf.pdu_cursor = p_found + rxlen;
+            memcpy(rxbuf, p_found, rxlen);
+        }
+            iot_inf("ok recv_pdu UNlockiing");
+        pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            iot_inf("ok recv_pdu UNlocked");
+
+        char* cmd_str = NULL;
+        switch(pdu_type) {
+            case RDSS_GLZK:
+                cmd_str = "$GLZK";
+                break;
+            case RDSS_DWXX:
+                cmd_str = "$DWXX";
+                break;
+            case RDSS_FKXX:
+                cmd_str = "$FKXX";
+                break;
+            case RDSS_ICXX:
+                cmd_str = "$ICXX";
+                break;
+            case RDSS_ZJXX:
+                cmd_str = "$ZJXX";
+                break;
+            case RDSS_SJXX:
+                cmd_str = "$SJXX";
+                break;
+            case RDSS_BBXX:
+                cmd_str = "$BBXX";
+                break;
+            case RDSS_TXXX:
+                cmd_str = "$TXXX";
+                break;
+            default:
+                break;
+        }
+        if (p_found != NULL) {
             // check RDSS_TXXX at first
-            if (0 == memcmp(p_found, "$TXXX", 5)) {
+            if (0 == memcmp(rxbuf, cmd_str, 5)) {
+                // expected message
+                break;
+            } else if (0 == memcmp(rxbuf, "$TXXX", 5)) {
                 // read out TXXX and advance the pdu_cursor
-                //hexdump(LOG_DEBUG, "logging TXXX <--", p_found, rx_len);
-                // TODO put this into TXXX buffer
+                hexdump(LOG_DEBUG, "recv_pdu: notify TXXX -->", rxbuf, rxlen);
+                memset(&b, 0, sizeof(b));
+                char out_buff[512] = {0};
+                buf_hexdump(out_buff, rxbuf, rxlen);
+                blob_buf_init(&b, 0);
+                blobmsg_add_string(&b, "txxx", out_buff);
+                //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
+        ubus_send_event(ctx, "rdss.txxx", b.head);
+                rxlen = 0;
+                continue;
+            } else {
+                // unexpected or unknown message
+                hexdump(LOG_DEBUG, "WARNING: dropping <--", rxbuf, rxlen);
+                rxlen = 0;
                 continue;
             }
-            char* cmd_str = NULL;
-            switch(pdu_type) {
-                case RDSS_GLZK:
-                    cmd_str = "$GLZK";
-                    break;
-                case RDSS_DWXX:
-                    cmd_str = "$DWXX";
-                    break;
-                case RDSS_FKXX:
-                    cmd_str = "$FKXX";
-                    break;
-                case RDSS_ICXX:
-                    cmd_str = "$ICXX";
-                    break;
-                case RDSS_ZJXX:
-                    cmd_str = "$ZJXX";
-                    break;
-                case RDSS_SJXX:
-                    cmd_str = "$SJXX";
-                    break;
-                case RDSS_BBXX:
-                    cmd_str = "$BBXX";
-                    break;
-                default:
-                    break;
-            }
-            if (0 == memcmp(p_found, cmd_str, 5)) {
-                return p_found;
-            } else {
-                hexdump(LOG_DEBUG, "WARNING: dropping <--", p_found, rx_len);
-            }
+        } else {
+            rxlen = 0;
         }
-        pthread_mutex_unlock(&g_rdss_rx_buf_lock);
 
         usleep(5000);
     }
 
-    return NULL;
+    return rxlen;
 }
 //
 // Note:
@@ -1227,6 +1316,7 @@ static const char* rdss_recv_pdu(eRdssPduType pdu_type, uint32_t timeout_ms)
 // return:
 //  pointer to the response PDU in RDSS receiving buffer. return NULL means no response
 // DEPRECATED!!!
+#if 0
 static const char* rdss_send_pdu_w_rsp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms)
 {
     hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
@@ -1404,6 +1494,7 @@ static int rx_bd_pdu(BD_INFO *pinf,
 
     return ret;
 }
+#endif
 
 #if 0
 static int rx_bd_msg(BD_INFO *pinf, unsigned char* buf, size_t* len)
@@ -1486,12 +1577,13 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
     ssize_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), 0);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     if (ret > 0) {
-        const char* resp_pdu = rdss_recv_pdu(RDSS_ZJXX, RDSS_RESPONSE_TIMEOUT_MS);
-        if (resp_pdu != NULL) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen > 0) {
             uint32_t local_sim = (
-                    (resp_pdu[7] << 16)
-                    | (resp_pdu[8] << 8)
-                    | resp_pdu[9]
+                    ((rxbuf[7] << 16)
+                    | (rxbuf[8] << 8)
+                    | rxbuf[9])
                     & 0x1FFFFF);
             if (pinf->local_sim != local_sim) {
                 pinf->local_sim = local_sim;
@@ -1499,16 +1591,16 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
                 iot_cfg_sync(pinf->pcfg);
                 iot_dbg("write down local_sim: %d", local_sim);
             }
-            uint8_t ic_status = resp_pdu[10];
-            uint8_t hw_status = resp_pdu[11];
-            uint8_t battery_status = resp_pdu[12];
-            uint8_t station_status = resp_pdu[13];
-            uint8_t power_beam1 = resp_pdu[14];
-            uint8_t power_beam2 = resp_pdu[15];
-            uint8_t power_beam3 = resp_pdu[16];
-            uint8_t power_beam4 = resp_pdu[17];
-            uint8_t power_beam5 = resp_pdu[18];
-            uint8_t power_beam6 = resp_pdu[19];
+            //uint8_t ic_status = rxbuf[10];
+            //uint8_t hw_status = rxbuf[11];
+            //uint8_t battery_status = rxbuf[12];
+            //uint8_t station_status = rxbuf[13];
+            //uint8_t power_beam1 = rxbuf[14];
+            //uint8_t power_beam2 = rxbuf[15];
+            //uint8_t power_beam3 = rxbuf[16];
+            //uint8_t power_beam4 = rxbuf[17];
+            //uint8_t power_beam5 = rxbuf[18];
+            //uint8_t power_beam6 = rxbuf[19];
             int i = 0;
             uint8_t max_power = 0;
             // 00: < -158 dBW
@@ -1517,7 +1609,7 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
             // 03: -152 ~ -153 dBW
             // 04: > -152 dBW
             for (; i < 6; i++) {
-                max_power = max_power > resp_pdu[14+i] ? max_power : resp_pdu[14+i];
+                max_power = (max_power > rxbuf[14+i]) ? max_power : rxbuf[14+i];
             }
             g_rdss_info.max_power = max_power;
             return CONNECTED;
@@ -1554,7 +1646,7 @@ static int init_dpi_socket()
     return s;
 }
 
-static void rdss_thread_func(void *params)
+static void* rdss_thread_func(void *params)
 {
     BD_INFO* bd_info = (BD_INFO*)params;
     int fd = bd_info->rdss_ttyfd;
@@ -1563,21 +1655,31 @@ static void rdss_thread_func(void *params)
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
 
-    char buf[RDSS_BUF_SIZE];
+    char rxbuf[RDSS_BUF_SIZE];
 
     ssize_t rc = -1;
     while (!g_cancelled) {
         rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
+        //rc = read(fd, rxbuf, g_rdss_rx_buf.rest_size);
         if (rc > 0) {
+            iot_dbg("\n!!! received something rc %d, locking... !!!\n", rc);
+            pthread_mutex_lock(&g_rdss_rx_buf_lock);
+            iot_dbg("\n!!! received something rc %d, locked.. !!!\n", rc);
+        hexdump(LOG_DEBUG, "rdss_thread_func: RX-->", g_rdss_rx_buf.raw_cursor, rc);
             g_rdss_rx_buf.raw_cursor += rc;
             g_rdss_rx_buf.rest_size -= rc;
+            iot_dbg("\n!!! received something , unlocking... !!!\n");
+            pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            iot_dbg("\n!!! received something , unlocked... !!!\n");
+            iot_dbg("\n!!! rest size %d... !!!\n", g_rdss_rx_buf.rest_size);
         }
 
         // if buffer is full and no complete messages exist, move incomplete data to the start
-        if (g_rdss_rx_buf.rest_size == 0) {
+        if (g_rdss_rx_buf.rest_size <= 0) {
             iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
-            //g_rdss_rx_buf.buf_lock = 1;
             pthread_mutex_lock(&g_rdss_rx_buf_lock);
+            iot_dbg("\n!!! receiving buffer is full, locked... !!!\n");
+            //g_rdss_rx_buf.buf_lock = 1;
 
             size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
             char tmp_buffer[RDSS_BUF_SIZE] = {0};
@@ -1588,14 +1690,16 @@ static void rdss_thread_func(void *params)
             g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
             g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
 
-            iot_dbg("\n!!! receiving buffer is back !!!\n");
+            iot_dbg("\n!!! receiving buffer is unblocking !!!\n");
             pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            iot_dbg("\n!!! receiving buffer is back !!!\n");
             //g_rdss_rx_buf.buf_lock = 0;
         }
     }
+    return NULL;
 }
 
-static char* find_comma(const char* str, size_t str_len, uint32_t next_n)
+static const char* find_comma(const char* str, size_t str_len, uint32_t next_n)
 {
     int count = 0;
 
@@ -1608,18 +1712,19 @@ static char* find_comma(const char* str, size_t str_len, uint32_t next_n)
             if (count >= next_n) return &(str[i]);
         }
     }
+    return NULL;
 }
 
-static void rnss_thread_func(void *params)
+static void* rnss_thread_func(void *params)
 {
     iot_dbg("\nrnss\n");
-    BD_INFO* bd_info = (BD_INFO*)params;
-    int fd = bd_info->rnss_ttyfd;
+    //BD_INFO* bd_info = (BD_INFO*)params;
+    //int fd = bd_info->rnss_ttyfd;
 
     char buf[1024];
-    const char *delim = ",";
-    char *ptr_prev = NULL;
-    char *ptr_next = NULL;
+    //const char *delim = ",";
+    const char *ptr_prev = NULL;
+    const char *ptr_next = NULL;
 
     FILE* ss = fdopen(g_bd_inf.rnss_ttyfd, "r+");
     //FILE* ss = fopen("/dev/ttyUSB3", "r");
@@ -1754,6 +1859,7 @@ static void rnss_thread_func(void *params)
             }
         }
     }
+    return NULL;
 }
 
 //static hexdump(const char* buf, size_t len)
@@ -1779,12 +1885,32 @@ static void rnss_thread_func(void *params)
 static void rdss_check_status_cb(struct uloop_timeout *t)
 {
     g_rdss_info.rdss_status = check_beidou_status(&g_bd_inf);
-    uloop_timeout_set(t, 500);
+    uloop_timeout_set(t, 60000);
 }
 
 static void rdss_txxx_poller_cb(struct uloop_timeout *t)
 {
-    //if (g_rdss_rx_buf.buf_lock == 0) {
+iot_inf("polling txxx...");
+        //        memset(&b, 0, sizeof(b));
+        //blob_buf_init(&b, 0);
+        //blobmsg_add_string(&b, "txxx", "hello polling");
+        ////ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
+        //ubus_send_event(ctx, "rdss.txxx", b.head);
+    char rxbuf[512] = {0};
+    ssize_t rxlen = rdss_recv_pdu(RDSS_TXXX, rxbuf, 10);
+    if (rxlen > 0) {
+        hexdump(LOG_DEBUG, "txxx_poller: notify TXXX -->", rxbuf, rxlen);
+                memset(&b, 0, sizeof(b));
+        //blob_buf_init(&b, 0);
+        //blobmsg_add_string(&b, "txxx", "hello polling");
+        //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
+                char out_buff[512] = {0};
+                buf_hexdump(out_buff, rxbuf, rxlen);
+                blob_buf_init(&b, 0);
+                blobmsg_add_string(&b, "txxx", out_buff);
+        ubus_send_event(ctx, "rdss.txxx", b.head);
+    }
+#if 0
         pthread_mutex_lock(&g_rdss_rx_buf_lock);
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
 
@@ -1800,7 +1926,8 @@ static void rdss_txxx_poller_cb(struct uloop_timeout *t)
         }
         pthread_mutex_unlock(&g_rdss_rx_buf_lock);
     //}
-    uloop_timeout_set(t, 50);
+#endif
+    uloop_timeout_set(t, 500);
 }
 
 #if 0
@@ -1989,7 +2116,7 @@ static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
 
     int i = 0;
     int fd_max = g_sock;
-    size_t msg_len = 0;
+    //size_t msg_len = 0;
 
     memset(&buf_ip, 0, sizeof(buf_ip));
 
@@ -2070,9 +2197,10 @@ static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
                             if (ret < 0) {
                                 g_rdss_info.tx_fail++;
                             } else {
-                                const char* resp_pdu = rdss_recv_pdu(RDSS_FKXX, RDSS_RESPONSE_TIMEOUT_MS);
+                                char rxbuf[512] = {0};
+                                ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
                                 g_rdss_info.tx_total++;
-                                if (resp_pdu != NULL) {
+                                if (rxlen > 0) {
                                     g_rdss_info.tx_succ++;
                                 } else {
                                     g_rdss_info.tx_fail++;
@@ -2155,6 +2283,7 @@ static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
 //    return 0;
 //}
 
+#if 0
 static void q_empty(struct runqueue *q)
 {
     fprintf(stderr, "All done!\n");
@@ -2265,6 +2394,7 @@ void add_relayer_task()
         q.running_tasks, q.empty, &r->proc.task.queued);
 	  runqueue_task_add(&q, &r->proc.task, false);
 }
+#endif
 
 #if 0
 void rdss_thread_func(void *params) {
@@ -2366,6 +2496,7 @@ int main(int argc, char **argv)
     //}
 #endif
     iot_inf("Starting zl100mt-app ...");
+    set_sighandler();
 
     if (init_bdinf(&g_bd_inf)) {
         goto out;

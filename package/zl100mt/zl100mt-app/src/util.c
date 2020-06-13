@@ -1,5 +1,8 @@
 #include <sys/time.h>
 #include <syslog.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "util.h"
 
 bool is_timer_expired(struct timeval *start, uint32_t ms) {
@@ -63,8 +66,8 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
 #else
 void hexdump(int pri, const char * desc, const void * addr, const int len) {
     int i;
-    unsigned char out_buff[512] = {0};
-    unsigned char buff[17] = {0};
+    char out_buff[512] = {0};
+    char buff[17] = {0};
     const unsigned char * pc = (const unsigned char *)addr;
     int out_len = 0;
     char* tmp = out_buff;
@@ -78,13 +81,13 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
     // Length checks.
     if (len == 0) {
         out_len = sprintf(tmp, "  ZERO LENGTH\n");
+        syslog(pri, "  %s\n", out_buff);
         return;
     } else if (len < 0) {
         out_len = sprintf(tmp, "  NEGATIVE LENGTH: %d\n", len);
+        syslog(pri, "  %s\n", out_buff);
         return;
     }
-
-    tmp += out_len;
 
     // Process every byte in the data.
     for (i = 0; i < len; i++) {
@@ -132,10 +135,10 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
  * return:
  *  pointer to the first str found
  */
-char* find_str_in_buffer(const char* str, const char* buf, size_t buf_size)
+const char* find_str_in_buffer(const char* str, const char* buf, size_t buf_size)
 {
-    uint32_t str_len = strlen(str);
-    char* cursor = buf;
+    int32_t str_len = strlen(str);
+    const char* cursor = buf;
 
     while (cursor < (buf + buf_size - str_len)) {
         if (0 == memcmp(cursor, str, str_len)) {

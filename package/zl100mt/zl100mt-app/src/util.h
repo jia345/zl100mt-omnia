@@ -7,6 +7,6 @@
 
 bool is_timer_expired(struct timeval *start, uint32_t ms);
 void hexdump(int pri, const char * desc, const void * addr, const int len);
-char* find_str_in_buffer(const char* str, const char* buf, size_t buf_size);
+const char* find_str_in_buffer(const char* str, const char* buf, size_t buf_size);
 
 #endif
