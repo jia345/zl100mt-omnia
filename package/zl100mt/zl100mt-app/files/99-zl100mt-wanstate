@@ -1,0 +1,8 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/network.sh
+
+[ "$INTERFACE" == "lte_4g" ] && gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom > /tmp/zl100mt_lte_4g_info
+[ "$INTERFACE" == "lte_z" ] && gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom > /tmp/zl100mt_lte_z_info
+

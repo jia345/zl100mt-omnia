@@ -54,6 +54,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/rtmp.conf $(1)/etc/config/rtmp
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/zl100mt-poller $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ft4232_bitbang $(1)/usr/sbin/
 
 	$(INSTALL_DIR) $(1)/etc/cron.d
@@ -67,6 +68,9 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/zl100mt-temperature.sh $(1)/usr/bin/zl100mt-temperature.sh
 	$(INSTALL_BIN) ./files/zl100mt-ntpdate.sh $(1)/usr/bin/zl100mt-ntpdate.sh
+	$(INSTALL_BIN) ./files/check_default_route.sh $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
+	$(INSTALL_BIN) ./files/99-zl100mt-wanstate $(1)/etc/hotplug.d/iface/
 	$(INSTALL_DIR) $(1)/usr/libexec/rpcd
 	$(INSTALL_BIN) ./files/zl100mt-rpcd $(1)/usr/libexec/rpcd/zl100mt-rpcd
 	$(INSTALL_DIR) $(1)/lib/netifd/proto

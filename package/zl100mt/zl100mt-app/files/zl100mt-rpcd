@@ -139,7 +139,8 @@ case "$1" in
                 }"
             ;;
             get_lte_z)
-                data=`gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom`
+                #data=`gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom`
+                data=`cat /tmp/zl100mt_lte_z_info`
 
                 json=""
                 for kv in $data; do
@@ -156,7 +157,8 @@ case "$1" in
                 echo $json
             ;;
             get_lte_4g)
-                data=`gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom`
+                #data=`gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom`
+                data=`cat /tmp/zl100mt_lte_4g_info`
 
                 json=""
                 for kv in $data; do
