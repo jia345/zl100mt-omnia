@@ -46,6 +46,7 @@ static struct blob_buf b;
 //static struct runqueue q;
 
 #define RDSS_RESPONSE_TIMEOUT_MS 100
+#define BD_RELAY_PORT 6668
 //static const char* rdss_send_pdu_w_resp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms);
 static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len);
 static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeout_ms);
@@ -110,6 +111,7 @@ static rdss_info_t g_rdss_info = {
     .tx_fail      = 0,
 };
 
+static pthread_mutex_t g_rdss_rw_lock;
 static pthread_mutex_t g_rdss_rx_buf_lock;
 static eBeidouStatus g_beidou_status = UNINITIALIZED;
 static rdss_buffer_t g_rdss_rx_buf = {
@@ -564,11 +566,12 @@ static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *
             .data = {0},
             .data_len = 0
         };
-        strncpy(msg.data, data, sizeof(msg.data));
+        memcpy(msg.data, data, sizeof(msg.data));
         msg.data_len = strlen(data);
         ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
         if (txlen > 0) {
             //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+            pthread_mutex_lock(&g_rdss_rw_lock);
             ssize_t ret = rdss_send_pdu(txbuf, txlen);
             //if (NULL == resp_pdu) {
             if (ret < 0) {
@@ -591,6 +594,7 @@ static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *
                     blobmsg_add_string(&b, "additional_info", additional_info);
                 }
             }
+            pthread_mutex_unlock(&g_rdss_rw_lock);
         } else {
             blobmsg_add_string(&b, "result", "fail, please make sure the buffer is long enough");
         }
@@ -612,6 +616,7 @@ static int zl100mt_send_rdss_icjc(struct ubus_context *ctx, struct ubus_object *
     char txbuf[32] = {0};
     size_t txlen = compose_rdss_icjc_pdu(txbuf, sizeof(txbuf));
     //const char* resp_pdu = rdss_send_pdu(RDSS_ICJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     //if (NULL == resp_pdu) {
     if (ret < 0) {
@@ -639,6 +644,7 @@ static int zl100mt_send_rdss_icjc(struct ubus_context *ctx, struct ubus_object *
             g_beidou_status = CONNECTED;
         }
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
     ubus_send_reply(ctx, req, b.head);
 
@@ -655,6 +661,7 @@ static int zl100mt_send_rdss_gljc(struct ubus_context *ctx, struct ubus_object *
     uint8_t freq = 0;
     size_t txlen = compose_rdss_gljc_pdu(txbuf, sizeof(txbuf), freq);
     //const char* resp_pdu = rdss_send_pdu(RDSS_GLJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     //if (NULL == resp_pdu) {
     if (ret < 0) {
@@ -687,6 +694,7 @@ static int zl100mt_send_rdss_gljc(struct ubus_context *ctx, struct ubus_object *
             blobmsg_add_string(&b, "power_beam6", tmp);
         }
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
     ubus_send_reply(ctx, req, b.head);
 
@@ -703,6 +711,7 @@ static int zl100mt_send_rdss_xtzj(struct ubus_context *ctx, struct ubus_object *
     uint8_t freq = 0;
     size_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), freq);
     //const char* resp_pdu = rdss_send_pdu(RDSS_XTZJ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
@@ -746,6 +755,7 @@ static int zl100mt_send_rdss_xtzj(struct ubus_context *ctx, struct ubus_object *
             blobmsg_add_string(&b, "power_beam6", tmp);
         }
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
     ubus_send_reply(ctx, req, b.head);
 
@@ -761,6 +771,7 @@ static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *
     char txbuf[32] = {0};
     size_t txlen = compose_rdss_bbdq_pdu(txbuf, sizeof(txbuf));
     //const char* resp_pdu = rdss_send_pdu(RDSS_BBDQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     if (ret < 0) {
         blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
@@ -779,6 +790,7 @@ static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *
             blobmsg_add_string(&b, "version", tmp);
         }
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
     ubus_send_reply(ctx, req, b.head);
 
@@ -1573,8 +1585,10 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
     iot_dbg("\nchecking beidou status...\n");
 
     char txbuf[32] = {0};
+    eBeidouStatus status = DISCONNECTED;
 
     ssize_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), 0);
+    pthread_mutex_lock(&g_rdss_rw_lock);
     ssize_t ret = rdss_send_pdu(txbuf, txlen);
     if (ret > 0) {
         char rxbuf[512] = {0};
@@ -1612,12 +1626,13 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
                 max_power = (max_power > rxbuf[14+i]) ? max_power : rxbuf[14+i];
             }
             g_rdss_info.max_power = max_power;
-            return CONNECTED;
+            status = CONNECTED;
         } else {
-            return DISCONNECTED;
+            status = DISCONNECTED;
         }
     }
-    return DISCONNECTED;
+    pthread_mutex_unlock(&g_rdss_rw_lock);
+    return status;
 }
 
 static int init_dpi_socket()
@@ -1644,6 +1659,161 @@ static int init_dpi_socket()
     }
 
     return s;
+}
+
+void *connection_handler(void *socket_desc)
+{
+    //Get the socket descriptor
+    int sock = *(int*)socket_desc;
+    int read_size = 0;
+    static const int kBdPacketSize = 32;
+    char* message, client_message[2000];
+    int offset = 0;
+
+    //Send some messages to the client
+    //message = "Greetings! I am your connection handler\n";
+    //write(sock , message , strlen(message));
+
+    //message = "Now type something and i shall repeat what you type \n";
+    //write(sock, message, strlen(message));
+
+    //Receive a message from client
+    int to_be_read_size = kBdPacketSize;
+    while ((read_size = recv(sock, client_message + offset, to_be_read_size, 0)) > 0) {
+        //end of string marker
+		//client_message[read_size] = '\0';
+        offset += read_size;
+        to_be_read_size = kBdPacketSize - offset;
+        if (to_be_read_size == 0) {
+            // TODO send to beidout
+            hexdump(LOG_DEBUG, "received Beidou data(hex):", client_message, kBdPacketSize);
+            hexdump(LOG_DEBUG, "old relay msg(hex):", g_bd_relay_msg, 70);
+            memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32);
+            memcpy(g_bd_relay_msg + 6 + 32, client_message, 32);
+            hexdump(LOG_DEBUG, "new relay msg(hex):", g_bd_relay_msg, 70);
+
+            puts("received Beidou data(hex):");
+            int i = 0;
+            for (; i < kBdPacketSize; i++) {
+                printf("%02X ", client_message[i]);
+            }
+
+            char txbuf[256] = {0};
+            //iot_cfg_sync(g_bd_inf.pcfg);
+            iot_dbg("relaying ...\n");
+            rdss_msg_txsq_t msg = {
+                .local_sim = g_bd_inf.local_sim,
+                .target_sim = g_bd_inf.target_sim,
+                .data = {0},
+                .data_len = 0
+            };
+            size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
+            memcpy(msg.data, g_bd_relay_msg, data_len);
+            msg.data_len = data_len;
+            //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
+            //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+            hexdump(LOG_DEBUG, "populating message:", msg.data, data_len);
+            ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
+            hexdump(LOG_DEBUG, "txbuf:", txbuf, txlen);
+            if (txlen > 0) {
+                //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+                pthread_mutex_lock(&g_rdss_rw_lock);
+                ssize_t ret = rdss_send_pdu(txbuf, txlen);
+                if (ret < 0) {
+                    g_rdss_info.tx_fail++;
+                } else {
+                    char rxbuf[512] = {0};
+                    ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+                    g_rdss_info.tx_total++;
+                    if (rxlen > 0) {
+                        g_rdss_info.tx_succ++;
+                    } else {
+                        g_rdss_info.tx_fail++;
+                    }
+                }
+                pthread_mutex_unlock(&g_rdss_rw_lock);
+            }
+            //clear the message buffer
+            memset(client_message, 0, kBdPacketSize);
+            offset = 0;
+            to_be_read_size = kBdPacketSize;
+        }
+        //puts(client_message);
+		//Send the message back to client
+        //write(sock, client_message, strlen(client_message));
+
+    }
+
+    if (read_size == 0) {
+        puts("Client disconnected");
+        fflush(stdout);
+    } else if(read_size == -1) {
+        perror("recv failed");
+    }
+
+    return 0;
+} 
+
+void* bd_relay_thread_func(void *params)
+{
+    int socket_desc, client_sock, c;
+    struct sockaddr_in server, client;
+
+    //Create socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_desc == -1) {
+        printf("Could not create socket");
+    }
+    puts("Socket created");
+
+    //Prepare the sockaddr_in structure
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(BD_RELAY_PORT);
+
+    //Bind
+    if( bind(socket_desc,(struct sockaddr *)&server, sizeof(server)) < 0) {
+        //print the error message
+        perror("bind failed. Error");
+        return 1;
+    }
+    puts("bind done");
+
+    //Listen
+    listen(socket_desc, 3);
+
+    //Accept and incoming connection
+    puts("Waiting for incoming connections...");
+    c = sizeof(struct sockaddr_in);
+	pthread_t thread_id;
+
+    while (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) {
+        puts("Connection accepted");
+        if (pthread_create(&thread_id, NULL, connection_handler, (void*)&client_sock) < 0) {
+            perror("could not create thread");
+            return 1;
+        }
+
+        //Now join the thread , so that we don't terminate before the thread
+        //pthread_join( thread_id , NULL);
+        puts("Handler assigned");
+    }
+
+    if (client_sock < 0) {
+        perror("accept failed");
+        return 1;
+    }
+
+    return 0;
+}
+ 
+int create_bd_relay_thread()
+{
+    pthread_t server_thread;
+    if (pthread_create(&server_thread, NULL, bd_relay_thread_func, 0) < 0) {
+        perror("could not create thread");
+        return -1;
+    }
 }
 
 static void* rdss_thread_func(void *params)
@@ -2186,13 +2356,14 @@ static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
                             .data_len = 0
                         };
                         size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
-                        strncpy(msg.data, g_bd_relay_msg, data_len);
+                        memcpy(msg.data, g_bd_relay_msg, data_len);
                         msg.data_len = data_len;
                         //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
                         //send_rdss_msg(&g_bd_inf, txbuf, txlen);
                         ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
                         if (txlen > 0) {
                             //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+                            pthread_mutex_lock(&g_rdss_rw_lock);
                             ssize_t ret = rdss_send_pdu(txbuf, txlen);
                             if (ret < 0) {
                                 g_rdss_info.tx_fail++;
@@ -2206,6 +2377,7 @@ static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
                                     g_rdss_info.tx_fail++;
                                 }
                             }
+                            pthread_mutex_unlock(&g_rdss_rw_lock);
                         }
                         //g_is_relay_data_ready = false;
                         //g_tx_total++;
@@ -2478,6 +2650,12 @@ int main(int argc, char **argv)
         return -1;
     } 
 
+    if (pthread_mutex_init(&g_rdss_rw_lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return -1;
+    } 
+
+//#if !(BD_DBG)
 //#if !(BD_DBG)
 #if 0
     //if (!g_dbg_enabled) {
@@ -2519,6 +2697,9 @@ int main(int argc, char **argv)
         return -1;
     }   
 
+    int rc = create_bd_relay_thread();
+    if (rc != 0) return rc;
+
     uloop_init();
 
     ctx = ubus_connect(ubus_socket);
@@ -2545,10 +2726,12 @@ int main(int argc, char **argv)
     uloop_timeout_set(&rdss_txxx_poller_timeout, 0);
 
     // listen on 0xBDBD messages
+#if 0
     struct uloop_timeout relayer_timeout = {
         .cb = rdss_bdbd_relayer_cb
     };
     uloop_timeout_set(&relayer_timeout, 0);
+#endif
 
     // RDSS: poll beidou status and send relayed messages out
     //struct uloop_timeout rdss_poller_timeout = {
@@ -2570,5 +2753,6 @@ out:
     }
 
     pthread_mutex_destroy(&g_rdss_rx_buf_lock);
+    pthread_mutex_destroy(&g_rdss_rw_lock);
     return 0;
 }
