@@ -1,6 +1,15 @@
-  #!/bin/sh
-  
-  while true; do
-      /usr/bin/check_default_route.sh &
-      sleep 5;
-  done
+#!/bin/sh
+
+while true; do
+    gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom > /tmp/zl100mt_lte_4g_info
+    gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom > /tmp/zl100mt_lte_z_info
+
+    /usr/sbin/zl100mt_lte_4g_keepalive.sh
+    /usr/sbin/zl100mt_lte_z_keepalive.sh
+
+    /usr/bin/check_default_route.sh
+
+    sleep 5
+done
+
+

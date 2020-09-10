@@ -88,6 +88,7 @@ class NetworkUciCommands(object):
                     backend.set_option('network', section_name, 'target', network + '/' + prefix)
                     backend.set_option('network', section_name, 'gateway', route['gateway'])
                     backend.set_option('network', section_name, 'metric', route['metric'])
+                    backend.set_option('network', section_name, 'onlink', '1')
             elif data['action'] == "route_del":
                 for route in data['routes']:
                     interface = route["interface"].lower().replace('-', '_')
@@ -197,5 +198,8 @@ class NetworkUciCommands(object):
                 host_netmask = data['host_netmask']
                 backend.set_option('network', 'lan', 'ipaddr', host_ip)
                 backend.set_option('network', 'lan', 'netmask', host_netmask)
+
+        with OpenwrtServices() as services:
+            services.reload('network')
 
         return True

@@ -1238,10 +1238,10 @@ static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeou
         //    usleep(1000);
         //    continue;
         //}
-            iot_inf("ok recv_pdu locking");
+            //iot_inf("ok recv_pdu locking");
         pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
-            iot_inf("ok recv_pdu locked");
+            //iot_inf("ok recv_pdu locked");
         // polling the RDSS receiving buffer continuously to see if response comes back
         const char* p_found = NULL;
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
@@ -1251,9 +1251,9 @@ static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeou
             g_rdss_rx_buf.pdu_cursor = p_found + rxlen;
             memcpy(rxbuf, p_found, rxlen);
         }
-            iot_inf("ok recv_pdu UNlockiing");
+            //iot_inf("ok recv_pdu UNlockiing");
         pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-            iot_inf("ok recv_pdu UNlocked");
+            //iot_inf("ok recv_pdu UNlocked");
 
         char* cmd_str = NULL;
         switch(pdu_type) {
@@ -1832,23 +1832,24 @@ static void* rdss_thread_func(void *params)
         rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
         //rc = read(fd, rxbuf, g_rdss_rx_buf.rest_size);
         if (rc > 0) {
-            iot_dbg("\n!!! received something rc %d, locking... !!!\n", rc);
+            //iot_dbg("\n!!! received something rc %d, locking... !!!\n", rc);
             pthread_mutex_lock(&g_rdss_rx_buf_lock);
-            iot_dbg("\n!!! received something rc %d, locked.. !!!\n", rc);
+            //iot_dbg("\n!!! received something rc %d, locked.. !!!\n", rc);
+            iot_dbg("\n!!! received something rc %d, rest_size %d, raw_cursor %d, unhandled_size %d !!!\n", rc, g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor);
         hexdump(LOG_DEBUG, "rdss_thread_func: RX-->", g_rdss_rx_buf.raw_cursor, rc);
             g_rdss_rx_buf.raw_cursor += rc;
             g_rdss_rx_buf.rest_size -= rc;
-            iot_dbg("\n!!! received something , unlocking... !!!\n");
+            //iot_dbg("\n!!! received something , unlocking... !!!\n");
             pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-            iot_dbg("\n!!! received something , unlocked... !!!\n");
-            iot_dbg("\n!!! rest size %d... !!!\n", g_rdss_rx_buf.rest_size);
+            //iot_dbg("\n!!! received something , unlocked... !!!\n");
+            iot_dbg("\n!!! rest size %d, raw_cursor %d ... !!!\n", g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf);
         }
 
         // if buffer is full and no complete messages exist, move incomplete data to the start
         if (g_rdss_rx_buf.rest_size <= 0) {
-            iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
+            //iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
             pthread_mutex_lock(&g_rdss_rx_buf_lock);
-            iot_dbg("\n!!! receiving buffer is full, locked... !!!\n");
+            //iot_dbg("\n!!! receiving buffer is full, locked... !!!\n");
             //g_rdss_rx_buf.buf_lock = 1;
 
             size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
@@ -1858,11 +1859,12 @@ static void* rdss_thread_func(void *params)
             memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
             g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf + unhandled_size;
             g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
-            g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
+            g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf) - unhandled_size;
 
-            iot_dbg("\n!!! receiving buffer is unblocking !!!\n");
+            iot_dbg("\n!!! receiving buffer is full, raw_cursor %d, pdu_cursor %d, rest_size %d, unhandled_size %d!!!\n", g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.pdu_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.rest_size, unhandled_size);
+            //iot_dbg("\n!!! receiving buffer is unblocking !!!\n");
             pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-            iot_dbg("\n!!! receiving buffer is back !!!\n");
+            //iot_dbg("\n!!! receiving buffer is back !!!\n");
             //g_rdss_rx_buf.buf_lock = 0;
         }
     }

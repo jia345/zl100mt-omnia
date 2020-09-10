@@ -4,8 +4,6 @@ START=80
 STOP=90
 
 start() {
-    gcom -d /dev/ttyUSB4 -s /etc/gcom/zl100mt-4g.gcom > /tmp/zl100mt_lte_4g_info
-    gcom -d /dev/ttyUSB9 -s /etc/gcom/zl100mt-zw.gcom > /tmp/zl100mt_lte_z_info
     /usr/sbin/zl100mt-app &
     /usr/sbin/zl100mt-poller &
 }

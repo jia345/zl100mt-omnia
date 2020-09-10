@@ -6,7 +6,7 @@ config system
         option conloglevel '4'
 
 config timeserver ntp
-        list server     '210.72.145.44'
+        list server     '203.107.6.88'
         option enabled 1
         option enable_server '0'
 

@@ -121,7 +121,7 @@ proto_inno_cdc_teardown() {
 	}
 
 	json_get_vars disconnect
-	COMMAND="$disconnect" gcom -d "$device" -s /etc/gcom/runcommand.gcom || {
+	eval COMMAND="$disconnect" gcom -d "$device" -s /etc/gcom/runcommand.gcom || {
 		echo "Failed to disconnect"
 		proto_notify_error "$interface" DISCONNECT_FAILED
 		return 1
