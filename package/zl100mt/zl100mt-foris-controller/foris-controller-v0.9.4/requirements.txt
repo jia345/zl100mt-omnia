@@ -2,6 +2,6 @@ python-prctl
 pbkdf2
 foris-schema
 pytest
-pytest-runner
+#pytest-runner
 foris-controller-testtools
-updater
+#updater

@@ -7,8 +7,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=foris-schema
-PKG_VERSION:=0.5
+PKG_NAME:=vcversioner
+PKG_VERSION:=2.16
 PKG_RELEASE:=1
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 #PKG_SOURCE_PROTO:=git
@@ -18,17 +18,16 @@ PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_LICENSE:=GPL-3.0
 
-PKG_BUILD_DEPENDS:=python-jsonschema/host
-
 include $(INCLUDE_DIR)/package.mk
 $(call include_mk, python-package.mk)
 
 
-define Package/foris-schema
-	TITLE:=foris-schema
-	URL:=https://gitlab.labs.nic.cz/turris/foris-schema
-	DEPENDS:=+python-jsonschema
-	MAINTAINER:=CZ.NIC <packaging@turris.cz>
+define Package/$(PKG_NAME)
+	TITLE:=python-vcversioner
+	CATEGORY:=ZL100MT
+	#URL:=https://gitlab.labs.nic.cz/turris/foris-schema
+	#DEPENDS:=+python-jsonschema
+	#MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
 define Build/Prepare
@@ -36,7 +35,7 @@ define Build/Prepare
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 
-define Package/foris-schema/description
+define Package/$(PKG_NAME)/description
 	Library which validates whether the json matches
 	the protocol use between Foris web and a configuration backend.
 endef
@@ -45,10 +44,10 @@ define Build/Compile
 	$(call Build/Compile/PyMod,,install --prefix=/usr --root=$(PKG_INSTALL_DIR))
 endef
 
-define Package/foris-schema/conffiles
+define Package/$(PKG_NAME)/conffiles
 endef
 
-define Package/foris-schema/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)$(PYTHON_PKG_DIR)/
 	$(CP) \
 		$(PKG_INSTALL_DIR)$(PYTHON_PKG_DIR)/* \
@@ -56,4 +55,4 @@ define Package/foris-schema/install
 endef
 
 
-$(eval $(call BuildPackage,foris-schema))
+$(eval $(call BuildPackage,$(PKG_NAME)))

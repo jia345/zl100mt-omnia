@@ -7,7 +7,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=foris-client
+PKG_NAME:=zl100mt-foris-client
 PKG_VERSION:=0.5
 PKG_RELEASE:=2
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)
@@ -22,10 +22,11 @@ include $(INCLUDE_DIR)/package.mk
 $(call include_mk, python-package.mk)
 
 
-define Package/foris-client
-	TITLE:=foris-client
-	URL:=https://gitlab.labs.nic.cz/turris/foris-client
-	DEPENDS:=+foris-controller
+define Package/$(PKG_NAME)
+	TITLE:=zl100mt-foris-client
+	CATEGORY:=ZL100MT
+	#URL:=https://gitlab.labs.nic.cz/turris/foris-client
+	DEPENDS:=+zl100mt-foris-controller
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
@@ -34,7 +35,7 @@ define Build/Prepare
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 
-define Package/foris-client/description
+define Package/$(PKG_NAME)/description
 	An program/library which is act as a client of foris-controller.
 endef
 
@@ -42,10 +43,10 @@ define Build/Compile
 	$(call Build/Compile/PyMod,,install --prefix=/usr --root=$(PKG_INSTALL_DIR))
 endef
 
-define Package/foris-client/conffiles
+define Package/$(PKG_NAME)/conffiles
 endef
 
-define Package/foris-client/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)
 	$(CP) $(PKG_INSTALL_DIR)/* $(1)/
 	$(INSTALL_BIN) ./files/foris-client-wrapper $(1)/usr/bin/foris-client-wrapper
@@ -53,4 +54,4 @@ define Package/foris-client/install
 endef
 
 
-$(eval $(call BuildPackage,foris-client))
+$(eval $(call BuildPackage,$(PKG_NAME)))

@@ -140,7 +140,8 @@ setup(
         'svupdater',
     ],
     setup_requires=[
-        'pytest-runner',
+        #'pytest-runner',
+        '',
     ],
     tests_require=[
         'pytest',

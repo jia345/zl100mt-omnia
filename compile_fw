@@ -24,13 +24,13 @@ fi
 make_defconfig() {
 	make defconfig "$@"
 	egrep '^(#[[:space:]]+)?CONFIG_KERNEL' configs/common configs/$TARGET_BOARD | sed 's|.*:||' >> ./.config
-	if [ -n "${PKG_BRANCH}" ] && [ "${PKG_BRANCH}" \!= master ] && [ "${PKG_BRANCH}" \!= stable ] && [ "${PKG_BRANCH}" \!= stable-omnia ]; then
-		echo CONFIG_PACKAGE_cznic-repo-keys-test=y >> .config
-		echo CONFIG_PACKAGE_getbranch-test=y >> .config
-	else
-		echo CONFIG_PACKAGE_cznic-repo-keys-test=m >> .config
-		echo CONFIG_PACKAGE_getbranch-deploy=y >> .config
-	fi
+	#if [ -n "${PKG_BRANCH}" ] && [ "${PKG_BRANCH}" \!= master ] && [ "${PKG_BRANCH}" \!= stable ] && [ "${PKG_BRANCH}" \!= stable-omnia ]; then
+	#	echo CONFIG_PACKAGE_cznic-repo-keys-test=y >> .config
+	#	echo CONFIG_PACKAGE_getbranch-test=y >> .config
+	#else
+	#	echo CONFIG_PACKAGE_cznic-repo-keys-test=m >> .config
+	#	echo CONFIG_PACKAGE_getbranch-deploy=y >> .config
+	#fi
 }
 
 if [ -z "$SKIP_FEEDS" ]; then
@@ -65,7 +65,8 @@ fi
 [ -z "$OPENWRT_BRANCH"  ] || PKG_BRANCH="-$OPENWRT_BRANCH"
 [ -n "$REAL_PKG_BRANCH" ] || REAL_PKG_BRANCH="$PKG_BRANCH"
 cat configs/common configs/$TARGET_BOARD | sed -e "s|@BOARD@|$TARGET_BOARD|" -e "s|@BRANCH@|$PKG_BRANCH|" > .config
-[ -n "$BUILD_ALL" ] && echo -e "CONFIG_ALL=y\nCONFIG_SDK=y\nCONFIG_IB=y\nCONFIG_IB_STANDALONE=n\nCONFIG_PACKAGE_ucollect-meta=m" >> .config
+#[ -n "$BUILD_ALL" ] && echo -e "CONFIG_ALL=y\nCONFIG_SDK=y\nCONFIG_IB=y\nCONFIG_IB_STANDALONE=n\nCONFIG_PACKAGE_ucollect-meta=m" >> .config
+[ -n "$BUILD_ALL" ] && echo -e "CONFIG_ALL=y\nCONFIG_SDK=y\nCONFIG_IB=y\nCONFIG_IB_STANDALONE=n" >> .config
 echo CONFIG_ALL_KMODS=y >> .config
 
 [ -n "$USE_CCACHE" ] && echo "CONFIG_CCACHE=y" >> .config

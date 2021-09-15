@@ -7,7 +7,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=foris-controller
+PKG_NAME:=zl100mt-foris-controller
 PKG_VERSION:=0.9.4
 PKG_RELEASE:=1
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)
@@ -22,12 +22,13 @@ include $(INCLUDE_DIR)/package.mk
 $(call include_mk, python-package.mk)
 
 
-define Package/foris-controller
-	TITLE:=foris-controller
-	URL:=https://gitlab.labs.nic.cz/turris/foris-controller
+define Package/$(PKG_NAME)
+	TITLE:=zl100mt-foris-controller
+	CATEGORY:=ZL100MT
+	#URL:=https://gitlab.labs.nic.cz/turris/foris-controller
 	DEPENDS:=\
 		+python-light +python-ubus +python-prctl +python-multiprocessing +python-pbkdf2 \
-		+foris-schema +server-uplink +turris-maintain +updater-ng-supervisor +user_notify \
+		+zl100mt-foris-schema +server-uplink +turris-maintain +user_notify \
 		+l10n_supported +sqm-scripts
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
@@ -37,7 +38,7 @@ define Build/Prepare
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 
-define Package/foris-controller/description
+define Package/$(PKG_NAME)/description
 	An program which is placed in top of a message bus and translates requests to commands for backends.
 endef
 
@@ -45,11 +46,11 @@ define Build/Compile
 	$(call Build/Compile/PyMod,,install --prefix=/usr --root=$(PKG_INSTALL_DIR))
 endef
 
-define Package/foris-controller/conffiles
+define Package/$(PKG_NAME)/conffiles
 /etc/config/foris-controller
 endef
 
-define Package/foris-controller/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)
 	$(CP) $(PKG_INSTALL_DIR)/* $(1)/
 	$(INSTALL_DIR) $(1)/etc/config/
@@ -58,7 +59,7 @@ define Package/foris-controller/install
 	$(INSTALL_BIN) ./files/foris-controller.init $(1)/etc/init.d/foris-controller
 endef
 
-define Package/foris-controller/postinst
+define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -67,11 +68,11 @@ set -x
 }
 endef
 
-define Package/foris-controller/prerm
+define Package/$(PKG_NAME)/prerm
 #!/bin/sh
 set -x
 /etc/init.d/foris-controller stop
 /etc/init.d/foris-controller disable
 endef
 
-$(eval $(call BuildPackage,foris-controller))
+$(eval $(call BuildPackage,$(PKG_NAME)))

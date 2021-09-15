@@ -7,7 +7,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=foris
+PKG_NAME:=zl100mt-foris
 PKG_VERSION:=97.13
 PKG_RELEASE:=1
 #PKG_SOURCE_SUBDIR:=$(PKG_NAME)
@@ -25,17 +25,18 @@ include ./files/foris-translations.mk
 
 $(call include_mk, python-package.mk)
 
-define Package/foris-common
-	TITLE:=foris-common
+define Package/zl100mt-foris-common
+	TITLE:=zl100mt-foris-common
+	CATEGORY:=ZL100MT
 	DEPENDS:=\
 		+python-light +python-bottle +python-bottle-i18n \
 		+python-flup +python-ncclient +python-ubus +nuci +lighttpd +lighttpd-mod-fastcgi \
-		+lighttpd-mod-redirect +lighttpd-mod-setenv +lighttpd-mod-alias +foris-ws \
-		+foris-client
+		+lighttpd-mod-redirect +lighttpd-mod-setenv +lighttpd-mod-alias +zl100mt-foris-ws \
+		+zl100mt-foris-client
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
-define Package/foris-common/description
+define Package/zl100mt-foris-common/description
  Common things required for the foris web apps.
 endef
 
@@ -66,11 +67,11 @@ define Build/Compile
 	$(call Build/Compile/PyMod,,install --prefix=/usr --root="$(PKG_INSTALL_DIR)")
 endef
 
-define Package/foris-common/conffiles
+define Package/zl100mt-foris-common/conffiles
 /etc/config/foris
 endef
 
-define Package/foris-common/install
+define Package/zl100mt-foris-common/install
 	$(INSTALL_DIR) $(1)/etc/lighttpd/conf.d/
 	$(INSTALL_DATA) ./files/foris-root.lighttpd-conf $(1)/etc/lighttpd/conf.d/foris-root.conf
 
@@ -102,45 +103,48 @@ define Package/foris-common/install
 	touch $(1)$(PYTHON_PKG_DIR)/foris/locale/.keep
 endef
 
-define Package/foris-wizard
-	TITLE:=foris-wizard
+define Package/zl100mt-foris-wizard
+	TITLE:=zl100mt-foris-wizard
+	CATEGORY:=ZL100MT
 	DEPENDS:=\
-		+foris-common
+		+zl100mt-foris-common
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
-define Package/foris-wizard/description
+define Package/zl100mt-foris-wizard/description
  Foris wizard webapp.
 endef
 
-define Package/foris-config
-	TITLE:=foris-config
+define Package/zl100mt-foris-config
+	TITLE:=zl100mt-foris-config
+	CATEGORY:=ZL100MT
 	DEPENDS:=\
-		+foris-common +luci
+		+zl100mt-foris-common +luci
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
-define Package/foris-wizard/description
+define Package/zl100mt-foris-wizard/description
  Foris config webapp.
 endef
 
-define Package/foris
-	TITLE:=foris
+define Package/zl100mt-foris
+	TITLE:=zl100mt-foris
+	CATEGORY:=ZL100MT
 	DEPENDS:=\
-		+foris-wizard +foris-config
+		+zl100mt-foris-wizard +zl100mt-foris-config
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
-define Package/foris/description
+define Package/zl100mt-foris/description
  Web administration interface using nuci for communication.
 endef
 
-define Package/foris/install
+define Package/zl100mt-foris/install
 	$(INSTALL_DIR) $(1)$(PYTHON_PKG_DIR)/foris/
 	touch $(1)$(PYTHON_PKG_DIR)/foris/.keep
 endef
 
-define Package/foris-wizard/install
+define Package/zl100mt-foris-wizard/install
 	$(INSTALL_DIR) $(1)/etc/lighttpd/conf.d/
 	$(INSTALL_DATA) ./files/foris-wizard.lighttpd-conf $(1)/etc/lighttpd/conf.d/foris-wizard.conf
 	$(INSTALL_DIR) $(1)/usr/share/foris
@@ -155,7 +159,7 @@ define Package/foris-wizard/install
 		$(1)$(PYTHON_PKG_DIR)/foris/wizard/
 endef
 
-define Package/foris-config/install
+define Package/zl100mt-foris-config/install
 	$(INSTALL_DIR) $(1)/etc/lighttpd/conf.d/
 	$(INSTALL_DATA) ./files/foris-config.lighttpd-conf $(1)/etc/lighttpd/conf.d/foris-config.conf
 	$(INSTALL_DIR) $(1)/usr/share/foris
@@ -170,7 +174,7 @@ define Package/foris-config/install
 		$(1)$(PYTHON_PKG_DIR)/foris/config/
 endef
 
-define Package/foris-common/postinst
+define Package/zl100mt-foris-common/postinst
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -184,14 +188,14 @@ fi
 }
 endef
 
-define Package/foris-common/prerm
+define Package/zl100mt-foris-common/prerm
 #!/bin/sh
 set -x
 /etc/init.d/lighttpd disable
 /etc/init.d/lighttpd stop
 endef
 
-define Package/foris-wizard/postinst
+define Package/zl100mt-foris-wizard/postinst
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -199,7 +203,7 @@ set -x
 }
 endef
 
-define Package/foris-wizard/postrm
+define Package/zl100mt-foris-wizard/postrm
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -207,7 +211,7 @@ set -x
 }
 endef
 
-define Package/foris-config/postinst
+define Package/zl100mt-foris-config/postinst
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -215,7 +219,7 @@ set -x
 }
 endef
 
-define Package/foris-config/postrm
+define Package/zl100mt-foris-config/postrm
 #!/bin/sh
 set -x
 [ -n "$$IPKG_INSTROOT" ] || {
@@ -223,17 +227,18 @@ set -x
 }
 endef
 
-define Package/foris-oldconfig
+define Package/zl100mt-foris-oldconfig
 	TITLE:=foris old config
+	CATEGORY:=ZL100MT
 endef
 
-define Package/foris-oldconfig/description
+define Package/zl100mt-foris-oldconfig/description
  A hack to go through installation from original Certuma image to something
  far newer without crashing the wizard step. Should not be needed during
  normal operation.
 endef
 
-define Package/foris-oldconfig/install
+define Package/zl100mt-foris-oldconfig/install
 	$(INSTALL_DIR) $(1)/etc/foris
 	$(INSTALL_DATA) ./files/foris.conf $(1)/etc/foris/foris-lighttpd-inc.conf
 endef
@@ -257,14 +262,15 @@ endef
 
 # $1 = translation name
 define ForisTranslation
- define Package/foris-l10n-$(1)
+ define Package/zl100mt-foris-l10n-$(1)
 	TITLE:=foris-l10n-$(1)
+	CATEGORY:=ZL100MT
 	DEPENDS:=\
-		+foris
+		+zl100mt-foris
 	MAINTAINER:=CZ.NIC <packaging@turris.cz>
  endef
 
- define Package/foris-l10n-$(1)/install
+ define Package/zl100mt-foris-l10n-$(1)/install
 	$(INSTALL_DIR) $$(1)$(PYTHON_PKG_DIR)/foris/locale/$(1)/LC_MESSAGES
 	$(CP) \
 		$(PKG_INSTALL_DIR)$(PYTHON_PKG_DIR)/foris/locale/$(1)/LC_MESSAGES/*.mo \
@@ -275,13 +281,13 @@ define ForisTranslation
 		$$(1)$(PYTHON_PKG_DIR)/foris/langs/
  endef
 
- define Package/foris-l10n-$(1)/postrm
+ define Package/zl100mt-foris-l10n-$(1)/postrm
 #!/bin/sh
 set -x
 [ -n "$$$${IPKG_INSTROOT}" ] || /etc/init.d/lighttpd restart
  endef
 
- define Package/foris-l10n-$(1)/postinst
+ define Package/zl100mt-foris-l10n-$(1)/postinst
 #!/bin/sh
 set -x
 [ -n "$$$${IPKG_INSTROOT}" ] || /etc/init.d/lighttpd restart
@@ -292,12 +298,12 @@ endef
 # Translation definitions
 $(foreach trans,$(FORIS_TRANSLATIONS),$(eval $(call ForisTranslation,$(trans))))
 
-$(eval $(call BuildPackage,foris))
-$(foreach trans,$(FORIS_TRANSLATIONS),$(eval $(call BuildPackage,foris-l10n-$(trans))))
+$(eval $(call BuildPackage,zl100mt-foris))
+$(foreach trans,$(FORIS_TRANSLATIONS),$(eval $(call BuildPackage,zl100mt-foris-l10n-$(trans))))
 
-$(eval $(call PyPackage,foris))
-$(eval $(call BuildPackage,foris-common))
-$(eval $(call BuildPackage,foris-config))
-$(eval $(call BuildPackage,foris-wizard))
-$(eval $(call BuildPackage,foris-oldconfig))
+$(eval $(call PyPackage,zl100mt-foris))
+$(eval $(call BuildPackage,zl100mt-foris-common))
+$(eval $(call BuildPackage,zl100mt-foris-config))
+$(eval $(call BuildPackage,zl100mt-foris-wizard))
+$(eval $(call BuildPackage,zl100mt-foris-oldconfig))
 $(eval $(call HostBuild))
