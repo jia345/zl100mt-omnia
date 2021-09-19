@@ -46,6 +46,37 @@ class SetPortMappingCmd():
 
 setportmapping = SetPortMappingCmd()
 
+class SetProtoForwardCmd():
+    def __init__(self):
+        self.action = 'setProtoForward'
+        self.default_data = {}
+
+    def implement(self, data, session):
+        print 'set protocol forwarding:: {}'.format(data)
+
+        pfList = data['dat']["ProtoForwardList"]
+        rc = current_state.backend.perform("proto_forward", "update_settings", {"action": "set_proto_forward", "proto_forward_list": pfList})
+        res = {"rc": rc, "errCode": "success", "dat": None}
+        return res
+
+    def get_proto_forward(self):
+        rc = current_state.backend.perform("proto_forward", "get_settings", {})
+        portmaps = []
+        port = 0
+        for redirect in rc["redirects"]:
+            port += 1
+            portmaps.append({
+                "WLanSlot": redirect["src"].replace('_','-').upper(),
+                "WLanPort": redirect["src_dport"],
+                "LanSlot": "LAN%s" % port,  # LanSlot value: LAN1 to LAN3
+                "LanIP": redirect["dest_ip"],
+                "LanPort": redirect["dest_port"],
+                "Desc": redirect["name"] if "name" in redirect else ""
+            })
+        return portmaps
+
+setProtoForward = SetProtoForwardCmd()
+
 class ChannelUpdateCmd() :
     def __init__(self):
         self.action = 'setSlotChannelMapping'
