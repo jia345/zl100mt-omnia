@@ -1,0 +1,8 @@
+{
+    "definitions": {
+        "message": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+        }
+    }
+}

@@ -1,0 +1,140 @@
+{
+    "definitions": {
+        "router_address": {
+            "type": "string",
+            "anyOf": [
+                { "format": "ipv4" },
+                { "format": "ipv6" }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "description": "Trigger reboot action request",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["reboot"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Trigger reboot action reply",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["reboot"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "new_ips": {
+                            "type": "array",
+                            "items": {"$ref": "#/definitions/router_address"}
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["new_ips"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that trigger reboot action was called",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["reboot"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "new_ips": {
+                            "type": "array",
+                            "items": {"$ref": "#/definitions/router_address"}
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["new_ips"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Generate backup action request",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["generate_backup"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Generate backup action reply",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["generate_backup"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "backup": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["backup"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Restore backup action request",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["restore_backup"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "backup": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["backup"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Restore backup action reply",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["restore_backup"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that reboot is required",
+            "properties": {
+                "module": {"enum": ["maintain"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["reboot_required"]}
+            },
+            "additionalProperties": false
+        }
+    ]
+}

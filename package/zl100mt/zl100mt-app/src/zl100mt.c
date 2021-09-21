@@ -77,11 +77,10 @@ typedef struct {
     char latitude[16];
     char longitude[16];
     char altitude[16];
-    char speed_kn[8];
-    char heading[8];
     uint8_t gps_status;
     uint8_t satellite_num;
-    char reserve[2];
+    char speed_kn[32];
+    char heading[32];
 } rnss_info_t;
 
 static rnss_info_t g_rnss_info = {
@@ -90,22 +89,10 @@ static rnss_info_t g_rnss_info = {
     .latitude               = {0},
     .longitude              = {0},
     .altitude               = {0},
-    .speed_kn               = {0},
-    .heading                = {0},
     .gps_status             = 0,
     .satellite_num          = 0,
-};
-
-static rnss_info_t g_rnss_info_prev = {
-    .time_utc               = {0},
-    .date_utc               = {0},
-    .latitude               = {0},
-    .longitude              = {0},
-    .altitude               = {0},
     .speed_kn               = {0},
     .heading                = {0},
-    .gps_status             = 0,
-    .satellite_num          = 0,
 };
 
 typedef struct {
@@ -250,8 +237,8 @@ enum {
 
 static const struct blobmsg_policy send_rdss_txsq_policy[] = {
     [TXSQ_target_sim]       = { .name = "target_sim", .type = BLOBMSG_TYPE_INT32 },
-    [TXSQ_TRANS_TYPE]        = { .name = "trans_type", .type = BLOBMSG_TYPE_STRING },
-    [TXSQ_NEED_ACK]          = { .name = "need_ack", .type = BLOBMSG_TYPE_STRING },
+    [TXSQ_TRANS_TYPE]        = { .name = "trans_type", .type = BLOBMSG_TYPE_STRING }, // TODO
+    [TXSQ_NEED_ACK]          = { .name = "need_ack", .type = BLOBMSG_TYPE_STRING }, // TODO
     [TXSQ_CONTENT]           = { .name = "content_data", .type = BLOBMSG_TYPE_STRING },
 };
 
@@ -378,8 +365,8 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, const char*
     *found = NULL;
 
     char* pdu_list[] = {
-        "$DWSQ", "$TXSQ", "$CKSC", "$ICJC", "$XTZJ", "$SJSC", "$BBDQ", "$GLJC", // TX
-        "$DWXX", "$TXXX", "$FKXX", "$ICXX", "$ZJXX", "$SJXX", "$BBXX", "$GLZK"  // RX
+       "$DWSQ", "$TXSQ", "$CKSC", "$ICJC", "$XTZJ", "$SJSC", "$BBDQ", "$GLJC", // TX
+       "$DWXX", "$TXXX", "$FKXX", "$ICXX", "$ZJXX", "$SJXX", "$BBXX", "$GLZK"  // RX
     };
 
     //if (g_rdss_rx_buf.buf_lock == 1) return -1; // buf is locked, wait...
@@ -417,7 +404,7 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, const char*
         if (*found - buf <=  buf_size - pdu_len) {
             if (0 == memcmp(*found, "$BBXX", 5) || 0 == memcmp(*found, "$TXXX", 5)) { //variable length
                 pdu_len = ((*found)[5] << 8 | (*found)[6]);
-                iot_dbg("pdu_len %d\n", pdu_len);
+    iot_dbg("pdu_len %d\n", pdu_len);
                 if (*found - buf >  buf_size - pdu_len) {
                     *found = NULL;
                     pdu_len = -1;
@@ -449,8 +436,8 @@ static ssize_t rdss_find_first_pdu(const char* buf, size_t buf_size, const char*
 }
 
 static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *obj,
-        struct ubus_request_data *req, const char *method,
-        struct blob_attr *msg)
+                                 struct ubus_request_data *req, const char *method,
+                                 struct blob_attr *msg)
 {
     //struct blob_attr *tb[__GET_GNSS_INFO_MAX];
 
@@ -527,8 +514,8 @@ static int zl100mt_get_gnss_info(struct ubus_context *ctx, struct ubus_object *o
 }
 
 static int zl100mt_set_gnss_target_sim(struct ubus_context *ctx, struct ubus_object *obj,
-        struct ubus_request_data *req, const char *method,
-        struct blob_attr *msg)
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
 {
 
     struct blob_attr *tb[__SET_GNSS_TARGET_SIM_MAX];
@@ -538,8 +525,8 @@ static int zl100mt_set_gnss_target_sim(struct ubus_context *ctx, struct ubus_obj
 
     blob_buf_init(&b, 0);
 
-    if (tb[GNSS_TARGET_SIM]) {
-        target_sim = blobmsg_get_u32(tb[GNSS_TARGET_SIM]);
+	if (tb[GNSS_TARGET_SIM]) {
+		target_sim = blobmsg_get_u32(tb[GNSS_TARGET_SIM]);
         g_bd_inf.target_sim = target_sim;
         iot_cfg_set_int(g_bd_inf.pcfg, IOT_BD_SEC_REMOTE, IOT_BD_KEY_NUMBER, target_sim);
         iot_cfg_sync(g_bd_inf.pcfg);
@@ -554,8 +541,8 @@ static int zl100mt_set_gnss_target_sim(struct ubus_context *ctx, struct ubus_obj
 }
 
 static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *obj,
-        struct ubus_request_data *req, const char *method,
-        struct blob_attr *msg)
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
 {
     struct blob_attr *tb[__SEND_RDSS_TXSQ_MAX];
     const char* data = NULL;
@@ -563,14 +550,14 @@ static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *
     blobmsg_parse(send_rdss_txsq_policy, ARRAY_SIZE(send_rdss_txsq_policy), tb, blob_data(msg), blob_len(msg));
     blob_buf_init(&b, 0);
 
-    if (tb[TXSQ_target_sim]) {
-        target_sim = blobmsg_get_u32(tb[TXSQ_target_sim]);
+	if (tb[TXSQ_target_sim]) {
+		target_sim = blobmsg_get_u32(tb[TXSQ_target_sim]);
     } else {
-        target_sim = g_bd_inf.target_sim;
+		target_sim = g_bd_inf.target_sim;
     }
 
     if (tb[TXSQ_CONTENT]) {
-        data = blobmsg_get_string(tb[TXSQ_CONTENT]);
+		data = blobmsg_get_string(tb[TXSQ_CONTENT]);
 
         char txbuf[256] = {0};
         rdss_msg_txsq_t msg = {
@@ -611,1535 +598,1490 @@ static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *
         } else {
             blobmsg_add_string(&b, "result", "fail, please make sure the buffer is long enough");
         }
-        } else {
-            blobmsg_add_string(&b, "result", "request to send nothing, abort sending...");
-        }
-
-        ubus_send_reply(ctx, req, b.head);
-
-        return 0;
+    } else {
+        blobmsg_add_string(&b, "result", "request to send nothing, abort sending...");
     }
 
-    static int zl100mt_send_rdss_icjc(struct ubus_context *ctx, struct ubus_object *obj,
-            struct ubus_request_data *req, const char *method,
-            struct blob_attr *msg)
-    {
-        blob_buf_init(&b, 0);
+    ubus_send_reply(ctx, req, b.head);
 
-        char txbuf[32] = {0};
-        size_t txlen = compose_rdss_icjc_pdu(txbuf, sizeof(txbuf));
-        //const char* resp_pdu = rdss_send_pdu(RDSS_ICJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-        pthread_mutex_lock(&g_rdss_rw_lock);
-        ssize_t ret = rdss_send_pdu(txbuf, txlen);
-        //if (NULL == resp_pdu) {
-        if (ret < 0) {
-            blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    return 0;
+}
+
+static int zl100mt_send_rdss_icjc(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+    blob_buf_init(&b, 0);
+
+    char txbuf[32] = {0};
+    size_t txlen = compose_rdss_icjc_pdu(txbuf, sizeof(txbuf));
+    //const char* resp_pdu = rdss_send_pdu(RDSS_ICJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
+    ssize_t ret = rdss_send_pdu(txbuf, txlen);
+    //if (NULL == resp_pdu) {
+    if (ret < 0) {
+        blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    } else {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ICXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
+            blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
+            g_beidou_status = DISCONNECTED;
         } else {
-            char rxbuf[512] = {0};
-            ssize_t rxlen = rdss_recv_pdu(RDSS_ICXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-            if (rxlen <= 0) {
-                blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
-                g_beidou_status = DISCONNECTED;
-            } else {
-                uint32_t local_sim = (
-                        ((rxbuf[7] << 16)
-                         | (rxbuf[8] << 8)
-                         | rxbuf[9])
-                        & 0x1FFFFF);
-                if (g_bd_inf.local_sim != local_sim) {
-                    g_bd_inf.local_sim = local_sim;
-                    iot_cfg_set_int(g_bd_inf.pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, g_bd_inf.local_sim);
-                    iot_cfg_sync(g_bd_inf.pcfg);
-                    iot_dbg("write down local_sim: %d", local_sim);
-                }
-                blobmsg_add_string(&b, "result", "succeed");
-                blobmsg_add_u32(&b, "local_sim", g_bd_inf.local_sim);
-                g_beidou_status = CONNECTED;
+            uint32_t local_sim = (
+                    ((rxbuf[7] << 16)
+                    | (rxbuf[8] << 8)
+                    | rxbuf[9])
+                    & 0x1FFFFF);
+            if (g_bd_inf.local_sim != local_sim) {
+                g_bd_inf.local_sim = local_sim;
+                iot_cfg_set_int(g_bd_inf.pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, g_bd_inf.local_sim);
+                iot_cfg_sync(g_bd_inf.pcfg);
+                iot_dbg("write down local_sim: %d", local_sim);
             }
+            blobmsg_add_string(&b, "result", "succeed");
+            blobmsg_add_u32(&b, "local_sim", g_bd_inf.local_sim);
+            g_beidou_status = CONNECTED;
         }
-        pthread_mutex_unlock(&g_rdss_rw_lock);
-
-        ubus_send_reply(ctx, req, b.head);
-
-        return 0;
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
-    static int zl100mt_send_rdss_gljc(struct ubus_context *ctx, struct ubus_object *obj,
-            struct ubus_request_data *req, const char *method,
-            struct blob_attr *msg)
-    {
-        blob_buf_init(&b, 0);
+    ubus_send_reply(ctx, req, b.head);
 
-        char txbuf[32] = {0};
-        uint8_t freq = 0;
-        size_t txlen = compose_rdss_gljc_pdu(txbuf, sizeof(txbuf), freq);
-        //const char* resp_pdu = rdss_send_pdu(RDSS_GLJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-        pthread_mutex_lock(&g_rdss_rw_lock);
-        ssize_t ret = rdss_send_pdu(txbuf, txlen);
-        //if (NULL == resp_pdu) {
-        if (ret < 0) {
-            blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    return 0;
+}
+
+static int zl100mt_send_rdss_gljc(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+    blob_buf_init(&b, 0);
+
+    char txbuf[32] = {0};
+    uint8_t freq = 0;
+    size_t txlen = compose_rdss_gljc_pdu(txbuf, sizeof(txbuf), freq);
+    //const char* resp_pdu = rdss_send_pdu(RDSS_GLJC, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
+    ssize_t ret = rdss_send_pdu(txbuf, txlen);
+    //if (NULL == resp_pdu) {
+    if (ret < 0) {
+        blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    } else {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_GLZK, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
+            blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
-            char rxbuf[512] = {0};
-            ssize_t rxlen = rdss_recv_pdu(RDSS_GLZK, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-            if (rxlen <= 0) {
-                blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
-            } else {
-                uint8_t power_beam1 = rxbuf[10];
-                uint8_t power_beam2 = rxbuf[11];
-                uint8_t power_beam3 = rxbuf[12];
-                uint8_t power_beam4 = rxbuf[13];
-                uint8_t power_beam5 = rxbuf[14];
-                uint8_t power_beam6 = rxbuf[15];
-                blobmsg_add_string(&b, "result", "succeed");
-                char tmp[16] = {0};
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam1);
-                blobmsg_add_string(&b, "power_beam1", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam2);
-                blobmsg_add_string(&b, "power_beam2", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam3);
-                blobmsg_add_string(&b, "power_beam3", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam4);
-                blobmsg_add_string(&b, "power_beam4", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam5);
-                blobmsg_add_string(&b, "power_beam5", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam6);
-                blobmsg_add_string(&b, "power_beam6", tmp);
-            }
+            uint8_t power_beam1 = rxbuf[10];
+            uint8_t power_beam2 = rxbuf[11];
+            uint8_t power_beam3 = rxbuf[12];
+            uint8_t power_beam4 = rxbuf[13];
+            uint8_t power_beam5 = rxbuf[14];
+            uint8_t power_beam6 = rxbuf[15];
+            blobmsg_add_string(&b, "result", "succeed");
+            char tmp[16] = {0};
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam1);
+            blobmsg_add_string(&b, "power_beam1", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam2);
+            blobmsg_add_string(&b, "power_beam2", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam3);
+            blobmsg_add_string(&b, "power_beam3", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam4);
+            blobmsg_add_string(&b, "power_beam4", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam5);
+            blobmsg_add_string(&b, "power_beam5", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam6);
+            blobmsg_add_string(&b, "power_beam6", tmp);
         }
-        pthread_mutex_unlock(&g_rdss_rw_lock);
-
-        ubus_send_reply(ctx, req, b.head);
-
-        return 0;
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
-    static int zl100mt_send_rdss_xtzj(struct ubus_context *ctx, struct ubus_object *obj,
-            struct ubus_request_data *req, const char *method,
-            struct blob_attr *msg)
-    {
-        blob_buf_init(&b, 0);
+    ubus_send_reply(ctx, req, b.head);
 
-        char txbuf[32] = {0};
-        uint8_t freq = 0;
-        size_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), freq);
-        //const char* resp_pdu = rdss_send_pdu(RDSS_XTZJ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-        pthread_mutex_lock(&g_rdss_rw_lock);
-        ssize_t ret = rdss_send_pdu(txbuf, txlen);
-        if (ret < 0) {
-            blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    return 0;
+}
+
+static int zl100mt_send_rdss_xtzj(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+    blob_buf_init(&b, 0);
+
+    char txbuf[32] = {0};
+    uint8_t freq = 0;
+    size_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), freq);
+    //const char* resp_pdu = rdss_send_pdu(RDSS_XTZJ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
+    ssize_t ret = rdss_send_pdu(txbuf, txlen);
+    if (ret < 0) {
+        blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    } else {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
+            blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
-            char rxbuf[512] = {0};
-            ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-            if (rxlen <= 0) {
-                blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
-            } else {
-                uint8_t ic_status = rxbuf[10];
-                uint8_t hw_status = rxbuf[11];
-                uint8_t battery_status = rxbuf[12];
-                uint8_t station_status = rxbuf[13];
-                uint8_t power_beam1 = rxbuf[14];
-                uint8_t power_beam2 = rxbuf[15];
-                uint8_t power_beam3 = rxbuf[16];
-                uint8_t power_beam4 = rxbuf[17];
-                uint8_t power_beam5 = rxbuf[18];
-                uint8_t power_beam6 = rxbuf[19];
-                blobmsg_add_string(&b, "result", "succeed");
-                char tmp[16] = {0};
-                snprintf(tmp, sizeof(tmp), "0x%x", ic_status);
-                blobmsg_add_string(&b, "ic_status", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", hw_status);
-                blobmsg_add_string(&b, "hw_status", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", battery_status);
-                blobmsg_add_string(&b, "battery_status", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", station_status);
-                blobmsg_add_string(&b, "station_status", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam1);
-                blobmsg_add_string(&b, "power_beam1", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam2);
-                blobmsg_add_string(&b, "power_beam2", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam3);
-                blobmsg_add_string(&b, "power_beam3", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam4);
-                blobmsg_add_string(&b, "power_beam4", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam5);
-                blobmsg_add_string(&b, "power_beam5", tmp);
-                snprintf(tmp, sizeof(tmp), "0x%x", power_beam6);
-                blobmsg_add_string(&b, "power_beam6", tmp);
-            }
+            uint8_t ic_status = rxbuf[10];
+            uint8_t hw_status = rxbuf[11];
+            uint8_t battery_status = rxbuf[12];
+            uint8_t station_status = rxbuf[13];
+            uint8_t power_beam1 = rxbuf[14];
+            uint8_t power_beam2 = rxbuf[15];
+            uint8_t power_beam3 = rxbuf[16];
+            uint8_t power_beam4 = rxbuf[17];
+            uint8_t power_beam5 = rxbuf[18];
+            uint8_t power_beam6 = rxbuf[19];
+            blobmsg_add_string(&b, "result", "succeed");
+            char tmp[16] = {0};
+            snprintf(tmp, sizeof(tmp), "0x%x", ic_status);
+            blobmsg_add_string(&b, "ic_status", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", hw_status);
+            blobmsg_add_string(&b, "hw_status", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", battery_status);
+            blobmsg_add_string(&b, "battery_status", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", station_status);
+            blobmsg_add_string(&b, "station_status", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam1);
+            blobmsg_add_string(&b, "power_beam1", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam2);
+            blobmsg_add_string(&b, "power_beam2", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam3);
+            blobmsg_add_string(&b, "power_beam3", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam4);
+            blobmsg_add_string(&b, "power_beam4", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam5);
+            blobmsg_add_string(&b, "power_beam5", tmp);
+            snprintf(tmp, sizeof(tmp), "0x%x", power_beam6);
+            blobmsg_add_string(&b, "power_beam6", tmp);
         }
-        pthread_mutex_unlock(&g_rdss_rw_lock);
-
-        ubus_send_reply(ctx, req, b.head);
-
-        return 0;
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
-    static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *obj,
-            struct ubus_request_data *req, const char *method,
-            struct blob_attr *msg)
-    {
-        blob_buf_init(&b, 0);
+    ubus_send_reply(ctx, req, b.head);
 
-        char txbuf[32] = {0};
-        size_t txlen = compose_rdss_bbdq_pdu(txbuf, sizeof(txbuf));
-        //const char* resp_pdu = rdss_send_pdu(RDSS_BBDQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-        pthread_mutex_lock(&g_rdss_rw_lock);
-        ssize_t ret = rdss_send_pdu(txbuf, txlen);
-        if (ret < 0) {
-            blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    return 0;
+}
+
+static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+    blob_buf_init(&b, 0);
+
+    char txbuf[32] = {0};
+    size_t txlen = compose_rdss_bbdq_pdu(txbuf, sizeof(txbuf));
+    //const char* resp_pdu = rdss_send_pdu(RDSS_BBDQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+    pthread_mutex_lock(&g_rdss_rw_lock);
+    ssize_t ret = rdss_send_pdu(txbuf, txlen);
+    if (ret < 0) {
+        blobmsg_add_string(&b, "result", ERRMSG_SEND_FAIL);
+    } else {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_BBXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen <= 0) {
+            blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
         } else {
-            char rxbuf[512] = {0};
-            ssize_t rxlen = rdss_recv_pdu(RDSS_BBXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-            if (rxlen <= 0) {
-                blobmsg_add_string(&b, "result", ERRMSG_NO_RESPONSE);
-            } else {
-                char tmp[256] = {0};
-                size_t max_buf_size = sizeof(tmp) - 1;
-                size_t version_len = ((rxbuf[5] << 8) | rxbuf[6]) - 11;
-                size_t tmp_size = version_len > max_buf_size ? max_buf_size : version_len;
-                strncpy(tmp, &(rxbuf[10]), tmp_size);
-                blobmsg_add_string(&b, "result", "succeed");
-                blobmsg_add_string(&b, "version", tmp);
-            }
+            char tmp[256] = {0};
+            size_t max_buf_size = sizeof(tmp) - 1;
+            size_t version_len = ((rxbuf[5] << 8) | rxbuf[6]) - 11;
+            size_t tmp_size = version_len > max_buf_size ? max_buf_size : version_len;
+            strncpy(tmp, &(rxbuf[10]), tmp_size);
+            blobmsg_add_string(&b, "result", "succeed");
+            blobmsg_add_string(&b, "version", tmp);
         }
-        pthread_mutex_unlock(&g_rdss_rw_lock);
-
-        ubus_send_reply(ctx, req, b.head);
-
-        return 0;
     }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
 
-    static const struct ubus_method zl100mt_methods[] = {
-        UBUS_METHOD("get_gnss_info", zl100mt_get_gnss_info, get_gnss_info_policy),
-        UBUS_METHOD("set_gnss_target_sim", zl100mt_set_gnss_target_sim, set_gnss_target_sim_policy),
-        UBUS_METHOD("send_rdss_txsq", zl100mt_send_rdss_txsq, send_rdss_txsq_policy),
-        UBUS_METHOD("send_rdss_icjc", zl100mt_send_rdss_icjc, send_rdss_icjc_policy),
-        UBUS_METHOD("send_rdss_gljc", zl100mt_send_rdss_gljc, send_rdss_gljc_policy),
-        UBUS_METHOD("send_rdss_xtzj", zl100mt_send_rdss_xtzj, send_rdss_xtzj_policy),
-        UBUS_METHOD("send_rdss_bbdq", zl100mt_send_rdss_bbdq, send_rdss_bbdq_policy),
-    };
+    ubus_send_reply(ctx, req, b.head);
 
-    static struct ubus_object_type zl100mt_object_type = UBUS_OBJECT_TYPE("zl100mt", zl100mt_methods);
+    return 0;
+}
 
-    static struct ubus_object zl100mt_object = {
-        .name = "zl100mt",
-        .type = &zl100mt_object_type,
-        .methods = zl100mt_methods,
-        .n_methods = ARRAY_SIZE(zl100mt_methods),
-    };
+static const struct ubus_method zl100mt_methods[] = {
+    UBUS_METHOD("get_gnss_info", zl100mt_get_gnss_info, get_gnss_info_policy),
+    UBUS_METHOD("set_gnss_target_sim", zl100mt_set_gnss_target_sim, set_gnss_target_sim_policy),
+    UBUS_METHOD("send_rdss_txsq", zl100mt_send_rdss_txsq, send_rdss_txsq_policy),
+    UBUS_METHOD("send_rdss_icjc", zl100mt_send_rdss_icjc, send_rdss_icjc_policy),
+    UBUS_METHOD("send_rdss_gljc", zl100mt_send_rdss_gljc, send_rdss_gljc_policy),
+    UBUS_METHOD("send_rdss_xtzj", zl100mt_send_rdss_xtzj, send_rdss_xtzj_policy),
+    UBUS_METHOD("send_rdss_bbdq", zl100mt_send_rdss_bbdq, send_rdss_bbdq_policy),
+};
 
-    //#if !(BD_DBG)
+static struct ubus_object_type zl100mt_object_type = UBUS_OBJECT_TYPE("zl100mt", zl100mt_methods);
+
+static struct ubus_object zl100mt_object = {
+    .name = "zl100mt",
+    .type = &zl100mt_object_type,
+    .methods = zl100mt_methods,
+    .n_methods = ARRAY_SIZE(zl100mt_methods),
+};
+
+//#if !(BD_DBG)
 #if 0
-    /*
-     * close all fds but 'exclude_fd'
-     */
-    static void close_allfd(int exlude_fd)
-    {
-        int tmp;
-        struct rlimit rl;
+/*
+ * close all fds but 'exclude_fd'
+ */
+static void close_allfd(int exlude_fd)
+{
+    int tmp;
+    struct rlimit rl;
 
-        if (getrlimit(RLIMIT_NOFILE, &rl) < 0) {
-            fprintf(stderr, "Failed to get rlimit, exit!\n");
-            exit(1);
-        }
-
-        if (rl.rlim_max == RLIM_INFINITY)
-            rl.rlim_max = 1024;
-
-        for (tmp = 0; tmp < rl.rlim_max; tmp++) {
-            if (tmp != exlude_fd)
-                close(tmp);
-        }
+    if (getrlimit(RLIMIT_NOFILE, &rl) < 0) {
+        fprintf(stderr, "Failed to get rlimit, exit!\n");
+        exit(1);
     }
 
-    /*
-     *
-     * open pid file, lock it, write in pid, keep it open.
-     *
-     * This func keep a unique daemon. If it is already running, the pid file is
-     * locked and this func will return failure.
-     *
-     * Return:
-     *     >=0  fd of the opened pid file
-     *     <0   failed
-     */
-    static int lock_pid(void)
-    {
-        int fd = -1;
-        struct flock fl;
-        pid_t my_pid;
-        char buf[16];
-        int err = 1;
+    if (rl.rlim_max == RLIM_INFINITY)
+        rl.rlim_max = 1024;
+
+    for (tmp = 0; tmp < rl.rlim_max; tmp++) {
+        if (tmp != exlude_fd)
+            close(tmp);
+    }
+}
+
+/*
+ *
+ * open pid file, lock it, write in pid, keep it open.
+ *
+ * This func keep a unique daemon. If it is already running, the pid file is
+ * locked and this func will return failure.
+ *
+ * Return:
+ *     >=0  fd of the opened pid file
+ *     <0   failed
+ */
+static int lock_pid(void)
+{
+    int fd = -1;
+    struct flock fl;
+    pid_t my_pid;
+    char buf[16];
+    int err = 1;
 
 
-        fd = open(IOT_BD_PID_PATH, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRGRP | S_IROTH);
-        if (fd < 0) {
-            fprintf(stderr, "Failed to open pid file: %s\n", strerror(errno));
-            goto out;
-        }
+    fd = open(IOT_BD_PID_PATH, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRGRP | S_IROTH);
+    if (fd < 0) {
+        fprintf(stderr, "Failed to open pid file: %s\n", strerror(errno));
+        goto out;
+    }
 
+    fl.l_type = F_WRLCK;
+    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+    fl.l_pid = 0;
+
+    if (fcntl(fd, F_GETLK, &fl) < 0) {
+        fprintf(stderr, "Failed to get lock state: %s!\n", strerror(errno));
+        goto out;
+    }
+
+    if (fl.l_type == F_UNLCK) {
         fl.l_type = F_WRLCK;
-        fl.l_start = 0;
-        fl.l_whence = SEEK_SET;
-        fl.l_len = 0;
-        fl.l_pid = 0;
-
-        if (fcntl(fd, F_GETLK, &fl) < 0) {
-            fprintf(stderr, "Failed to get lock state: %s!\n", strerror(errno));
+        if (fcntl(fd, F_SETLK, &fl)) {
+            fprintf(stderr, "Failed to lock pid file: %s\n", strerror(errno));
             goto out;
         }
+    } else {
+        fprintf(stderr, "Pid file already locked!\n");
+        goto out;
+    }
 
-        if (fl.l_type == F_UNLCK) {
-            fl.l_type = F_WRLCK;
-            if (fcntl(fd, F_SETLK, &fl)) {
-                fprintf(stderr, "Failed to lock pid file: %s\n", strerror(errno));
-                goto out;
-            }
-        } else {
-            fprintf(stderr, "Pid file already locked!\n");
-            goto out;
-        }
+    if (ftruncate(fd, 0)) {
+        fprintf(stderr, "Failed to truncate pid file: %s\n", strerror(errno));
+        goto out;
+    }
 
-        if (ftruncate(fd, 0)) {
-            fprintf(stderr, "Failed to truncate pid file: %s\n", strerror(errno));
-            goto out;
-        }
-
-        my_pid = getpid();
-        sprintf(buf, "%d", (int)my_pid);
-
-        if (write(fd, buf, strlen(buf)) < 0) {
-            fprintf(stderr, "Failed to write pid file: %s\n", strerror(errno));
-            goto out;
-        }
-        /* don't close pid file to keep it locked */
-        err = 0;
+    my_pid = getpid();
+    sprintf(buf, "%d", (int)my_pid);
+    
+    if (write(fd, buf, strlen(buf)) < 0) {
+        fprintf(stderr, "Failed to write pid file: %s\n", strerror(errno));
+        goto out;
+    }
+    /* don't close pid file to keep it locked */
+    err = 0;
 
 out:
-        if (err) {
-            if (fd >= 0) {
-                close(fd);
-                fd = -1;
-            }
+    if (err) {
+        if (fd >= 0) {
+            close(fd);
+            fd = -1;
         }
-        return fd;
     }
+    return fd;
+}
 
-    /*
-     * send str 'buf1' to syslog with priority 'pri', whose value is one of:
-     *
-     *     LOG_EMERG    LOG_ALERT   LOG_CRIT  LOG_ERR
-     *     LOG_WARNING  LOG_NOTICE  LOG_INFO  LOG_INFO
-     *
-     * Our iothub uses only 3 of them, 'err' / 'info' / 'debug'.
-     */
-    static void iot_log(int pri, const char *buf1)
-    {
-        syslog(LOG_LOCAL7 | pri, "%s", buf1);
-    }
+/*
+ * send str 'buf1' to syslog with priority 'pri', whose value is one of:
+ *
+ *     LOG_EMERG    LOG_ALERT   LOG_CRIT  LOG_ERR
+ *     LOG_WARNING  LOG_NOTICE  LOG_INFO  LOG_INFO
+ *
+ * Our iothub uses only 3 of them, 'err' / 'info' / 'debug'.
+ */
+static void iot_log(int pri, const char *buf1)
+{
+	syslog(LOG_LOCAL7 | pri, "%s", buf1);
+}
 #else
-    static void iot_log(int pri, const char *buf1)
-    {
-        //printf("%s\n", buf1);
-        syslog(LOG_LOCAL7 | pri, "%s", buf1);
-    }
+static void iot_log(int pri, const char *buf1)
+{
+    //printf("%s\n", buf1);
+	syslog(LOG_LOCAL7 | pri, "%s", buf1);
+}
 #endif
 
-    /*
-     * write to "/var/log/iothub.err"
-     */
-    void iot_err(const char *format, ...)
-    {
-        va_list ap;
-        char buf[512];
+/*
+ * write to "/var/log/iothub.err"
+ */
+void iot_err(const char *format, ...)
+{
+	va_list ap;
+	char buf[512];
 
-        va_start(ap, format);
-        vsnprintf(buf, sizeof(buf), (const char *)format, ap);
-        va_end(ap);
+	va_start(ap, format);
+	vsnprintf(buf, sizeof(buf), (const char *)format, ap);
+	va_end(ap);
 
-        iot_log(LOG_ERR, buf);
-    }
-    /*
-     * write to "/var/log/iothub.inf"
-     */
-    void iot_inf(const char *format, ...)
-    {
-        va_list ap;
-        char buf[512];
+	iot_log(LOG_ERR, buf);
+}
+/*
+ * write to "/var/log/iothub.inf"
+ */
+void iot_inf(const char *format, ...)
+{
+    va_list ap;
+    char buf[512];
 
-        va_start(ap, format);
-        vsnprintf(buf, sizeof(buf), (const char *)format, ap);
-        va_end(ap);
+    va_start(ap, format);
+    vsnprintf(buf, sizeof(buf), (const char *)format, ap);
+    va_end(ap);
 
-        iot_log(LOG_INFO, buf);
-    }
-    /*
-     * write to "/var/log/iothub.dbg"
-     */
-    void iot_dbg(const char *format, ...)
-    {
-        va_list ap;
-        char buf[512];
+    iot_log(LOG_INFO, buf);
+}
+/*
+ * write to "/var/log/iothub.dbg"
+ */
+void iot_dbg(const char *format, ...)
+{
+    va_list ap;
+    char buf[512];
 
-        va_start(ap, format);
-        vsnprintf(buf, sizeof(buf), (const char *)format, ap);
-        va_end(ap);
+    va_start(ap, format);
+    vsnprintf(buf, sizeof(buf), (const char *)format, ap);
+    va_end(ap);
 
-        iot_log(LOG_DEBUG, buf);
-    }
-    /*
-     * Log one dbg line: values of each byte in 'buf', prefixed with 'label'.
-     * The values are in uppercase hex format, delimited by a space.
-     */
-    void iot_logbuf(char *label, unsigned char *buf, int len)
-    {
-        int i;
-        char *tmp = NULL;
+    iot_log(LOG_DEBUG, buf);
+}
+/*
+ * Log one dbg line: values of each byte in 'buf', prefixed with 'label'.
+ * The values are in uppercase hex format, delimited by a space.
+ */
+void iot_logbuf(char *label, unsigned char *buf, int len)
+{
+	int i;
+    char *tmp = NULL;
 
-        if (g_bd_inf.debug_mode) {
-            if ((tmp = (char *)malloc(strlen(label) + (3 * len) + 1))) {
-                if (label)
-                    sprintf(tmp, "%s", label);
+    if (g_bd_inf.debug_mode) {
+        if ((tmp = (char *)malloc(strlen(label) + (3 * len) + 1))) {
+            if (label)
+                sprintf(tmp, "%s", label);
 
-                for (i = 0; i < len; i++)
-                    sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
+            for (i = 0; i < len; i++)
+                sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
 
-                tmp[strlen(tmp)] = 0;
-                iot_dbg("%s", tmp);
+            tmp[strlen(tmp)] = 0;
+            iot_dbg("%s", tmp);
 
-                IOT_FREE_AND_NULL(tmp);
-            }
+            IOT_FREE_AND_NULL(tmp);
         }
     }
+}
 
 #if 0
-    static void encrypt(unsigned char* buf, int len) {
-        int i = 0;
-        for (i = 0; i < len; i++) {
-            buf[i] ^= magic_key;
-        }
+static void encrypt(unsigned char* buf, int len) {
+    int i = 0;
+    for (i = 0; i < len; i++) {
+        buf[i] ^= magic_key;
     }
+}
 
-    static void decrypt(unsigned char* buf, int len) {
-        int i = 0;
-        for (i = 0; i < len; i++) {
-            buf[i] ^= magic_key;
-        }
+static void decrypt(unsigned char* buf, int len) {
+    int i = 0;
+    for (i = 0; i < len; i++) {
+        buf[i] ^= magic_key;
     }
+}
 #endif
 
-    /*
-     * close application upon (SIGINT / SIGTERM / SIGHUP)
-     */
-    static void sig_handler(int sig)
-    {
-        g_cancelled = sig;
+/*
+ * close application upon (SIGINT / SIGTERM / SIGHUP)
+ */
+static void sig_handler(int sig)
+{
+	g_cancelled = sig;
+}
+
+static void set_sighandler(void)
+{
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = sig_handler;
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+}
+
+static speed_t get_termios_bdrate(int bdrate)
+{
+    speed_t termios_bdrate = 0;
+    int number;
+    int i;
+
+    number = (int)(sizeof(g_baud_rates) / sizeof(g_baud_rates[0]));
+    for (i = 0; i < number; i++) {
+        if (bdrate == g_baud_rates[i].baud_rate) {
+            termios_bdrate = g_baud_rates[i].termios_val;
+            break;
+        }
     }
 
-    static void set_sighandler(void)
-    {
-        struct sigaction sa;
-
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_flags = SA_NOCLDSTOP;
-        sa.sa_handler = sig_handler;
-        sigaction(SIGINT, &sa, NULL);
-        sigaction(SIGTERM, &sa, NULL);
-        sigaction(SIGHUP, &sa, NULL);
+    if (i == number) {
+        iot_err("Err: invalid baudrate=%d, use default 115200", bdrate);
+        termios_bdrate = B115200;
     }
 
-    static speed_t get_termios_bdrate(int bdrate)
-    {
-        speed_t termios_bdrate = 0;
-        int number;
-        int i;
+    return termios_bdrate;
+}
 
-        number = (int)(sizeof(g_baud_rates) / sizeof(g_baud_rates[0]));
-        for (i = 0; i < number; i++) {
-            if (bdrate == g_baud_rates[i].baud_rate) {
-                termios_bdrate = g_baud_rates[i].termios_val;
-                break;
-            }
-        }
+static int init_bdserial(BD_INFO *pinf)
+{
+    int ret = -1;
+    speed_t rdss_bdrate;
+    speed_t rnss_bdrate;
+    struct termios tms;
 
-        if (i == number) {
-            iot_err("Err: invalid baudrate=%d, use default 115200", bdrate);
-            termios_bdrate = B115200;
-        }
+    rdss_bdrate = get_termios_bdrate(pinf->rdss_baudrate);
+    rnss_bdrate = get_termios_bdrate(pinf->rnss_baudrate);
 
-        return termios_bdrate;
+    // RDSS
+    pinf->rdss_ttyfd = open(pinf->rdss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (pinf->rdss_ttyfd < 0) {
+        iot_err("Err: open %s. %s", pinf->rdss_ttypath, strerror(errno));
+        goto out;
+    }
+    fcntl(pinf->rdss_ttyfd, F_SETFL, 0);
+
+    tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
+    if (tcgetattr(pinf->rdss_ttyfd, &tms)) {
+        iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
+        goto out;
     }
 
-    static int init_bdserial(BD_INFO *pinf)
-    {
-        int ret = -1;
-        speed_t rdss_bdrate;
-        speed_t rnss_bdrate;
-        struct termios tms;
+    tms.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXOFF | IUTF8);
+    tms.c_oflag &= ~OPOST;
+    tms.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    tms.c_cflag &= ~(CSIZE | PARENB | CRTSCTS | CSTOPB);
+    tms.c_cflag |= CS8 | CLOCAL | CREAD;
+    cfsetispeed(&tms, rdss_bdrate);
+    cfsetospeed(&tms, rdss_bdrate);
 
-        rdss_bdrate = get_termios_bdrate(pinf->rdss_baudrate);
-        rnss_bdrate = get_termios_bdrate(pinf->rnss_baudrate);
+    tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
+    tcsetattr(pinf->rdss_ttyfd, TCSANOW, &tms);
 
-        // RDSS
-        pinf->rdss_ttyfd = open(pinf->rdss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (pinf->rdss_ttyfd < 0) {
-            iot_err("Err: open %s. %s", pinf->rdss_ttypath, strerror(errno));
-            goto out;
-        }
-        fcntl(pinf->rdss_ttyfd, F_SETFL, 0);
+    // RNSS
+    //pinf->rnss_ttyfd = open(pinf->rnss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    pinf->rnss_ttyfd = open(pinf->rnss_ttypath, O_RDWR | O_NOCTTY);
+    if (pinf->rnss_ttyfd < 0) {
+        iot_err("Err: open %s. %s", pinf->rnss_ttypath, strerror(errno));
+        goto out;
+    }
+    fcntl(pinf->rnss_ttyfd, F_SETFL, 0);
 
-        tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
-        if (tcgetattr(pinf->rdss_ttyfd, &tms)) {
-            iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
-            goto out;
-        }
+    tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
+    if (tcgetattr(pinf->rnss_ttyfd, &tms)) {
+        iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
+        goto out;
+    }
 
-        tms.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXOFF | IUTF8);
-        tms.c_oflag &= ~OPOST;
-        tms.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-        tms.c_cflag &= ~(CSIZE | PARENB | CRTSCTS | CSTOPB);
-        tms.c_cflag |= CS8 | CLOCAL | CREAD;
-        cfsetispeed(&tms, rdss_bdrate);
-        cfsetospeed(&tms, rdss_bdrate);
+    tms.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXOFF | IUTF8);
+    tms.c_oflag &= ~OPOST;
+    tms.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+    tms.c_cflag &= ~(CSIZE | PARENB | CRTSCTS | CSTOPB);
+    tms.c_cflag |= CS8 | CLOCAL | CREAD;
+    cfsetispeed(&tms, rnss_bdrate);
+    cfsetospeed(&tms, rnss_bdrate);
 
-        tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
-        tcsetattr(pinf->rdss_ttyfd, TCSANOW, &tms);
+    tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
+    tcsetattr(pinf->rnss_ttyfd, TCSANOW, &tms);
 
-        // RNSS
-        //pinf->rnss_ttyfd = open(pinf->rnss_ttypath, O_RDWR | O_NOCTTY | O_NONBLOCK);
-        pinf->rnss_ttyfd = open(pinf->rnss_ttypath, O_RDWR | O_NOCTTY);
-        if (pinf->rnss_ttyfd < 0) {
-            iot_err("Err: open %s. %s", pinf->rnss_ttypath, strerror(errno));
-            goto out;
-        }
-        fcntl(pinf->rnss_ttyfd, F_SETFL, 0);
-
-        tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
-        if (tcgetattr(pinf->rnss_ttyfd, &tms)) {
-            iot_err("Err: tcgetattr %s. %s", pinf->rdss_ttypath, strerror(errno));
-            goto out;
-        }
-
-        tms.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INPCK | ISTRIP | INLCR | IGNCR | ICRNL | IUCLC | IXON | IXOFF | IUTF8);
-        tms.c_oflag &= ~OPOST;
-        tms.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-        tms.c_cflag &= ~(CSIZE | PARENB | CRTSCTS | CSTOPB);
-        tms.c_cflag |= CS8 | CLOCAL | CREAD;
-        cfsetispeed(&tms, rnss_bdrate);
-        cfsetospeed(&tms, rnss_bdrate);
-
-        tcflush(pinf->rnss_ttyfd, TCIOFLUSH);
-        tcsetattr(pinf->rnss_ttyfd, TCSANOW, &tms);
-
-        ret = 0;
+    ret = 0;
 out:
-        return ret;
+    return ret;
+}
+
+static void reset_cfg(BD_INFO *pinf)
+{
+    if (pinf->pcfg) {
+        pinf->rdss_ttypath = NULL;
+        pinf->rnss_ttypath = NULL;
+        iot_cfg_destroy(pinf->pcfg);
+        pinf->pcfg = NULL;
+    }
+}
+
+static int init_bdinf(BD_INFO *pinf)
+{
+    int ret = -1;
+
+    pinf->rdss_ttyfd = -1;
+    pinf->rnss_ttyfd = -1;
+    pinf->pcfg = iot_cfg_new(IOT_BD_CONF);
+    if (NULL == pinf->pcfg) {
+        iot_inf("Err: open %s", IOT_BD_CONF);
+        goto out;
+    }
+    pinf->rdss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DATA_TTY, NULL);
+    pinf->rnss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RNSS_TTY, NULL);
+    pinf->rdss_baudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RDSS_BDRATE, 0);
+    pinf->rnss_baudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RNSS_BDRATE, 0);
+    pinf->debug_mode  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DBG_MODE, 0);
+    pinf->target_sim  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_REMOTE,  IOT_BD_KEY_NUMBER, 0);
+    pinf->local_sim   = 0;
+
+    iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_TOTAL, 0);
+    iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_SUCC, 0);
+    iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_FAIL, 0);
+    iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, 0);
+    iot_cfg_sync(pinf->pcfg);
+
+    if ((NULL == pinf->rdss_ttypath) || (0 == pinf->rnss_ttypath))
+    {
+        goto out;
     }
 
-    static void reset_cfg(BD_INFO *pinf)
-    {
-        if (pinf->pcfg) {
-            pinf->rdss_ttypath = NULL;
-            pinf->rnss_ttypath = NULL;
-            iot_cfg_destroy(pinf->pcfg);
-            pinf->pcfg = NULL;
-        }
+    if (pinf->rdss_baudrate <= 0) pinf->rdss_baudrate = 115200;
+    if (pinf->rnss_baudrate <= 0) pinf->rnss_baudrate = 9600;
+
+    iot_inf("Configuration:");
+    iot_inf("\trdss_ttypath       = %s", pinf->rdss_ttypath);
+    iot_inf("\trdss_baudrate      = %d", pinf->rdss_baudrate);
+    iot_inf("\trnss_ttypath       = %s", pinf->rnss_ttypath);
+    iot_inf("\trnss_baudrate      = %d", pinf->rnss_baudrate);
+    iot_inf("\tremote number = %d", pinf->target_sim);
+
+    if (init_bdserial(pinf)) {
+        goto out;
     }
 
-    static int init_bdinf(BD_INFO *pinf)
-    {
-        int ret = -1;
-
-        pinf->rdss_ttyfd = -1;
-        pinf->rnss_ttyfd = -1;
-        pinf->pcfg = iot_cfg_new(IOT_BD_CONF);
-        if (NULL == pinf->pcfg) {
-            iot_inf("Err: open %s", IOT_BD_CONF);
-            goto out;
-        }
-        pinf->rdss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DATA_TTY, NULL);
-        pinf->rnss_ttypath = iot_cfg_get_str(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RNSS_TTY, NULL);
-        pinf->rdss_baudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RDSS_BDRATE, 0);
-        pinf->rnss_baudrate = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_RNSS_BDRATE, 0);
-        pinf->debug_mode  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_GENERAL, IOT_BD_KEY_DBG_MODE, 0);
-        pinf->target_sim  = (int32_t)iot_cfg_get_int(pinf->pcfg,  IOT_BD_SEC_REMOTE,  IOT_BD_KEY_NUMBER, 0);
-        pinf->local_sim   = 0;
-
-        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_TOTAL, 0);
-        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_SUCC, 0);
-        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_COUNTER_TX_FAIL, 0);
-        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, 0);
-        iot_cfg_sync(pinf->pcfg);
-
-        if ((NULL == pinf->rdss_ttypath) || (0 == pinf->rnss_ttypath))
-        {
-            goto out;
-        }
-
-        if (pinf->rdss_baudrate <= 0) pinf->rdss_baudrate = 115200;
-        if (pinf->rnss_baudrate <= 0) pinf->rnss_baudrate = 9600;
-
-        iot_inf("Configuration:");
-        iot_inf("\trdss_ttypath       = %s", pinf->rdss_ttypath);
-        iot_inf("\trdss_baudrate      = %d", pinf->rdss_baudrate);
-        iot_inf("\trnss_ttypath       = %s", pinf->rnss_ttypath);
-        iot_inf("\trnss_baudrate      = %d", pinf->rnss_baudrate);
-        iot_inf("\tremote number = %d", pinf->target_sim);
-
-        if (init_bdserial(pinf)) {
-            goto out;
-        }
-
-        ret = 0;
+    ret = 0;
 out:
-        if (ret) {
-            reset_cfg(pinf);
-        }
-        return ret;
+    if (ret) {
+        reset_cfg(pinf);
     }
+    return ret;
+}
 
 #if 0
-    static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
-    {
-        size_t rest_size = (size_t)number;
-        ssize_t out;
-        int ret = 0;
+static int rx_nbytes(BD_INFO *pinf, unsigned char *rxbuf, int number)
+{
+    size_t rest_size = (size_t)number;
+    ssize_t out;
+    int ret = 0;
 
-        //struct timeval timeout;
-        //timeout.tv_sec  = 1;
-        //timeout.tv_usec = 0;
+    //struct timeval timeout;
+    //timeout.tv_sec  = 1;
+    //timeout.tv_usec = 0;
 
-        while (rest_size) {
-            out = read(pinf->rdss_ttyfd, &(rxbuf[number - rest_size]), rest_size);
-            if (out > 0) {
-                rest_size -= out;
-                ret  += out;
-            } else if (out < 0) {
-                iot_err("Err: read tty. %s", strerror(errno));
-                ret = -1;
-                break;
-            }
+    while (rest_size) {
+        out = read(pinf->rdss_ttyfd, &(rxbuf[number - rest_size]), rest_size);
+        if (out > 0) {
+            rest_size -= out;
+            ret  += out;
+        } else if (out < 0) {
+            iot_err("Err: read tty. %s", strerror(errno));
+            ret = -1;
+            break;
         }
-
-        return ret;
     }
+
+    return ret;
+}
 #endif
 
-    static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len)
-    {
-        hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
+static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len)
+{
+    hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
 
-        int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
-        return ret;
-    }
+    int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
+    return ret;
+}
 
-    static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeout_ms)
-    {
-        struct timeval start;
-        gettimeofday(&start, NULL);
-        ssize_t rxlen = -1;
+static ssize_t rdss_recv_pdu(eRdssPduType pdu_type, char* rxbuf, uint32_t timeout_ms)
+{
+    struct timeval start;
+    gettimeofday(&start, NULL);
+    ssize_t rxlen = -1;
 
-        //while (!is_timer_expired(&start, timeout_ms)) {
-        while (!g_cancelled) {
-            if (is_timer_expired(&start, timeout_ms)) {
-                iot_inf("!!!recv_pdu timeout!!!!");
-                break;
-            }
-            // if buffer is locked, wait 1 ms
-            //if (g_rdss_rx_buf.buf_lock == 1) {
-            //    usleep(1000);
-            //    continue;
-            //}
+    //while (!is_timer_expired(&start, timeout_ms)) {
+    while (!g_cancelled) {
+        if (is_timer_expired(&start, timeout_ms)) {
+            iot_inf("!!!recv_pdu timeout!!!!");
+            break;
+        }
+        // if buffer is locked, wait 1 ms
+        //if (g_rdss_rx_buf.buf_lock == 1) {
+        //    usleep(1000);
+        //    continue;
+        //}
             //iot_inf("ok recv_pdu locking");
-            pthread_mutex_lock(&g_rdss_rx_buf_lock);
+        pthread_mutex_lock(&g_rdss_rx_buf_lock);
 
             //iot_inf("ok recv_pdu locked");
-            // polling the RDSS receiving buffer continuously to see if response comes back
-            const char* p_found = NULL;
-            size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
-            rxlen = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
-            if (p_found != NULL) {
-                hexdump(LOG_DEBUG, "RDSS received...", p_found, rxlen);
-                g_rdss_rx_buf.pdu_cursor = p_found + rxlen;
-                memcpy(rxbuf, p_found, rxlen);
-            }
+        // polling the RDSS receiving buffer continuously to see if response comes back
+        const char* p_found = NULL;
+        size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+        rxlen = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
+        if (p_found != NULL) {
+            hexdump(LOG_DEBUG, "RDSS received...", p_found, rxlen);
+            g_rdss_rx_buf.pdu_cursor = p_found + rxlen;
+            memcpy(rxbuf, p_found, rxlen);
+        }
             //iot_inf("ok recv_pdu UNlockiing");
-            pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+        pthread_mutex_unlock(&g_rdss_rx_buf_lock);
             //iot_inf("ok recv_pdu UNlocked");
 
-            char* cmd_str = NULL;
+        char* cmd_str = NULL;
+        switch(pdu_type) {
+            case RDSS_GLZK:
+                cmd_str = "$GLZK";
+                break;
+            case RDSS_DWXX:
+                cmd_str = "$DWXX";
+                break;
+            case RDSS_FKXX:
+                cmd_str = "$FKXX";
+                break;
+            case RDSS_ICXX:
+                cmd_str = "$ICXX";
+                break;
+            case RDSS_ZJXX:
+                cmd_str = "$ZJXX";
+                break;
+            case RDSS_SJXX:
+                cmd_str = "$SJXX";
+                break;
+            case RDSS_BBXX:
+                cmd_str = "$BBXX";
+                break;
+            case RDSS_TXXX:
+                cmd_str = "$TXXX";
+                break;
+            default:
+                break;
+        }
+        if (p_found != NULL) {
+            // check RDSS_TXXX at first
+            if (0 == memcmp(rxbuf, cmd_str, 5)) {
+                // expected message
+                break;
+            } else if (0 == memcmp(rxbuf, "$TXXX", 5)) {
+                // read out TXXX and advance the pdu_cursor
+                hexdump(LOG_DEBUG, "recv_pdu: notify TXXX -->", rxbuf, rxlen);
+                memset(&b, 0, sizeof(b));
+                char out_buff[512] = {0};
+                buf_hexdump(out_buff, rxbuf, rxlen);
+                blob_buf_init(&b, 0);
+                blobmsg_add_string(&b, "txxx", out_buff);
+                //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
+        ubus_send_event(ctx, "rdss.txxx", b.head);
+                rxlen = 0;
+                continue;
+            } else {
+                // unexpected or unknown message
+                hexdump(LOG_DEBUG, "WARNING: dropping <--", rxbuf, rxlen);
+                rxlen = 0;
+                continue;
+            }
+        } else {
+            rxlen = 0;
+        }
+
+        usleep(5000);
+    }
+
+    return rxlen;
+}
+//
+// Note:
+// 1. message is supposed to be populated before calling this method
+// 2. main loop will block for period specified by timeout when sending RDSS message
+//
+// args:
+//  pdu_type: RDSS PDU type
+//  pdu: pointer to the whole message to be sent
+//  pdu_len: length of pdu
+// return:
+//  pointer to the response PDU in RDSS receiving buffer. return NULL means no response
+// DEPRECATED!!!
+#if 0
+static const char* rdss_send_pdu_w_rsp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms)
+{
+    hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
+
+    struct timeval start;
+    gettimeofday(&start, NULL);
+
+    int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
+    while (!is_timer_expired(&start, timeout_ms)) {
+
+        // if buffer is locked, wait 10 ms
+        //if (g_rdss_rx_buf.buf_lock == 1) {
+        //    usleep(1000);
+        //    continue;
+        //}
+
+        // polling the RDSS receiving buffer continuously to see if response comes back
+        char* p_found = NULL;
+        size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+        ssize_t rx_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
+        if (p_found != NULL) {
+            hexdump(LOG_DEBUG, "RDSS received...", p_found, rx_len);
+            g_rdss_rx_buf.pdu_cursor = p_found + rx_len;
+            // check RDSS_TXXX at first
+            if (0 == memcmp(p_found, "$TXXX", 5)) {
+                // read out TXXX and advance the pdu_cursor
+                hexdump(LOG_DEBUG, "logging TXXX <--", p_found, pdu_len);
+                continue;
+            }
             switch(pdu_type) {
-                case RDSS_GLZK:
-                    cmd_str = "$GLZK";
+                case RDSS_GLJC: // wait RDSS_GLZK
+                    if (0 == memcmp(p_found, "$GLZK", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_DWXX:
-                    cmd_str = "$DWXX";
+                case RDSS_DWSQ: // wait RDSS_DWXX
+                    if (0 == memcmp(p_found, "$DWXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_FKXX:
-                    cmd_str = "$FKXX";
+                case RDSS_TXSQ: // wait RDSS_FKXX
+                    if (0 == memcmp(p_found, "$FKXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_ICXX:
-                    cmd_str = "$ICXX";
+                case RDSS_ICJC: // wait RDSS_ICXX
+                    if (0 == memcmp(p_found, "$ICXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_ZJXX:
-                    cmd_str = "$ZJXX";
+                case RDSS_XTZJ: // wait RDSS_ZJXX
+                    if (0 == memcmp(p_found, "$ZJXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_SJXX:
-                    cmd_str = "$SJXX";
+                case RDSS_SJSC: // wait RDSS_SJXX
+                    if (0 == memcmp(p_found, "$SJXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
-                case RDSS_BBXX:
-                    cmd_str = "$BBXX";
-                    break;
-                case RDSS_TXXX:
-                    cmd_str = "$TXXX";
+                case RDSS_BBDQ: // wait RDSS_BBXX
+                    if (0 == memcmp(p_found, "$BBXX", 5)) {
+                        return p_found;
+                    } else {
+                        hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
+                    }
                     break;
                 default:
-                    break;
+                    // drop this pdu
+                    return NULL;
             }
-            if (p_found != NULL) {
-                // check RDSS_TXXX at first
-                if (0 == memcmp(rxbuf, cmd_str, 5)) {
-                    // expected message
-                    break;
-                } else if (0 == memcmp(rxbuf, "$TXXX", 5)) {
-                    // read out TXXX and advance the pdu_cursor
-                    hexdump(LOG_DEBUG, "recv_pdu: notify TXXX -->", rxbuf, rxlen);
-                    memset(&b, 0, sizeof(b));
-                    char out_buff[512] = {0};
-                    buf_hexdump(out_buff, rxbuf, rxlen);
-                    blob_buf_init(&b, 0);
-                    blobmsg_add_string(&b, "txxx", out_buff);
-                    //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
-                    ubus_send_event(ctx, "rdss.txxx", b.head);
-                    rxlen = 0;
-                    continue;
-                } else {
-                    // unexpected or unknown message
-                    hexdump(LOG_DEBUG, "WARNING: dropping <--", rxbuf, rxlen);
-                    rxlen = 0;
-                    continue;
-                }
-            } else {
-                rxlen = 0;
-            }
-
-            usleep(5000);
         }
-
-        return rxlen;
-    }
-    //
-    // Note:
-    // 1. message is supposed to be populated before calling this method
-    // 2. main loop will block for period specified by timeout when sending RDSS message
-    //
-    // args:
-    //  pdu_type: RDSS PDU type
-    //  pdu: pointer to the whole message to be sent
-    //  pdu_len: length of pdu
-    // return:
-    //  pointer to the response PDU in RDSS receiving buffer. return NULL means no response
-    // DEPRECATED!!!
-#if 0
-    static const char* rdss_send_pdu_w_rsp(eRdssPduType pdu_type, const char* pdu, size_t pdu_len, uint32_t timeout_ms)
-    {
-        hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
-
-        struct timeval start;
-        gettimeofday(&start, NULL);
-
-        int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
-        while (!is_timer_expired(&start, timeout_ms)) {
-
-            // if buffer is locked, wait 10 ms
-            //if (g_rdss_rx_buf.buf_lock == 1) {
-            //    usleep(1000);
-            //    continue;
-            //}
-
-            // polling the RDSS receiving buffer continuously to see if response comes back
-            char* p_found = NULL;
-            size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
-            ssize_t rx_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
-            if (p_found != NULL) {
-                hexdump(LOG_DEBUG, "RDSS received...", p_found, rx_len);
-                g_rdss_rx_buf.pdu_cursor = p_found + rx_len;
-                // check RDSS_TXXX at first
-                if (0 == memcmp(p_found, "$TXXX", 5)) {
-                    // read out TXXX and advance the pdu_cursor
-                    hexdump(LOG_DEBUG, "logging TXXX <--", p_found, pdu_len);
-                    continue;
-                }
-                switch(pdu_type) {
-                    case RDSS_GLJC: // wait RDSS_GLZK
-                        if (0 == memcmp(p_found, "$GLZK", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_DWSQ: // wait RDSS_DWXX
-                        if (0 == memcmp(p_found, "$DWXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_TXSQ: // wait RDSS_FKXX
-                        if (0 == memcmp(p_found, "$FKXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_ICJC: // wait RDSS_ICXX
-                        if (0 == memcmp(p_found, "$ICXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_XTZJ: // wait RDSS_ZJXX
-                        if (0 == memcmp(p_found, "$ZJXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_SJSC: // wait RDSS_SJXX
-                        if (0 == memcmp(p_found, "$SJXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    case RDSS_BBDQ: // wait RDSS_BBXX
-                        if (0 == memcmp(p_found, "$BBXX", 5)) {
-                            return p_found;
-                        } else {
-                            hexdump(LOG_DEBUG, "dropping <--", p_found, pdu_len);
-                        }
-                        break;
-                    default:
-                        // drop this pdu
-                        return NULL;
-                }
-            }
-            usleep(50000);
-        }
-
-        return NULL;
+        usleep(50000);
     }
 
-    //static int pos_of_checksum_in_rdss_pdu(char* cmd_str) {
-    //    if (strcmp(cmd_str, "$GLZK") return 16;
-    //    if (strcmp(cmd_str, "$DWXX") return 16;
-    //}
+    return NULL;
+}
 
-    static bool is_rx_rdss_pdu_complete(char* p_pdu) {
-        size_t pdu_len = (*(p_pdu + 5) << 8) | *(p_pdu + 6);
-        uint8_t checksum = *(p_pdu + 10 + pdu_len - 1);
-        return ((pdu_len == 0) || (checksum == 0)) ? false : true;
-    }
+//static int pos_of_checksum_in_rdss_pdu(char* cmd_str) {
+//    if (strcmp(cmd_str, "$GLZK") return 16;
+//    if (strcmp(cmd_str, "$DWXX") return 16;
+//}
 
-    static int rx_bd_pdu(BD_INFO *pinf,
-            const char* cmd_str,
-            unsigned char* buf,
-            uint32_t timeout_ms)
-    {
-        int ret = 0;
-        ssize_t out;
-        struct timeval start;
-        gettimeofday(&start, NULL);
-        unsigned char rxbuf[RDSS_BUF_SIZE];
-        memset(rxbuf, 0, sizeof(rxbuf));
-        char* pos = NULL;
-        size_t rest_size = sizeof(rxbuf);
-        bool is_data_complete = false;
-        bool is_txxx_complete = false;
+static bool is_rx_rdss_pdu_complete(char* p_pdu) {
+    size_t pdu_len = (*(p_pdu + 5) << 8) | *(p_pdu + 6);
+    uint8_t checksum = *(p_pdu + 10 + pdu_len - 1);
+    return ((pdu_len == 0) || (checksum == 0)) ? false : true;
+}
 
-        while (!is_timer_expired(&start, timeout_ms)) {
-            out = read(pinf->rdss_ttyfd, &(rxbuf[RDSS_BUF_SIZE - rest_size]), rest_size);
-            if (out > 0) {
-                rest_size -= out;
-                ret  += out;
-                pos = strstr((const char*)rxbuf, cmd_str);
-                if (pos != NULL) is_data_complete = is_rx_rdss_pdu_complete(pos);
-                if (is_data_complete) {
-                    size_t pdu_len = (*(pos + 5) << 8) | *(pos+ 6);
-                    memcpy(buf, pos, pdu_len);
+static int rx_bd_pdu(BD_INFO *pinf,
+        const char* cmd_str,
+        unsigned char* buf,
+        uint32_t timeout_ms)
+{
+    int ret = 0;
+    ssize_t out;
+    struct timeval start;
+    gettimeofday(&start, NULL);
+    unsigned char rxbuf[RDSS_BUF_SIZE];
+    memset(rxbuf, 0, sizeof(rxbuf));
+    char* pos = NULL;
+    size_t rest_size = sizeof(rxbuf);
+    bool is_data_complete = false;
+    bool is_txxx_complete = false;
 
-                    char tmp[32];
-                    memset(tmp, 0, sizeof(tmp));
-                    sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
-                    iot_logbuf(tmp, buf, pdu_len + 10);
+    while (!is_timer_expired(&start, timeout_ms)) {
+        out = read(pinf->rdss_ttyfd, &(rxbuf[RDSS_BUF_SIZE - rest_size]), rest_size);
+        if (out > 0) {
+            rest_size -= out;
+            ret  += out;
+            pos = strstr((const char*)rxbuf, cmd_str);
+            if (pos != NULL) is_data_complete = is_rx_rdss_pdu_complete(pos);
+            if (is_data_complete) {
+                size_t pdu_len = (*(pos + 5) << 8) | *(pos+ 6);
+                memcpy(buf, pos, pdu_len);
 
-                    break;
-                }
-            } else if (out < 0) {
-                iot_err("Err: read tty. %s", strerror(errno));
-                ret = -1;
+                char tmp[32];
+                memset(tmp, 0, sizeof(tmp));
+                sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
+                iot_logbuf(tmp, buf, pdu_len + 10);
+
                 break;
             }
+        } else if (out < 0) {
+            iot_err("Err: read tty. %s", strerror(errno));
+            ret = -1;
+            break;
         }
+    }
 
-        char* cmd_txxx = "$TXXX";
-        unsigned char txxx_buf[256];
-        memset(txxx_buf, 0, sizeof(rxbuf));
-        pos = strstr(rxbuf, cmd_txxx);
-        if (pos != NULL) {
-            is_txxx_complete = is_rx_rdss_pdu_complete(pos);
-            if (!is_txxx_complete) {
-                gettimeofday(&start, NULL);
-                while (!is_timer_expired(&start, 100)) {
-                    out = read(pinf->rdss_ttyfd, &(rxbuf[RDSS_BUF_SIZE - rest_size]), rest_size);
-                    if (out > 0) {
-                        rest_size -= out;
-                        ret  += out;
-                        pos = strstr(rxbuf, cmd_txxx);
-                        if (pos != NULL) is_txxx_complete = is_rx_rdss_pdu_complete(pos);
-                        if (is_txxx_complete) {
-                            size_t pdu_len = (*(pos + 5) << 8) | *(pos+ 6);
-                            memcpy(txxx_buf, pos, pdu_len);
-                            unsigned char tmp[32];
-                            memset(tmp, 0, sizeof(tmp));
-                            sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
-                            iot_logbuf(tmp, txxx_buf, pdu_len + 10);
-                            break;
-                        }
-                    } else if (out < 0) {
-                        iot_err("Err: read tty. %s", strerror(errno));
-                        ret = -1;
+    char* cmd_txxx = "$TXXX";
+    unsigned char txxx_buf[256];
+    memset(txxx_buf, 0, sizeof(rxbuf));
+    pos = strstr(rxbuf, cmd_txxx);
+    if (pos != NULL) {
+        is_txxx_complete = is_rx_rdss_pdu_complete(pos);
+        if (!is_txxx_complete) {
+            gettimeofday(&start, NULL);
+            while (!is_timer_expired(&start, 100)) {
+                out = read(pinf->rdss_ttyfd, &(rxbuf[RDSS_BUF_SIZE - rest_size]), rest_size);
+                if (out > 0) {
+                    rest_size -= out;
+                    ret  += out;
+                    pos = strstr(rxbuf, cmd_txxx);
+                    if (pos != NULL) is_txxx_complete = is_rx_rdss_pdu_complete(pos);
+                    if (is_txxx_complete) {
+                        size_t pdu_len = (*(pos + 5) << 8) | *(pos+ 6);
+                        memcpy(txxx_buf, pos, pdu_len);
+                        unsigned char tmp[32];
+                        memset(tmp, 0, sizeof(tmp));
+                        sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
+                        iot_logbuf(tmp, txxx_buf, pdu_len + 10);
                         break;
                     }
+                } else if (out < 0) {
+                    iot_err("Err: read tty. %s", strerror(errno));
+                    ret = -1;
+                    break;
                 }
             }
         }
-
-        return ret;
     }
+
+    return ret;
+}
 #endif
 
 #if 0
-    static int rx_bd_msg(BD_INFO *pinf, unsigned char* buf, size_t* len)
-    {
-        int ret = 0;
-        size_t msg_len = 0;
+static int rx_bd_msg(BD_INFO *pinf, unsigned char* buf, size_t* len)
+{
+    int ret = 0;
+    size_t msg_len = 0;
 
-        ret = rx_nbytes(pinf, buf, 10); // read msg header, cmd + len + number
-        *len = ret;
-        if (10 == ret) {
-            msg_len = (buf[5] << 8) | buf[6];
-            ret = rx_nbytes(pinf, buf+10, msg_len-10); // read content
-            *len += ret;
-            if (ret == msg_len-10) {
-                ret = *len;
-            } else {
-                ret = -1;
-            }
+    ret = rx_nbytes(pinf, buf, 10); // read msg header, cmd + len + number
+    *len = ret;
+    if (10 == ret) {
+        msg_len = (buf[5] << 8) | buf[6];
+        ret = rx_nbytes(pinf, buf+10, msg_len-10); // read content
+        *len += ret;
+        if (ret == msg_len-10) {
+            ret = *len;
         } else {
             ret = -1;
         }
-
-        unsigned char tmp[32];
-        memset(tmp, 0, sizeof(tmp));
-        sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
-        iot_logbuf(tmp, buf, *len);
-
-        return ret;
+    } else {
+        ret = -1;
     }
 
-    static void recv_rdss_txxx(BD_INFO *pinf)
-    {
-        iot_dbg("\nreceiving beidou TXXX...\n");
+    unsigned char tmp[32];
+    memset(tmp, 0, sizeof(tmp));
+    sprintf(tmp, "rx: %c%c%c%c%c\t", buf[0], buf[1], buf[2], buf[3], buf[4]);
+    iot_logbuf(tmp, buf, *len);
 
-        unsigned char rxbuf[256];
+    return ret;
+}
 
-        struct timeval timeout;
-        timeout.tv_sec  = 0;
-        timeout.tv_usec = 10000; // 10ms
+static void recv_rdss_txxx(BD_INFO *pinf)
+{
+    iot_dbg("\nreceiving beidou TXXX...\n");
 
-        int rdss_ttyfd = pinf->rdss_ttyfd;
+    unsigned char rxbuf[256];
 
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(rdss_ttyfd, &fds);
+    struct timeval timeout;
+    timeout.tv_sec  = 0;
+    timeout.tv_usec = 10000; // 10ms
 
-        size_t msg_len = 0;
-        size_t txlen = 0;
-        int rc = 0;
+    int rdss_ttyfd = pinf->rdss_ttyfd;
 
-        memset(rxbuf, 0, sizeof(rxbuf));
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(rdss_ttyfd, &fds);
 
-        rc = select(rdss_ttyfd + 1, &fds, NULL, NULL, &timeout);
-        if (rc < 0) {
-            iot_dbg("%s: select error, rc %d, errno %d !!\n", __FUNCTION__, rc, errno);
-        } else if (rc > 0) { // data available
-            rc = rx_bd_msg(pinf, rxbuf, &msg_len);
-            if (rc > 0) {
-                if (0 == memcmp(rxbuf, "$TXXX", 5)) {
-                    memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
-                    uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
-                    if (pinf->local_sim != local_sim) {
-                        pinf->local_sim = local_sim;
-                        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
-                        iot_cfg_sync(pinf->pcfg);
-                        iot_dbg("write down local_sim: %d", local_sim);
-                    }
-                }
-            }
-        }
-    }
-#endif
+    size_t msg_len = 0;
+    size_t txlen = 0;
+    int rc = 0;
 
-    static eBeidouStatus check_beidou_status(BD_INFO *pinf)
-    {
-        iot_dbg("\nchecking beidou status...\n");
+    memset(rxbuf, 0, sizeof(rxbuf));
 
-        char txbuf[32] = {0};
-        eBeidouStatus status = DISCONNECTED;
-
-        ssize_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), 0);
-        pthread_mutex_lock(&g_rdss_rw_lock);
-        ssize_t ret = rdss_send_pdu(txbuf, txlen);
-        if (ret > 0) {
-            char rxbuf[512] = {0};
-            ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-            if (rxlen > 0) {
-                uint32_t local_sim = (
-                        ((rxbuf[7] << 16)
-                         | (rxbuf[8] << 8)
-                         | rxbuf[9])
-                        & 0x1FFFFF);
+    rc = select(rdss_ttyfd + 1, &fds, NULL, NULL, &timeout);
+    if (rc < 0) {
+        iot_dbg("%s: select error, rc %d, errno %d !!\n", __FUNCTION__, rc, errno);
+    } else if (rc > 0) { // data available
+        rc = rx_bd_msg(pinf, rxbuf, &msg_len);
+        if (rc > 0) {
+            if (0 == memcmp(rxbuf, "$TXXX", 5)) {
+                memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
+                uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
                 if (pinf->local_sim != local_sim) {
                     pinf->local_sim = local_sim;
                     iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
                     iot_cfg_sync(pinf->pcfg);
                     iot_dbg("write down local_sim: %d", local_sim);
                 }
-                //uint8_t ic_status = rxbuf[10];
-                //uint8_t hw_status = rxbuf[11];
-                //uint8_t battery_status = rxbuf[12];
-                //uint8_t station_status = rxbuf[13];
-                //uint8_t power_beam1 = rxbuf[14];
-                //uint8_t power_beam2 = rxbuf[15];
-                //uint8_t power_beam3 = rxbuf[16];
-                //uint8_t power_beam4 = rxbuf[17];
-                //uint8_t power_beam5 = rxbuf[18];
-                //uint8_t power_beam6 = rxbuf[19];
-                int i = 0;
-                uint8_t max_power = 0;
-                // 00: < -158 dBW
-                // 01: -156 ~ -157 dBW
-                // 02: -154 ~ -155 dBW
-                // 03: -152 ~ -153 dBW
-                // 04: > -152 dBW
-                for (; i < 6; i++) {
-                    max_power = (max_power > rxbuf[14+i]) ? max_power : rxbuf[14+i];
-                }
-                g_rdss_info.max_power = max_power;
-                // send GPS info to target
-                notify_gps_info();
-                status = CONNECTED;
-            } else {
-                status = DISCONNECTED;
             }
         }
-        pthread_mutex_unlock(&g_rdss_rw_lock);
-        return status;
+    }
+}
+#endif
+
+static eBeidouStatus check_beidou_status(BD_INFO *pinf)
+{
+    iot_dbg("\nchecking beidou status...\n");
+
+    char txbuf[32] = {0};
+    eBeidouStatus status = DISCONNECTED;
+
+    ssize_t txlen = compose_rdss_xtzj_pdu(txbuf, sizeof(txbuf), 0);
+    pthread_mutex_lock(&g_rdss_rw_lock);
+    ssize_t ret = rdss_send_pdu(txbuf, txlen);
+    if (ret > 0) {
+        char rxbuf[512] = {0};
+        ssize_t rxlen = rdss_recv_pdu(RDSS_ZJXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+        if (rxlen > 0) {
+            uint32_t local_sim = (
+                    ((rxbuf[7] << 16)
+                    | (rxbuf[8] << 8)
+                    | rxbuf[9])
+                    & 0x1FFFFF);
+            if (pinf->local_sim != local_sim) {
+                pinf->local_sim = local_sim;
+                iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
+                iot_cfg_sync(pinf->pcfg);
+                iot_dbg("write down local_sim: %d", local_sim);
+            }
+            //uint8_t ic_status = rxbuf[10];
+            //uint8_t hw_status = rxbuf[11];
+            //uint8_t battery_status = rxbuf[12];
+            //uint8_t station_status = rxbuf[13];
+            //uint8_t power_beam1 = rxbuf[14];
+            //uint8_t power_beam2 = rxbuf[15];
+            //uint8_t power_beam3 = rxbuf[16];
+            //uint8_t power_beam4 = rxbuf[17];
+            //uint8_t power_beam5 = rxbuf[18];
+            //uint8_t power_beam6 = rxbuf[19];
+            int i = 0;
+            uint8_t max_power = 0;
+            // 00: < -158 dBW
+            // 01: -156 ~ -157 dBW
+            // 02: -154 ~ -155 dBW
+            // 03: -152 ~ -153 dBW
+            // 04: > -152 dBW
+            for (; i < 6; i++) {
+                max_power = (max_power > rxbuf[14+i]) ? max_power : rxbuf[14+i];
+            }
+            g_rdss_info.max_power = max_power;
+            status = CONNECTED;
+        } else {
+            status = DISCONNECTED;
+        }
+    }
+    pthread_mutex_unlock(&g_rdss_rw_lock);
+    return status;
+}
+
+static int init_dpi_socket()
+{
+    struct sockaddr_ll socket_address;
+
+    int s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+
+    if (s == -1)
+    {
+        perror("Socket creation failed");
+        exit (-1);
     }
 
-    static int init_dpi_socket()
+    memset(&socket_address, 0, sizeof (socket_address));
+    socket_address.sll_family = PF_PACKET;
+    socket_address.sll_ifindex = if_nametoindex("lo");
+    socket_address.sll_protocol = htons(ETH_P_ALL);
+
+    if (0 > bind(s, (struct sockaddr*)&socket_address, sizeof(socket_address)))
     {
-        struct sockaddr_ll socket_address;
-
-        int s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
-
-        if (s == -1)
-        {
-            perror("Socket creation failed");
-            exit (-1);
-        }
-
-        memset(&socket_address, 0, sizeof (socket_address));
-        socket_address.sll_family = PF_PACKET;
-        socket_address.sll_ifindex = if_nametoindex("lo");
-        socket_address.sll_protocol = htons(ETH_P_ALL);
-
-        if (0 > bind(s, (struct sockaddr*)&socket_address, sizeof(socket_address)))
-        {
-            perror("Bind");
-            exit (-1);
-        }
-
-        return s;
+        perror("Bind");
+        exit (-1);
     }
 
-    void notify_gps_info()
-    {
-        char txbuf[256] = {0};
-        //iot_cfg_sync(g_bd_inf.pcfg);
-        iot_dbg("relaying ...\n");
-        rdss_msg_txsq_t msg = {
-            .local_sim = g_bd_inf.local_sim,
-            .target_sim = g_bd_inf.target_sim,
-            .data = {0},
-            .data_len = 0
-        };
-        size_t data_len = sizeof(g_rnss_info);
-        iot_dbg("rnss_info len %d", data_len);
-        memcpy(msg.data, &g_rnss_info, data_len);
-        memcpy(msg.data + data_len, &g_rnss_info_prev, data_len);
-        msg.data_len = data_len * 2;
-        // save GPS info for next 61 sec
-        memcpy(&g_rnss_info_prev, &g_rnss_info, data_len);
-        //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
-        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-        hexdump(LOG_DEBUG, "populating message:", msg.data, msg.data_len);
-        ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
-        hexdump(LOG_DEBUG, "txbuf:", txbuf, txlen);
-        if (txlen > 0) {
-            //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-            pthread_mutex_lock(&g_rdss_rw_lock);
-            ssize_t ret = rdss_send_pdu(txbuf, txlen);
-            if (ret < 0) {
-                g_rdss_info.tx_fail++;
-            } else {
-                char rxbuf[512] = {0};
-                ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-                g_rdss_info.tx_total++;
-                if (rxlen > 0) {
-                    g_rdss_info.tx_succ++;
-                } else {
+    return s;
+}
+
+void *connection_handler(void *socket_desc)
+{
+    //Get the socket descriptor
+    int sock = *(int*)socket_desc;
+    int read_size = 0;
+    static const int kBdPacketSize = 32;
+    char* message, client_message[2000];
+    int offset = 0;
+
+    //Send some messages to the client
+    //message = "Greetings! I am your connection handler\n";
+    //write(sock , message , strlen(message));
+
+    //message = "Now type something and i shall repeat what you type \n";
+    //write(sock, message, strlen(message));
+
+    //Receive a message from client
+    int to_be_read_size = kBdPacketSize;
+    while ((read_size = recv(sock, client_message + offset, to_be_read_size, 0)) > 0) {
+        //end of string marker
+		//client_message[read_size] = '\0';
+        offset += read_size;
+        to_be_read_size = kBdPacketSize - offset;
+        if (to_be_read_size == 0) {
+            // TODO send to beidout
+            hexdump(LOG_DEBUG, "received Beidou data(hex):", client_message, kBdPacketSize);
+            hexdump(LOG_DEBUG, "old relay msg(hex):", g_bd_relay_msg, 70);
+            memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32);
+            memcpy(g_bd_relay_msg + 6 + 32, client_message, 32);
+            hexdump(LOG_DEBUG, "new relay msg(hex):", g_bd_relay_msg, 70);
+
+            puts("received Beidou data(hex):");
+            int i = 0;
+            for (; i < kBdPacketSize; i++) {
+                printf("%02X ", client_message[i]);
+            }
+
+            char txbuf[256] = {0};
+            //iot_cfg_sync(g_bd_inf.pcfg);
+            iot_dbg("relaying ...\n");
+            rdss_msg_txsq_t msg = {
+                .local_sim = g_bd_inf.local_sim,
+                .target_sim = g_bd_inf.target_sim,
+                .data = {0},
+                .data_len = 0
+            };
+            size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
+            memcpy(msg.data, g_bd_relay_msg, data_len);
+            msg.data_len = data_len;
+            //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
+            //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+            hexdump(LOG_DEBUG, "populating message:", msg.data, data_len);
+            ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
+            hexdump(LOG_DEBUG, "txbuf:", txbuf, txlen);
+            if (txlen > 0) {
+                //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+                pthread_mutex_lock(&g_rdss_rw_lock);
+                ssize_t ret = rdss_send_pdu(txbuf, txlen);
+                if (ret < 0) {
                     g_rdss_info.tx_fail++;
-                }
-            }
-            pthread_mutex_unlock(&g_rdss_rw_lock);
-        }
-    }
-
-    void *connection_handler(void *socket_desc)
-    {
-        //Get the socket descriptor
-        int sock = *(int*)socket_desc;
-        int read_size = 0;
-        static const int kBdPacketSize = 32;
-        char* message, client_message[2000];
-        int offset = 0;
-
-        //Send some messages to the client
-        //message = "Greetings! I am your connection handler\n";
-        //write(sock , message , strlen(message));
-
-        //message = "Now type something and i shall repeat what you type \n";
-        //write(sock, message, strlen(message));
-
-        //Receive a message from client
-        int to_be_read_size = kBdPacketSize;
-        while ((read_size = recv(sock, client_message + offset, to_be_read_size, 0)) > 0) {
-            //end of string marker
-            //client_message[read_size] = '\0';
-            offset += read_size;
-            to_be_read_size = kBdPacketSize - offset;
-            if (to_be_read_size == 0) {
-                // TODO send to beidout
-                hexdump(LOG_DEBUG, "received Beidou data(hex):", client_message, kBdPacketSize);
-                hexdump(LOG_DEBUG, "old relay msg(hex):", g_bd_relay_msg, 70);
-                memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32);
-                memcpy(g_bd_relay_msg + 6 + 32, client_message, 32);
-                hexdump(LOG_DEBUG, "new relay msg(hex):", g_bd_relay_msg, 70);
-
-                puts("received Beidou data(hex):");
-                int i = 0;
-                for (; i < kBdPacketSize; i++) {
-                    printf("%02X ", client_message[i]);
-                }
-
-                char txbuf[256] = {0};
-                //iot_cfg_sync(g_bd_inf.pcfg);
-                iot_dbg("relaying ...\n");
-                rdss_msg_txsq_t msg = {
-                    .local_sim = g_bd_inf.local_sim,
-                    .target_sim = g_bd_inf.target_sim,
-                    .data = {0},
-                    .data_len = 0
-                };
-                size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
-                memcpy(msg.data, g_bd_relay_msg, data_len);
-                msg.data_len = data_len;
-                //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
-                //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-                hexdump(LOG_DEBUG, "populating message:", msg.data, data_len);
-                ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
-                hexdump(LOG_DEBUG, "txbuf:", txbuf, txlen);
-                if (txlen > 0) {
-                    //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-                    pthread_mutex_lock(&g_rdss_rw_lock);
-                    ssize_t ret = rdss_send_pdu(txbuf, txlen);
-                    if (ret < 0) {
-                        g_rdss_info.tx_fail++;
+                } else {
+                    char rxbuf[512] = {0};
+                    ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+                    g_rdss_info.tx_total++;
+                    if (rxlen > 0) {
+                        g_rdss_info.tx_succ++;
                     } else {
-                        char rxbuf[512] = {0};
-                        ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-                        g_rdss_info.tx_total++;
-                        if (rxlen > 0) {
-                            g_rdss_info.tx_succ++;
-                        } else {
-                            g_rdss_info.tx_fail++;
-                        }
+                        g_rdss_info.tx_fail++;
                     }
-                    pthread_mutex_unlock(&g_rdss_rw_lock);
                 }
-                //clear the message buffer
-                memset(client_message, 0, kBdPacketSize);
-                offset = 0;
-                to_be_read_size = kBdPacketSize;
+                pthread_mutex_unlock(&g_rdss_rw_lock);
             }
-            //puts(client_message);
-            //Send the message back to client
-            //write(sock, client_message, strlen(client_message));
-
+            //clear the message buffer
+            memset(client_message, 0, kBdPacketSize);
+            offset = 0;
+            to_be_read_size = kBdPacketSize;
         }
+        //puts(client_message);
+		//Send the message back to client
+        //write(sock, client_message, strlen(client_message));
 
-        if (read_size == 0) {
-            puts("Client disconnected");
-            fflush(stdout);
-        } else if(read_size == -1) {
-            perror("recv failed");
-        }
-
-        return 0;
-    } 
-
-    void* bd_relay_thread_func(void *params)
-    {
-        int socket_desc, client_sock, c;
-        struct sockaddr_in server, client;
-
-        //Create socket
-        socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-        if (socket_desc == -1) {
-            printf("Could not create socket");
-        }
-        puts("Socket created");
-
-        //Prepare the sockaddr_in structure
-        server.sin_family = AF_INET;
-        server.sin_addr.s_addr = INADDR_ANY;
-        server.sin_port = htons(BD_RELAY_PORT);
-
-        //Bind
-        if( bind(socket_desc,(struct sockaddr *)&server, sizeof(server)) < 0) {
-            //print the error message
-            perror("bind failed. Error");
-            return 1;
-        }
-        puts("bind done");
-
-        //Listen
-        listen(socket_desc, 3);
-
-        //Accept and incoming connection
-        puts("Waiting for incoming connections...");
-        c = sizeof(struct sockaddr_in);
-        pthread_t thread_id;
-
-        while (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) {
-            puts("Connection accepted");
-            if (pthread_create(&thread_id, NULL, connection_handler, (void*)&client_sock) < 0) {
-                perror("could not create thread");
-                return 1;
-            }
-
-            //Now join the thread , so that we don't terminate before the thread
-            //pthread_join( thread_id , NULL);
-            puts("Handler assigned");
-        }
-
-        if (client_sock < 0) {
-            perror("accept failed");
-            return 1;
-        }
-
-        return 0;
     }
 
-    int create_bd_relay_thread()
-    {
-        pthread_t server_thread;
-        if (pthread_create(&server_thread, NULL, bd_relay_thread_func, 0) < 0) {
+    if (read_size == 0) {
+        puts("Client disconnected");
+        fflush(stdout);
+    } else if(read_size == -1) {
+        perror("recv failed");
+    }
+
+    return 0;
+} 
+
+void* bd_relay_thread_func(void *params)
+{
+    int socket_desc, client_sock, c;
+    struct sockaddr_in server, client;
+
+    //Create socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_desc == -1) {
+        printf("Could not create socket");
+    }
+    puts("Socket created");
+
+    //Prepare the sockaddr_in structure
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(BD_RELAY_PORT);
+
+    //Bind
+    if( bind(socket_desc,(struct sockaddr *)&server, sizeof(server)) < 0) {
+        //print the error message
+        perror("bind failed. Error");
+        return 1;
+    }
+    puts("bind done");
+
+    //Listen
+    listen(socket_desc, 3);
+
+    //Accept and incoming connection
+    puts("Waiting for incoming connections...");
+    c = sizeof(struct sockaddr_in);
+	pthread_t thread_id;
+
+    while (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) {
+        puts("Connection accepted");
+        if (pthread_create(&thread_id, NULL, connection_handler, (void*)&client_sock) < 0) {
             perror("could not create thread");
-            return -1;
+            return 1;
         }
+
+        //Now join the thread , so that we don't terminate before the thread
+        //pthread_join( thread_id , NULL);
+        puts("Handler assigned");
     }
 
-    static void* rdss_thread_func(void *params)
-    {
-        BD_INFO* bd_info = (BD_INFO*)params;
-        int fd = bd_info->rdss_ttyfd;
-
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-
-        char rxbuf[RDSS_BUF_SIZE];
-
-        ssize_t rc = -1;
-        while (!g_cancelled) {
-            rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
-            //rc = read(fd, rxbuf, g_rdss_rx_buf.rest_size);
-            if (rc > 0) {
-                //iot_dbg("\n!!! received something rc %d, locking... !!!\n", rc);
-                pthread_mutex_lock(&g_rdss_rx_buf_lock);
-                //iot_dbg("\n!!! received something rc %d, locked.. !!!\n", rc);
-                iot_dbg("\n!!! received something rc %d, rest_size %d, raw_cursor %d, unhandled_size %d !!!\n", rc, g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor);
-                hexdump(LOG_DEBUG, "rdss_thread_func: RX-->", g_rdss_rx_buf.raw_cursor, rc);
-                g_rdss_rx_buf.raw_cursor += rc;
-                g_rdss_rx_buf.rest_size -= rc;
-                //iot_dbg("\n!!! received something , unlocking... !!!\n");
-                pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-                //iot_dbg("\n!!! received something , unlocked... !!!\n");
-                iot_dbg("\n!!! rest size %d, raw_cursor %d ... !!!\n", g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf);
-            }
-
-            // if buffer is full and no complete messages exist, move incomplete data to the start
-            if (g_rdss_rx_buf.rest_size <= 0) {
-                //iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
-                pthread_mutex_lock(&g_rdss_rx_buf_lock);
-                //iot_dbg("\n!!! receiving buffer is full, locked... !!!\n");
-                //g_rdss_rx_buf.buf_lock = 1;
-
-                size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
-                char tmp_buffer[RDSS_BUF_SIZE] = {0};
-                memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
-                memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
-                memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
-                g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf + unhandled_size;
-                g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
-                g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf) - unhandled_size;
-
-                iot_dbg("\n!!! receiving buffer is full, raw_cursor %d, pdu_cursor %d, rest_size %d, unhandled_size %d!!!\n", g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.pdu_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.rest_size, unhandled_size);
-                //iot_dbg("\n!!! receiving buffer is unblocking !!!\n");
-                pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-                //iot_dbg("\n!!! receiving buffer is back !!!\n");
-                //g_rdss_rx_buf.buf_lock = 0;
-            }
-        }
-        return NULL;
+    if (client_sock < 0) {
+        perror("accept failed");
+        return 1;
     }
 
-    static const char* find_comma(const char* str, size_t str_len, uint32_t next_n)
-    {
-        int count = 0;
-
-        if (next_n == 0) return NULL;
-
-        int i = 0;
-        for (; i < str_len; i++) {
-            if (str[i] == ',') {
-                count += 1;
-                if (count >= next_n) return &(str[i]);
-            }
-        }
-        return NULL;
+    return 0;
+}
+ 
+int create_bd_relay_thread()
+{
+    pthread_t server_thread;
+    if (pthread_create(&server_thread, NULL, bd_relay_thread_func, 0) < 0) {
+        perror("could not create thread");
+        return -1;
     }
+}
 
-    static void* rnss_thread_func(void *params)
-    {
-        iot_dbg("\nrnss\n");
-        //BD_INFO* bd_info = (BD_INFO*)params;
-        //int fd = bd_info->rnss_ttyfd;
+static void* rdss_thread_func(void *params)
+{
+    BD_INFO* bd_info = (BD_INFO*)params;
+    int fd = bd_info->rdss_ttyfd;
 
-        char buf[1024];
-        //const char *delim = ",";
-        const char *ptr_prev = NULL;
-        const char *ptr_next = NULL;
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
 
-        FILE* ss = fdopen(g_bd_inf.rnss_ttyfd, "r+");
-        //FILE* ss = fopen("/dev/ttyUSB3", "r");
-        //iot_dbg("\nopen /dev/ttyUSB3...\n");
-        while (!g_cancelled) {
+    char rxbuf[RDSS_BUF_SIZE];
 
-            //if (g_beidou_status != CONNECTED) continue;
+    ssize_t rc = -1;
+    while (!g_cancelled) {
+        rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
+        //rc = read(fd, rxbuf, g_rdss_rx_buf.rest_size);
+        if (rc > 0) {
+            //iot_dbg("\n!!! received something rc %d, locking... !!!\n", rc);
+            pthread_mutex_lock(&g_rdss_rx_buf_lock);
+            //iot_dbg("\n!!! received something rc %d, locked.. !!!\n", rc);
+            iot_dbg("\n!!! received something rc %d, rest_size %d, raw_cursor %d, unhandled_size %d !!!\n", rc, g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor);
+        hexdump(LOG_DEBUG, "rdss_thread_func: RX-->", g_rdss_rx_buf.raw_cursor, rc);
+            g_rdss_rx_buf.raw_cursor += rc;
+            g_rdss_rx_buf.rest_size -= rc;
+            //iot_dbg("\n!!! received something , unlocking... !!!\n");
+            pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            //iot_dbg("\n!!! received something , unlocked... !!!\n");
+            iot_dbg("\n!!! rest size %d, raw_cursor %d ... !!!\n", g_rdss_rx_buf.rest_size, g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf);
+        }
 
-            memset(buf, 0, sizeof(buf));
+        // if buffer is full and no complete messages exist, move incomplete data to the start
+        if (g_rdss_rx_buf.rest_size <= 0) {
+            //iot_dbg("\n!!! receiving buffer is full, locking... !!!\n");
+            pthread_mutex_lock(&g_rdss_rx_buf_lock);
+            //iot_dbg("\n!!! receiving buffer is full, locked... !!!\n");
+            //g_rdss_rx_buf.buf_lock = 1;
 
-            char* line = fgets(buf, sizeof(buf), ss);
-            if (line != NULL) {
-                if (0 == strncmp(line, "$GNGGA", 6)) {
-                    iot_dbg("\nRNSS <--: %s", line);
-                    // time_UTC
-                    // latitude
-                    ptr_prev = find_comma(line, strlen(line), 2);
-                    ptr_next = find_comma(line, strlen(line), 4);
-                    memset(g_rnss_info.latitude, 0, sizeof(g_rnss_info.latitude));
-                    memcpy(g_rnss_info.latitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    // longitude
-                    ptr_prev = ptr_next;
-                    ptr_next = find_comma(line, strlen(line), 6);
-                    memset(g_rnss_info.longitude, 0, sizeof(g_rnss_info.longitude));
-                    memcpy(g_rnss_info.longitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    // RNSS status
-                    g_rnss_info.gps_status = atoi(ptr_next + 1);
-                    // satellite number
-                    ptr_prev = find_comma(line, strlen(line), 7);
-                    g_rnss_info.satellite_num = atoi(ptr_prev + 1);
-                    ptr_prev = find_comma(line, strlen(line), 9);
-                    ptr_next = find_comma(line, strlen(line), 11);
-                    memset(g_rnss_info.altitude, 0, sizeof(g_rnss_info.altitude));
-                    memcpy(g_rnss_info.altitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    iot_dbg("GNGGA update:\n \
-                            gps status\t <%d>\n \
-                            satellite num\t <%d>\n \
-                            latitude\t <%s>\n \
-                            longitue\t <%s>\n \
-                            altitude\t <%s>\n",
-                            g_rnss_info.gps_status,
-                            g_rnss_info.satellite_num,
-                            g_rnss_info.latitude,
-                            g_rnss_info.longitude,
-                            g_rnss_info.altitude);
-                } else if (0 == strncmp(line, "$GNRMC", 6)) {
-                    iot_dbg("\nRNSS <--: %s", line);
-                    ptr_prev = find_comma(line, strlen(line), 1);
-                    ptr_next = find_comma(line, strlen(line), 2);
-                    memset(g_rnss_info.time_utc, 0, sizeof(g_rnss_info.time_utc));
-                    memcpy(g_rnss_info.time_utc, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    ptr_prev = find_comma(line, strlen(line), 7);
-                    ptr_next = find_comma(line, strlen(line), 8);
-                    memset(g_rnss_info.speed_kn, 0, sizeof(g_rnss_info.speed_kn));
-                    memcpy(g_rnss_info.speed_kn, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    ptr_prev = ptr_next;
-                    ptr_next = find_comma(line, strlen(line), 9);
-                    memset(g_rnss_info.heading, 0, strlen(g_rnss_info.heading));
-                    memcpy(g_rnss_info.heading, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    ptr_prev = ptr_next;
-                    ptr_next = find_comma(line, strlen(line), 10);
-                    memset(g_rnss_info.date_utc, 0, sizeof(g_rnss_info.date_utc));
-                    memcpy(g_rnss_info.date_utc, ptr_prev + 1, ptr_next - ptr_prev - 1);
-                    iot_dbg("GNRMC update:\n \
-                            time_utc\t <%s>\n \
-                            date_utc\t <%s>\n \
-                            speed_kn\t <%s>\n \
-                            heading\t <%s>\n",
-                            g_rnss_info.time_utc,
-                            g_rnss_info.date_utc,
-                            g_rnss_info.speed_kn,
-                            g_rnss_info.heading);
-                    // if date_utc is not empty string and time_utc has different more than 3s
-                    // root@zl100mt-100:~# date -u -s "201905242134.03"
-                    // Fri May 24 21:34:03 UTC 2019
-                    // date -u +%Y%m%d%H%M.%S
-                    // date -u -d '201905242134.03' +%s // precision to second level
-                    // root@zl100mt-100:~# date -u +%Y%m%d%H%M.%S
-                    // 201905242137.30
-                    char* cmd_str = "date -u -d ";
-                    int len_date = strlen(g_rnss_info.date_utc);
-                    int len_time = strlen(g_rnss_info.time_utc);
-                    int len_cmd = strlen(cmd_str);
-                    if ((0 != len_date) && (0 != len_time)) {
-                        char time_buf[32] = {0};
-                        char cmd_buf[64] = {0};
-                        char out_buf[64] = {0};
-                        char* tmp = time_buf;
-                        // g_rnss_info.date_utc format is DDMMYY, so make it reversed
-                        tmp[0] = g_rnss_info.date_utc[4];
-                        tmp[1] = g_rnss_info.date_utc[5];
-                        tmp[2] = g_rnss_info.date_utc[2];
-                        tmp[3] = g_rnss_info.date_utc[3];
-                        tmp[4] = g_rnss_info.date_utc[0];
-                        tmp[5] = g_rnss_info.date_utc[1];
-                        tmp += len_date;
-                        memcpy(tmp, g_rnss_info.time_utc, 4); // hhmm
-                        tmp += 4;
-                        memcpy(tmp, ".", 1); // .
-                        tmp += 1;
-                        memcpy(tmp, g_rnss_info.time_utc + 4, 2); // ss
-                        tmp += 2;
+            size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+            char tmp_buffer[RDSS_BUF_SIZE] = {0};
+            memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
+            memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
+            memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
+            g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf + unhandled_size;
+            g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
+            g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf) - unhandled_size;
 
-                        tmp = cmd_buf;
-                        memcpy(tmp, cmd_str, len_cmd);
-                        tmp += len_cmd;
-                        int len_YYMMDDhhmmss = strlen(time_buf);
-                        memcpy(tmp, time_buf, len_YYMMDDhhmmss); // YYMMDDhhmm.ss
-                        tmp += len_YYMMDDhhmmss;
-                        memcpy(tmp, " +%s", 4);
-                        FILE* fp = NULL;
-                        // compare epoch time, if gap is more than 3s, set the time
-                        fp = popen(cmd_buf, "r");
-                        int now_utc_s = (unsigned)time(NULL);
-                        if (fp != NULL) {
-                            fgets(out_buf, sizeof(out_buf), fp);
-                            int ts = strtol(out_buf, NULL, 10);
-                            if (abs(ts - now_utc_s) > 3) {
-                                memset(cmd_buf, 0, sizeof(cmd_buf));
-                                snprintf(cmd_buf, sizeof(cmd_buf), "date -u -s %s", time_buf);
-                                system(cmd_buf);
-                            }
-                        } else {
-                            printf("Failed to run date command to set time\n" );
+            iot_dbg("\n!!! receiving buffer is full, raw_cursor %d, pdu_cursor %d, rest_size %d, unhandled_size %d!!!\n", g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.pdu_cursor - g_rdss_rx_buf.buf, g_rdss_rx_buf.rest_size, unhandled_size);
+            //iot_dbg("\n!!! receiving buffer is unblocking !!!\n");
+            pthread_mutex_unlock(&g_rdss_rx_buf_lock);
+            //iot_dbg("\n!!! receiving buffer is back !!!\n");
+            //g_rdss_rx_buf.buf_lock = 0;
+        }
+    }
+    return NULL;
+}
+
+static const char* find_comma(const char* str, size_t str_len, uint32_t next_n)
+{
+    int count = 0;
+
+    if (next_n == 0) return NULL;
+
+    int i = 0;
+    for (; i < str_len; i++) {
+        if (str[i] == ',') {
+            count += 1;
+            if (count >= next_n) return &(str[i]);
+        }
+    }
+    return NULL;
+}
+
+static void* rnss_thread_func(void *params)
+{
+    iot_dbg("\nrnss\n");
+    //BD_INFO* bd_info = (BD_INFO*)params;
+    //int fd = bd_info->rnss_ttyfd;
+
+    char buf[1024];
+    //const char *delim = ",";
+    const char *ptr_prev = NULL;
+    const char *ptr_next = NULL;
+
+    FILE* ss = fdopen(g_bd_inf.rnss_ttyfd, "r+");
+    //FILE* ss = fopen("/dev/ttyUSB3", "r");
+    //iot_dbg("\nopen /dev/ttyUSB3...\n");
+    while (!g_cancelled) {
+
+        //if (g_beidou_status != CONNECTED) continue;
+
+        memset(buf, 0, sizeof(buf));
+
+        char* line = fgets(buf, sizeof(buf), ss);
+        if (line != NULL) {
+            if (0 == strncmp(line, "$GNGGA", 6)) {
+                iot_dbg("\nRNSS <--: %s", line);
+                // time_UTC
+                // latitude
+                ptr_prev = find_comma(line, strlen(line), 2);
+                ptr_next = find_comma(line, strlen(line), 4);
+                memset(g_rnss_info.latitude, 0, sizeof(g_rnss_info.latitude));
+                memcpy(g_rnss_info.latitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                // longitude
+                ptr_prev = ptr_next;
+                ptr_next = find_comma(line, strlen(line), 6);
+                memset(g_rnss_info.longitude, 0, sizeof(g_rnss_info.longitude));
+                memcpy(g_rnss_info.longitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                // RNSS status
+                g_rnss_info.gps_status = atoi(ptr_next + 1);
+                // satellite number
+                ptr_prev = find_comma(line, strlen(line), 7);
+                g_rnss_info.satellite_num = atoi(ptr_prev + 1);
+                ptr_prev = find_comma(line, strlen(line), 9);
+                ptr_next = find_comma(line, strlen(line), 11);
+                memset(g_rnss_info.altitude, 0, sizeof(g_rnss_info.altitude));
+                memcpy(g_rnss_info.altitude, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                iot_dbg("GNGGA update:\n \
+                        gps status\t <%d>\n \
+                        satellite num\t <%d>\n \
+                        latitude\t <%s>\n \
+                        longitue\t <%s>\n \
+                        altitude\t <%s>\n",
+                        g_rnss_info.gps_status,
+                        g_rnss_info.satellite_num,
+                        g_rnss_info.latitude,
+                        g_rnss_info.longitude,
+                        g_rnss_info.altitude);
+            } else if (0 == strncmp(line, "$GNRMC", 6)) {
+                iot_dbg("\nRNSS <--: %s", line);
+                ptr_prev = find_comma(line, strlen(line), 1);
+                ptr_next = find_comma(line, strlen(line), 2);
+                memset(g_rnss_info.time_utc, 0, sizeof(g_rnss_info.time_utc));
+                memcpy(g_rnss_info.time_utc, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                ptr_prev = find_comma(line, strlen(line), 7);
+                ptr_next = find_comma(line, strlen(line), 8);
+                memset(g_rnss_info.speed_kn, 0, sizeof(g_rnss_info.speed_kn));
+                memcpy(g_rnss_info.speed_kn, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                ptr_prev = ptr_next;
+                ptr_next = find_comma(line, strlen(line), 9);
+                memset(g_rnss_info.heading, 0, strlen(g_rnss_info.heading));
+                memcpy(g_rnss_info.heading, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                ptr_prev = ptr_next;
+                ptr_next = find_comma(line, strlen(line), 10);
+                memset(g_rnss_info.date_utc, 0, sizeof(g_rnss_info.date_utc));
+                memcpy(g_rnss_info.date_utc, ptr_prev + 1, ptr_next - ptr_prev - 1);
+                iot_dbg("GNRMC update:\n \
+                        time_utc\t <%s>\n \
+                        date_utc\t <%s>\n \
+                        speed_kn\t <%s>\n \
+                        heading\t <%s>\n",
+                        g_rnss_info.time_utc,
+                        g_rnss_info.date_utc,
+                        g_rnss_info.speed_kn,
+                        g_rnss_info.heading);
+                // if date_utc is not empty string and time_utc has different more than 3s
+                // root@zl100mt-100:~# date -u -s "201905242134.03"
+                // Fri May 24 21:34:03 UTC 2019
+                // date -u +%Y%m%d%H%M.%S
+                // date -u -d '201905242134.03' +%s // precision to second level
+                // root@zl100mt-100:~# date -u +%Y%m%d%H%M.%S
+                // 201905242137.30
+                char* cmd_str = "date -u -d ";
+                int len_date = strlen(g_rnss_info.date_utc);
+                int len_time = strlen(g_rnss_info.time_utc);
+                int len_cmd = strlen(cmd_str);
+                if ((0 != len_date) && (0 != len_time)) {
+                    char time_buf[32] = {0};
+                    char cmd_buf[64] = {0};
+                    char out_buf[64] = {0};
+                    char* tmp = time_buf;
+                    // g_rnss_info.date_utc format is DDMMYY, so make it reversed
+                    tmp[0] = g_rnss_info.date_utc[4];
+                    tmp[1] = g_rnss_info.date_utc[5];
+                    tmp[2] = g_rnss_info.date_utc[2];
+                    tmp[3] = g_rnss_info.date_utc[3];
+                    tmp[4] = g_rnss_info.date_utc[0];
+                    tmp[5] = g_rnss_info.date_utc[1];
+                    tmp += len_date;
+                    memcpy(tmp, g_rnss_info.time_utc, 4); // hhmm
+                    tmp += 4;
+                    memcpy(tmp, ".", 1); // .
+                    tmp += 1;
+                    memcpy(tmp, g_rnss_info.time_utc + 4, 2); // ss
+                    tmp += 2;
+
+                    tmp = cmd_buf;
+                    memcpy(tmp, cmd_str, len_cmd);
+                    tmp += len_cmd;
+                    int len_YYMMDDhhmmss = strlen(time_buf);
+                    memcpy(tmp, time_buf, len_YYMMDDhhmmss); // YYMMDDhhmm.ss
+                    tmp += len_YYMMDDhhmmss;
+                    memcpy(tmp, " +%s", 4);
+                    FILE* fp = NULL;
+                    // compare epoch time, if gap is more than 3s, set the time
+                    fp = popen(cmd_buf, "r");
+                    int now_utc_s = (unsigned)time(NULL);
+                    if (fp != NULL) {
+                        fgets(out_buf, sizeof(out_buf), fp);
+                        int ts = strtol(out_buf, NULL, 10);
+                        if (abs(ts - now_utc_s) > 3) {
+                            memset(cmd_buf, 0, sizeof(cmd_buf));
+                            snprintf(cmd_buf, sizeof(cmd_buf), "date -u -s %s", time_buf);
+                            system(cmd_buf);
                         }
+                    } else {
+                        printf("Failed to run date command to set time\n" );
+                    }
 
-                        /* close */
-                        pclose(fp);
+                    /* close */
+                    pclose(fp);
 
-                    }    
+                }    
 
-                }
             }
         }
-        return NULL;
     }
+    return NULL;
+}
 
-    //static hexdump(const char* buf, size_t len)
-    //{
-    //    char* tmp = NULL;
-    //    if ((tmp = (char *)malloc((3 * len) + 1))) {
-    //        if (label)
-    //            sprintf(tmp, "%s", label);
-    //
-    //        for (i = 0; i < len; i++)
-    //            sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
-    //
-    //        tmp[strlen(tmp)] = 0;
-    //        iot_dbg("%s", tmp);
-    //
-    //        IOT_FREE_AND_NULL(tmp);
-    //    }
-    //    for (i = 0; i < len; i++) {
-    //        sprintf(&(output[strlen(output)]), "%02X ", buf[i]);
-    //    }
-    //}
-    //
-    static void rdss_check_status_cb(struct uloop_timeout *t)
-    {
-        g_rdss_info.rdss_status = check_beidou_status(&g_bd_inf);
-        uloop_timeout_set(t, 61000);
-    }
+//static hexdump(const char* buf, size_t len)
+//{
+//    char* tmp = NULL;
+//    if ((tmp = (char *)malloc((3 * len) + 1))) {
+//        if (label)
+//            sprintf(tmp, "%s", label);
+//
+//        for (i = 0; i < len; i++)
+//            sprintf(&(tmp[strlen(tmp)]), "%02X ", buf[i]);
+//
+//        tmp[strlen(tmp)] = 0;
+//        iot_dbg("%s", tmp);
+//
+//        IOT_FREE_AND_NULL(tmp);
+//    }
+//    for (i = 0; i < len; i++) {
+//        sprintf(&(output[strlen(output)]), "%02X ", buf[i]);
+//    }
+//}
+//
+static void rdss_check_status_cb(struct uloop_timeout *t)
+{
+    g_rdss_info.rdss_status = check_beidou_status(&g_bd_inf);
+    uloop_timeout_set(t, 60000);
+}
 
-    static void rdss_txxx_poller_cb(struct uloop_timeout *t)
-    {
-        iot_inf("polling txxx...");
+static void rdss_txxx_poller_cb(struct uloop_timeout *t)
+{
+iot_inf("polling txxx...");
         //        memset(&b, 0, sizeof(b));
         //blob_buf_init(&b, 0);
         //blobmsg_add_string(&b, "txxx", "hello polling");
         ////ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
         //ubus_send_event(ctx, "rdss.txxx", b.head);
-        char rxbuf[512] = {0};
-        ssize_t rxlen = rdss_recv_pdu(RDSS_TXXX, rxbuf, 10);
-        if (rxlen > 0) {
-            hexdump(LOG_DEBUG, "txxx_poller: notify TXXX -->", rxbuf, rxlen);
-            memset(&b, 0, sizeof(b));
-            //blob_buf_init(&b, 0);
-            //blobmsg_add_string(&b, "txxx", "hello polling");
-            //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
-            char out_buff[512] = {0};
-            buf_hexdump(out_buff, rxbuf, rxlen);
-            blob_buf_init(&b, 0);
-            blobmsg_add_string(&b, "txxx", out_buff);
-            ubus_send_event(ctx, "rdss.txxx", b.head);
-        }
+    char rxbuf[512] = {0};
+    ssize_t rxlen = rdss_recv_pdu(RDSS_TXXX, rxbuf, 10);
+    if (rxlen > 0) {
+        hexdump(LOG_DEBUG, "txxx_poller: notify TXXX -->", rxbuf, rxlen);
+                memset(&b, 0, sizeof(b));
+        //blob_buf_init(&b, 0);
+        //blobmsg_add_string(&b, "txxx", "hello polling");
+        //ubus_notify(ctx, &zl100mt_object, "rdss", b.head, -1);
+                char out_buff[512] = {0};
+                buf_hexdump(out_buff, rxbuf, rxlen);
+                blob_buf_init(&b, 0);
+                blobmsg_add_string(&b, "txxx", out_buff);
+        ubus_send_event(ctx, "rdss.txxx", b.head);
+    }
 #if 0
         pthread_mutex_lock(&g_rdss_rx_buf_lock);
         size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
@@ -2155,570 +2097,570 @@ out:
             }
         }
         pthread_mutex_unlock(&g_rdss_rx_buf_lock);
-        //}
+    //}
 #endif
-        uloop_timeout_set(t, 500);
-    }
+    uloop_timeout_set(t, 500);
+}
 
 #if 0
-    static void bd_rdss_poller_cb(struct uloop_timeout *t)
-    {
-        iot_dbg("\npolling\n");
-        BD_INFO* pinf = &g_bd_inf;
-        int ret = 0;
-        int fd = pinf->rdss_ttyfd;
+static void bd_rdss_poller_cb(struct uloop_timeout *t)
+{
+    iot_dbg("\npolling\n");
+    BD_INFO* pinf = &g_bd_inf;
+    int ret = 0;
+    int fd = pinf->rdss_ttyfd;
 
-        unsigned char txbuf[256];
-        unsigned char rxbuf[256];
+    unsigned char txbuf[256];
+    unsigned char rxbuf[256];
+    memset(rxbuf, 0, sizeof(rxbuf));
+    memset(txbuf, 0, sizeof(txbuf));
+    size_t txlen   = 0;
+    size_t msg_len = 0;
+
+    struct timeval timeout;
+    timeout.tv_sec  = 0;
+    timeout.tv_usec = 50000; // 50ms
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+
+    ssize_t rc = 0;
+
+    rc = select(fd + 1, &fds, NULL, NULL, &timeout);
+    if (rc < 0) {
+        iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
+    } else if (rc > 0) { // data available
+        rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
+        if (rc > 0) {
+            g_rdss_rx_buf.raw_cursor += rc;
+            g_rdss_rx_buf.rest_size -= rc;
+        }
+
+        // if buffer is full, clear the buffer and move incomplete data to the start
+        size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
+        if (g_rdss_rx_buf.rest_size == 0) {
+            char tmp_buffer[RDSS_BUF_SIZE];
+            memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
+            memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
+            memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
+            g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf;
+            g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
+        }
+
+        while (true) {
+            char* p_found = NULL;
+
+            ssize_t msg_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
+            if (p_found == NULL) break; // quit the loop when all messages are handled
+
+            // if message is not complete, read more at next time
+            // if it's the response of message which has been sent out, call the callback
+            rdss_msg_t *front_msg = front_rdss_tx_msg_q();
+
+            g_rdss_rx_buf.pdu_cursor = p_found;
+        }
+        rc = rx_bd_msg(&g_bd_inf, "$ICXX", rxbuf, 500);
+        if (ret > 0) {
+            memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
+            uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
+            if (pinf->local_sim != local_sim) {
+                pinf->local_sim = local_sim;
+                iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
+                iot_cfg_sync(pinf->pcfg);
+                iot_dbg("write down local_sim: %d", local_sim);
+            }
+            return CONNECTED;
+        }
+        // check beidou status
+        //g_beidou_status = check_beidou_status(&g_bd_inf);
+        txlen = compose_rdss_icjc_pdu(txbuf);
+        send_rdss_msg(pinf, txbuf, txlen);
+    }
+
+    if (g_beidou_status == CONNECTED) {
+        if (g_is_relay_data_ready) {
+            iot_dbg("xijia 111\n");
+            txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
+            send_rdss_msg(&g_bd_inf, txbuf, txlen);
+
+            g_is_relay_data_ready = false;
+            g_tx_total++;
+
+#if 0
+            while (true) {
+                ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len, 500);
+            iot_dbg("xijia 222\n");
+                if (ret > 0) {
+                    if (0 == memcmp(rxbuf, "$FKXX", 5)) {
+            iot_dbg("xijia 333\n");
+                        if (rxbuf[10]) { // check the feedback flag
+                            iot_dbg("INFO: sending fail, error code 0x%hhx\n", rxbuf[10]);
+            iot_dbg("xijia 444\n");
+                            g_tx_fail++;
+                            g_rdss_status = 0;
+                        } else {
+            iot_dbg("xijia 555\n");
+                            g_tx_succ++;
+                            g_rdss_status = 1;
+                        }
+                        break;
+                    }
+                }
+            }
+#endif
+        }
+    }
+
+    //// update local SIM
+    //txlen = compose_rdss_icjc_pdu(txbuf);
+    //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+    //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+    //    iot_dbg("xijia 666\n");
+    //if (ret > 0) {
+    //    if (0 == memcmp(rxbuf, "$ICXX", 5)) {
+    //        memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
+    //        uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
+    //        if (g_bd_inf.local_sim != local_sim) {
+    //            g_bd_inf.local_sim = local_sim;
+    //            iot_cfg_set_int(g_bd_inf.pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, g_bd_inf.local_sim);
+    //            iot_cfg_sync(g_bd_inf.pcfg);
+    //            iot_dbg("write down local_sim: %d", local_sim);
+    //        }
+    //    }
+    //}
+
+    // update connection status and position
+    //txlen = compose_DWSQ_once(txbuf);
+    //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+    //    iot_dbg("xijia 777\n");
+    //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+    //if (ret > 0) {
+    //    if (0 == memcmp(rxbuf, "$FKXX", 5)) {
+    //        if (rxbuf[10]) { // check the feedback flag
+    //            g_rdss_status = 0;
+    //        } else {
+    //            g_rdss_status = 1;
+
+    //            ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+    //            if (ret > 0) {
+    //                if (0 == memcmp(rxbuf, "$DWXX", 5)) {
+    //                    memcpy(g_DWXX, &(rxbuf[10]), 20);
+    //                }
+    //            }
+
+    //            //rx_nbytes(&g_bd_inf, rxbuf, 10);
+    //            //msg_len = (rxbuf[5] << 8) | rxbuf[6];
+    //            //rx_nbytes(&g_bd_inf, rxbuf + 10, msg_len - 10);
+    //            //if (0 == memcmp(rxbuf, "$DWXX", 5)) {
+    //            //    memcpy(g_DWXX, &(rxbuf[10]), 20);
+    //            //}
+    //        }
+    //    }
+    //}
+
+    // update signal strength ($XTZJ/$ZJXX)
+    //txlen = compose_XTZJ(txbuf, 0);
+    //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+    //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
+    //if (ret > 0) {
+    //    if (0 == memcmp(rxbuf, "$ZJXX", 5)) {
+    //        memcpy(g_ZJXX, &(rxbuf[10]), sizeof(g_ZJXX));
+    //    }
+    //}
+
+    iot_dbg("xijia 999\n");
+    uloop_timeout_set(t, 0);
+}
+#endif
+
+static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
+{
+    //iot_dbg("beidou relay callback ... \n");
+
+    unsigned char buf_ip[1600];
+    struct iphdr* p_iphdr   = NULL;
+    struct tcphdr* p_tcphdr = NULL;
+    size_t iphdr_offset     = 0;
+    size_t tcphdr_offset    = 0;
+    size_t tcpdata_offset   = 0;
+    ssize_t recv_size       = -1;
+
+    int i = 0;
+    int fd_max = g_sock;
+    //size_t msg_len = 0;
+
+    memset(&buf_ip, 0, sizeof(buf_ip));
+
+    struct timeval timeout;
+    timeout.tv_sec  = 0;
+    timeout.tv_usec = 5000;
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    //FD_SET(g_bd_inf.rdss_ttyfd, &fds);
+    FD_SET(g_sock, &fds);
+    //fd_max = (g_sock > g_bd_inf.rdss_ttyfd) ? g_sock : g_bd_inf.rdss_ttyfd;
+
+    int ret = select(fd_max + 1, &fds, NULL, NULL, &timeout);
+    if (ret < 0) {
+        iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
+    } else if (ret > 0) {
+        if (FD_ISSET(g_sock, &fds)) {
+            recv_size = recv(g_sock, &buf_ip, sizeof(buf_ip), 0);
+            if (recv_size == -1)
+            {
+                iot_dbg("%s: recv error, errno %d !!\n", __FUNCTION__, errno);
+            }
+
+            iphdr_offset = sizeof(struct ethhdr);
+            p_iphdr      = (struct iphdr*)(buf_ip + iphdr_offset);
+
+            /*
+             * only print the TCP packets which have 0xBDBD at first two payload bytes
+             */
+            if (p_iphdr->protocol == IPPROTO_TCP)
+            {
+                tcphdr_offset   = iphdr_offset + (p_iphdr->ihl * 4);
+                p_tcphdr        = (struct tcphdr*)(buf_ip + tcphdr_offset);
+                tcpdata_offset = tcphdr_offset + p_tcphdr->th_off * 4;
+
+                uint8_t * p_tcpdata = buf_ip + tcpdata_offset;
+                char tmp[1600];
+
+                memset(tmp, 0, 1600);
+                if (p_tcpdata[0] == 0xbd && p_tcpdata[1] == 0xbd)
+                {
+                    sprintf(tmp, "\n* %s -> %s (IP packet)", \
+                            inet_ntoa(*((struct in_addr *)&(p_iphdr->saddr))), \
+                            inet_ntoa(*((struct in_addr *)&(p_iphdr->daddr))));
+                    for(i = 0; i < recv_size - iphdr_offset; i++)
+                    {
+                        if (i%16 == 0)
+                        {
+                            sprintf(&(tmp[strlen(tmp)]), "\n0x%04hhx: ", i);
+                        }
+                        sprintf(&(tmp[strlen(tmp)]), "%02hhX ", buf_ip[i + iphdr_offset]);
+                    }
+                    iot_dbg("%s\n", tmp);
+                    /* NOTICE: relay to beidou. Assuming no sticky package and only relay 32 bytes */
+                    if (recv_size - tcpdata_offset >= 32) {
+                        memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32); // move previous to current
+                        memcpy(g_bd_relay_msg + 6 + 32, &(p_tcpdata[2]), 32); // fill current with new data
+                        //g_is_relay_data_ready = true;
+                        iot_cfg_sync(g_bd_inf.pcfg);
+                        iot_dbg("relaying ...\n");
+                        char txbuf[256] = {0};
+                        rdss_msg_txsq_t msg = {
+                            .local_sim = g_bd_inf.local_sim,
+                            .target_sim = g_bd_inf.target_sim,
+                            .data = {0},
+                            .data_len = 0
+                        };
+                        size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
+                        memcpy(msg.data, g_bd_relay_msg, data_len);
+                        msg.data_len = data_len;
+                        //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
+                        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
+                        ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
+                        if (txlen > 0) {
+                            //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
+                            pthread_mutex_lock(&g_rdss_rw_lock);
+                            ssize_t ret = rdss_send_pdu(txbuf, txlen);
+                            if (ret < 0) {
+                                g_rdss_info.tx_fail++;
+                            } else {
+                                char rxbuf[512] = {0};
+                                ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+                                g_rdss_info.tx_total++;
+                                if (rxlen > 0) {
+                                    g_rdss_info.tx_succ++;
+                                } else {
+                                    g_rdss_info.tx_fail++;
+                                }
+                            }
+                            pthread_mutex_unlock(&g_rdss_rw_lock);
+                        }
+                        //g_is_relay_data_ready = false;
+                        //g_tx_total++;
+                    }
+                }
+            }
+        }
+    }
+
+    uloop_timeout_set(t, 50);
+}
+
+#if 0
+            if (ret == pinf->rdss_ttyfd) {
+                rx_nbytes(pinf, rxbuf, 22);
+                iot_logbuf("received: ", rxbuf, 22);
+
+                sleep(1);
+                tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
+
+                txlen = compose_rdss_txsq_pdu(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
+                write(pinf->rdss_ttyfd, txbuf, txlen);
+                rx_nbytes(pinf, rxbuf, 16);
+                iot_logbuf("received: ", rxbuf, 16);
+                rx_nbytes(pinf, rxbuf, 54);
+                iot_logbuf("received: ", rxbuf, 54);
+            } else if (ret == s) {
+            }
+#endif
+
+//int old_main (int argc, char *argv[])
+//{
+//    int pid_fd = -1;
+//    BD_INFO *pinf = &g_bd_inf;
+//    
+//    if (argc == 2 && !(strcmp(argv[1], "-d"))) {
+//        g_dbg_enabled = 1;
+//    }
+//
+//#if !(BD_DBG)
+//    int ret = 0;
+//    //if (!g_dbg_enabled) {
+//        /* daemonize */
+//        if ((ret = daemon(0, 1))) {
+//            fprintf(stderr, "Err: daemonize. %s\n\n", strerror(errno));
+//            exit(1);
+//        }
+//        /* unique instance */
+//        if ((pid_fd = lock_pid()) < 0) {
+//            fprintf(stderr, "Err: lock failure!\n\n");
+//            exit(1);
+//        }
+//        /* close all inheritated fd, excluding pid file */
+//        close_allfd(pid_fd);
+//    //}
+//#endif
+//    iot_inf("Starting zl100mt-app ...");
+//
+//    set_sighandler();
+//
+//    if (init_bdinf(pinf)) {
+//        goto out;
+//    }
+//
+//    mainloop(pinf);
+//
+//out:
+//    g_cancelled = 1;
+//    if (pid_fd >= 0) {
+//        unlink(IOT_BD_PID_PATH);
+//        close(pid_fd);
+//        pid_fd = -1;
+//    }
+//
+//    return 0;
+//}
+
+#if 0
+static void q_empty(struct runqueue *q)
+{
+    fprintf(stderr, "All done!\n");
+    uloop_end();
+}
+
+static void q_relay_run(struct runqueue *q, struct runqueue_task *t)
+{
+    iot_dbg("q_relay_run ... \n");
+}
+
+static void q_relay_cancel(struct runqueue *q, struct runqueue_task *t, int type)
+{
+	iot_dbg("[%d/%d] cancel relay\n", q->running_tasks, q->max_running_tasks);
+    iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n", q->stopped,
+            list_empty(&q->tasks_inactive.list), list_empty(&q->tasks_active.list),
+            q->running_tasks, q->empty, t->queued);
+    runqueue_task_add(q, t, false);
+	runqueue_process_cancel_cb(q, t, type);
+}
+
+static void q_relay_complete(struct runqueue *q, struct runqueue_task *t)
+{
+    struct relayer *r = container_of(t, struct relayer, proc.task);
+	iot_dbg("[%d/%d] finish relay\n", q->running_tasks, q->max_running_tasks);
+
+    iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n",
+            q->stopped, list_empty(&q->tasks_inactive.list), list_empty(&q->tasks_active.list),
+            q->running_tasks, q->empty, t->queued);
+    struct relayer *nr = calloc(1, sizeof(*r));
+
+	nr->proc = r->proc;
+	//nr->proc.task.run_timeout = r->proc.task.proc.task.run_timeout;
+	//nr->proc.task.complete = q_relay_complete;
+    nr->sock = r->sock;
+    nr->p_bd_info = r->p_bd_info;
+
+    memcpy(nr->bd_relay_msg, r->bd_relay_msg, sizeof(r->bd_relay_msg));
+
+	runqueue_task_add(q, &nr->proc.task, false);
+
+	free(r);
+}
+
+void add_relayer_task()
+{
+    static const struct runqueue_task_type relayer_type = {
+        .run = q_relay_run,
+        .cancel = q_relay_cancel,
+        .kill = runqueue_process_kill_cb,
+    };
+
+    uint8_t bd_relay_msg[] = {
+        /* section ID */
+        0xBD, 0xBD,
+        /* local SIM no */
+        0x00, 0x00, 0x00, 0x00,
+        /* last minutes data */
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        /* this minutes data */
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0
+    };
+
+    int s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+    if (s == -1)
+    {
+        perror("Socket creation failed");
+        exit (0);
+    }
+
+    //fd_set fds;
+    //FD_ZERO(&fds);
+    //FD_SET(pinf->rdss_ttyfd, &fds);
+    //FD_SET(s, &fds);
+    //fd_max = (s > pinf->rdss_ttyfd) ? s : pinf->rdss_ttyfd;
+
+    struct sockaddr_ll socket_address;
+    memset(&socket_address, 0, sizeof (socket_address));
+    socket_address.sll_family = PF_PACKET;
+    socket_address.sll_ifindex = if_nametoindex("lo");
+    socket_address.sll_protocol = htons(ETH_P_ALL);
+
+    int rc = bind(s, (struct sockaddr*)&socket_address, sizeof(socket_address));
+    if (rc == -1)
+    {
+        perror("Bind");
+        exit (0);
+    }
+
+    struct relayer *r = calloc(1, sizeof(*r));
+
+  	r->proc.task.type = &relayer_type;
+  	r->proc.task.run_timeout = 0;
+  	r->proc.task.complete = q_relay_complete;
+    r->sock = s;
+    r->p_bd_info = &g_bd_inf;
+
+    memcpy(r->bd_relay_msg, bd_relay_msg, sizeof(r->bd_relay_msg));
+
+    iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n",
+        q.stopped, list_empty(&q.tasks_inactive.list), list_empty(&q.tasks_active.list),
+        q.running_tasks, q.empty, &r->proc.task.queued);
+	  runqueue_task_add(&q, &r->proc.task, false);
+}
+#endif
+
+#if 0
+void rdss_thread_func(void *params) {
+    BD_INFO* bd_info = (BD_INFO*)params;
+    int fd = bd_info->rnss_ttyfd;
+    while(true) {
+        // send ICJC every 3 seconds in order to check Beidou status
+
+    }
+
+    unsigned char txbuf[256];
+    unsigned char rxbuf[256];
+
+    struct timeval timeout;
+    timeout.tv_sec  = 2;
+    timeout.tv_usec = 0;
+
+    int fd = bd_info->rdss_ttyfd;
+
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+
+    size_t msg_len = 0;
+    size_t txlen = 0;
+    int retry = RDSS_MAX_RETRY;
+    int ret = 0;
+    int rc = 0;
+
+    while (retry--) {
         memset(rxbuf, 0, sizeof(rxbuf));
         memset(txbuf, 0, sizeof(txbuf));
-        size_t txlen   = 0;
-        size_t msg_len = 0;
 
-        struct timeval timeout;
-        timeout.tv_sec  = 0;
-        timeout.tv_usec = 50000; // 50ms
-
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-
-        ssize_t rc = 0;
+        txlen = compose_rdss_icjc_pdu(txbuf);
+        send_rdss_msg(pinf, txbuf, txlen);
 
         rc = select(fd + 1, &fds, NULL, NULL, &timeout);
         if (rc < 0) {
             iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
         } else if (rc > 0) { // data available
-            rc = read(fd, g_rdss_rx_buf.raw_cursor, g_rdss_rx_buf.rest_size);
-            if (rc > 0) {
-                g_rdss_rx_buf.raw_cursor += rc;
-                g_rdss_rx_buf.rest_size -= rc;
-            }
-
-            // if buffer is full, clear the buffer and move incomplete data to the start
-            size_t unhandled_size = g_rdss_rx_buf.raw_cursor - g_rdss_rx_buf.pdu_cursor;
-            if (g_rdss_rx_buf.rest_size == 0) {
-                char tmp_buffer[RDSS_BUF_SIZE];
-                memcpy(tmp_buffer, g_rdss_rx_buf.pdu_cursor, unhandled_size);
-                memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
-                memcpy(g_rdss_rx_buf.buf, tmp_buffer, unhandled_size);
-                g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf;
-                g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
-            }
-
-            while (true) {
-                char* p_found = NULL;
-
-                ssize_t msg_len = rdss_find_first_pdu(g_rdss_rx_buf.pdu_cursor, unhandled_size, &p_found);
-                if (p_found == NULL) break; // quit the loop when all messages are handled
-
-                // if message is not complete, read more at next time
-                // if it's the response of message which has been sent out, call the callback
-                rdss_msg_t *front_msg = front_rdss_tx_msg_q();
-
-                g_rdss_rx_buf.pdu_cursor = p_found;
-            }
-            rc = rx_bd_msg(&g_bd_inf, "$ICXX", rxbuf, 500);
+            ret = rx_bd_msg(pinf, rxbuf, &msg_len);
             if (ret > 0) {
-                memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
-                uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
-                if (pinf->local_sim != local_sim) {
-                    pinf->local_sim = local_sim;
-                    iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
-                    iot_cfg_sync(pinf->pcfg);
-                    iot_dbg("write down local_sim: %d", local_sim);
-                }
-                return CONNECTED;
-            }
-            // check beidou status
-            //g_beidou_status = check_beidou_status(&g_bd_inf);
-            txlen = compose_rdss_icjc_pdu(txbuf);
-            send_rdss_msg(pinf, txbuf, txlen);
-        }
-
-        if (g_beidou_status == CONNECTED) {
-            if (g_is_relay_data_ready) {
-                iot_dbg("xijia 111\n");
-                txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
-                send_rdss_msg(&g_bd_inf, txbuf, txlen);
-
-                g_is_relay_data_ready = false;
-                g_tx_total++;
-
-#if 0
-                while (true) {
-                    ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len, 500);
-                    iot_dbg("xijia 222\n");
-                    if (ret > 0) {
-                        if (0 == memcmp(rxbuf, "$FKXX", 5)) {
-                            iot_dbg("xijia 333\n");
-                            if (rxbuf[10]) { // check the feedback flag
-                                iot_dbg("INFO: sending fail, error code 0x%hhx\n", rxbuf[10]);
-                                iot_dbg("xijia 444\n");
-                                g_tx_fail++;
-                                g_rdss_status = 0;
-                            } else {
-                                iot_dbg("xijia 555\n");
-                                g_tx_succ++;
-                                g_rdss_status = 1;
-                            }
-                            break;
-                        }
-                    }
-                }
-#endif
-            }
-        }
-
-        //// update local SIM
-        //txlen = compose_rdss_icjc_pdu(txbuf);
-        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-        //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
-        //    iot_dbg("xijia 666\n");
-        //if (ret > 0) {
-        //    if (0 == memcmp(rxbuf, "$ICXX", 5)) {
-        //        memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
-        //        uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
-        //        if (g_bd_inf.local_sim != local_sim) {
-        //            g_bd_inf.local_sim = local_sim;
-        //            iot_cfg_set_int(g_bd_inf.pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, g_bd_inf.local_sim);
-        //            iot_cfg_sync(g_bd_inf.pcfg);
-        //            iot_dbg("write down local_sim: %d", local_sim);
-        //        }
-        //    }
-        //}
-
-        // update connection status and position
-        //txlen = compose_DWSQ_once(txbuf);
-        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-        //    iot_dbg("xijia 777\n");
-        //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
-        //if (ret > 0) {
-        //    if (0 == memcmp(rxbuf, "$FKXX", 5)) {
-        //        if (rxbuf[10]) { // check the feedback flag
-        //            g_rdss_status = 0;
-        //        } else {
-        //            g_rdss_status = 1;
-
-        //            ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
-        //            if (ret > 0) {
-        //                if (0 == memcmp(rxbuf, "$DWXX", 5)) {
-        //                    memcpy(g_DWXX, &(rxbuf[10]), 20);
-        //                }
-        //            }
-
-        //            //rx_nbytes(&g_bd_inf, rxbuf, 10);
-        //            //msg_len = (rxbuf[5] << 8) | rxbuf[6];
-        //            //rx_nbytes(&g_bd_inf, rxbuf + 10, msg_len - 10);
-        //            //if (0 == memcmp(rxbuf, "$DWXX", 5)) {
-        //            //    memcpy(g_DWXX, &(rxbuf[10]), 20);
-        //            //}
-        //        }
-        //    }
-        //}
-
-        // update signal strength ($XTZJ/$ZJXX)
-        //txlen = compose_XTZJ(txbuf, 0);
-        //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-        //ret = rx_bd_msg(&g_bd_inf, rxbuf, &msg_len);
-        //if (ret > 0) {
-        //    if (0 == memcmp(rxbuf, "$ZJXX", 5)) {
-        //        memcpy(g_ZJXX, &(rxbuf[10]), sizeof(g_ZJXX));
-        //    }
-        //}
-
-        iot_dbg("xijia 999\n");
-        uloop_timeout_set(t, 0);
-    }
-#endif
-
-    static void rdss_bdbd_relayer_cb(struct uloop_timeout *t)
-    {
-        //iot_dbg("beidou relay callback ... \n");
-
-        unsigned char buf_ip[1600];
-        struct iphdr* p_iphdr   = NULL;
-        struct tcphdr* p_tcphdr = NULL;
-        size_t iphdr_offset     = 0;
-        size_t tcphdr_offset    = 0;
-        size_t tcpdata_offset   = 0;
-        ssize_t recv_size       = -1;
-
-        int i = 0;
-        int fd_max = g_sock;
-        //size_t msg_len = 0;
-
-        memset(&buf_ip, 0, sizeof(buf_ip));
-
-        struct timeval timeout;
-        timeout.tv_sec  = 0;
-        timeout.tv_usec = 5000;
-
-        fd_set fds;
-        FD_ZERO(&fds);
-        //FD_SET(g_bd_inf.rdss_ttyfd, &fds);
-        FD_SET(g_sock, &fds);
-        //fd_max = (g_sock > g_bd_inf.rdss_ttyfd) ? g_sock : g_bd_inf.rdss_ttyfd;
-
-        int ret = select(fd_max + 1, &fds, NULL, NULL, &timeout);
-        if (ret < 0) {
-            iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
-        } else if (ret > 0) {
-            if (FD_ISSET(g_sock, &fds)) {
-                recv_size = recv(g_sock, &buf_ip, sizeof(buf_ip), 0);
-                if (recv_size == -1)
-                {
-                    iot_dbg("%s: recv error, errno %d !!\n", __FUNCTION__, errno);
-                }
-
-                iphdr_offset = sizeof(struct ethhdr);
-                p_iphdr      = (struct iphdr*)(buf_ip + iphdr_offset);
-
-                /*
-                 * only print the TCP packets which have 0xBDBD at first two payload bytes
-                 */
-                if (p_iphdr->protocol == IPPROTO_TCP)
-                {
-                    tcphdr_offset   = iphdr_offset + (p_iphdr->ihl * 4);
-                    p_tcphdr        = (struct tcphdr*)(buf_ip + tcphdr_offset);
-                    tcpdata_offset = tcphdr_offset + p_tcphdr->th_off * 4;
-
-                    uint8_t * p_tcpdata = buf_ip + tcpdata_offset;
-                    char tmp[1600];
-
-                    memset(tmp, 0, 1600);
-                    if (p_tcpdata[0] == 0xbd && p_tcpdata[1] == 0xbd)
-                    {
-                        sprintf(tmp, "\n* %s -> %s (IP packet)", \
-                                inet_ntoa(*((struct in_addr *)&(p_iphdr->saddr))), \
-                                inet_ntoa(*((struct in_addr *)&(p_iphdr->daddr))));
-                        for(i = 0; i < recv_size - iphdr_offset; i++)
-                        {
-                            if (i%16 == 0)
-                            {
-                                sprintf(&(tmp[strlen(tmp)]), "\n0x%04hhx: ", i);
-                            }
-                            sprintf(&(tmp[strlen(tmp)]), "%02hhX ", buf_ip[i + iphdr_offset]);
-                        }
-                        iot_dbg("%s\n", tmp);
-                        /* NOTICE: relay to beidou. Assuming no sticky package and only relay 32 bytes */
-                        if (recv_size - tcpdata_offset >= 32) {
-                            memcpy(g_bd_relay_msg + 6, g_bd_relay_msg + 6 + 32, 32); // move previous to current
-                            memcpy(g_bd_relay_msg + 6 + 32, &(p_tcpdata[2]), 32); // fill current with new data
-                            //g_is_relay_data_ready = true;
-                            iot_cfg_sync(g_bd_inf.pcfg);
-                            iot_dbg("relaying ...\n");
-                            char txbuf[256] = {0};
-                            rdss_msg_txsq_t msg = {
-                                .local_sim = g_bd_inf.local_sim,
-                                .target_sim = g_bd_inf.target_sim,
-                                .data = {0},
-                                .data_len = 0
-                            };
-                            size_t data_len = sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]);
-                            memcpy(msg.data, g_bd_relay_msg, data_len);
-                            msg.data_len = data_len;
-                            //txlen = compose_rdss_txsq_pdu(&g_bd_inf, txbuf, g_bd_relay_msg, sizeof(g_bd_relay_msg) / sizeof(g_bd_relay_msg[0]));
-                            //send_rdss_msg(&g_bd_inf, txbuf, txlen);
-                            ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
-                            if (txlen > 0) {
-                                //const char* resp_pdu = rdss_send_pdu(RDSS_TXSQ, txbuf, txlen, RDSS_RESPONSE_TIMEOUT_MS);
-                                pthread_mutex_lock(&g_rdss_rw_lock);
-                                ssize_t ret = rdss_send_pdu(txbuf, txlen);
-                                if (ret < 0) {
-                                    g_rdss_info.tx_fail++;
-                                } else {
-                                    char rxbuf[512] = {0};
-                                    ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
-                                    g_rdss_info.tx_total++;
-                                    if (rxlen > 0) {
-                                        g_rdss_info.tx_succ++;
-                                    } else {
-                                        g_rdss_info.tx_fail++;
-                                    }
-                                }
-                                pthread_mutex_unlock(&g_rdss_rw_lock);
-                            }
-                            //g_is_relay_data_ready = false;
-                            //g_tx_total++;
-                        }
+                if (0 == memcmp(rxbuf, "$ICXX", 5)) {
+                    memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
+                    uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
+                    if (pinf->local_sim != local_sim) {
+                        pinf->local_sim = local_sim;
+                        iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
+                        iot_cfg_sync(pinf->pcfg);
+                        iot_dbg("write down local_sim: %d", local_sim);
                     }
                 }
             }
+            return CONNECTED;
+        } else { // (rc == 0) means timeout
+            return DISCONNECTED;
         }
-
-        uloop_timeout_set(t, 50);
     }
-
-#if 0
-    if (ret == pinf->rdss_ttyfd) {
-        rx_nbytes(pinf, rxbuf, 22);
-        iot_logbuf("received: ", rxbuf, 22);
-
-        sleep(1);
-        tcflush(pinf->rdss_ttyfd, TCIOFLUSH);
-
-        txlen = compose_rdss_txsq_pdu(pinf, txbuf, content, sizeof(content) / sizeof(content[0]));
-        write(pinf->rdss_ttyfd, txbuf, txlen);
-        rx_nbytes(pinf, rxbuf, 16);
-        iot_logbuf("received: ", rxbuf, 16);
-        rx_nbytes(pinf, rxbuf, 54);
-        iot_logbuf("received: ", rxbuf, 54);
-    } else if (ret == s) {
-    }
+    return DISCONNECTED;
+}
 #endif
 
-    //int old_main (int argc, char *argv[])
-    //{
-    //    int pid_fd = -1;
-    //    BD_INFO *pinf = &g_bd_inf;
-    //    
-    //    if (argc == 2 && !(strcmp(argv[1], "-d"))) {
-    //        g_dbg_enabled = 1;
-    //    }
-    //
-    //#if !(BD_DBG)
-    //    int ret = 0;
-    //    //if (!g_dbg_enabled) {
-    //        /* daemonize */
-    //        if ((ret = daemon(0, 1))) {
-    //            fprintf(stderr, "Err: daemonize. %s\n\n", strerror(errno));
-    //            exit(1);
-    //        }
-    //        /* unique instance */
-    //        if ((pid_fd = lock_pid()) < 0) {
-    //            fprintf(stderr, "Err: lock failure!\n\n");
-    //            exit(1);
-    //        }
-    //        /* close all inheritated fd, excluding pid file */
-    //        close_allfd(pid_fd);
-    //    //}
-    //#endif
-    //    iot_inf("Starting zl100mt-app ...");
-    //
-    //    set_sighandler();
-    //
-    //    if (init_bdinf(pinf)) {
-    //        goto out;
-    //    }
-    //
-    //    mainloop(pinf);
-    //
-    //out:
-    //    g_cancelled = 1;
-    //    if (pid_fd >= 0) {
-    //        unlink(IOT_BD_PID_PATH);
-    //        close(pid_fd);
-    //        pid_fd = -1;
-    //    }
-    //
-    //    return 0;
-    //}
+int main(int argc, char **argv)
+{
+    int pid_fd = -1;
+    int ret = 0;
+    const char *ubus_socket = NULL;
+    
+    if (argc == 2 && !(strcmp(argv[1], "-d"))) {
+        g_dbg_enabled = 1;
+    }
 
+    // initial the RDSS receiving buffer
+    g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf;
+    g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
+    g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
+    memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
+
+    if (pthread_mutex_init(&g_rdss_rx_buf_lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return -1;
+    } 
+
+    if (pthread_mutex_init(&g_rdss_rw_lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return -1;
+    } 
+
+//#if !(BD_DBG)
+//#if !(BD_DBG)
 #if 0
-    static void q_empty(struct runqueue *q)
-    {
-        fprintf(stderr, "All done!\n");
-        uloop_end();
-    }
-
-    static void q_relay_run(struct runqueue *q, struct runqueue_task *t)
-    {
-        iot_dbg("q_relay_run ... \n");
-    }
-
-    static void q_relay_cancel(struct runqueue *q, struct runqueue_task *t, int type)
-    {
-        iot_dbg("[%d/%d] cancel relay\n", q->running_tasks, q->max_running_tasks);
-        iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n", q->stopped,
-                list_empty(&q->tasks_inactive.list), list_empty(&q->tasks_active.list),
-                q->running_tasks, q->empty, t->queued);
-        runqueue_task_add(q, t, false);
-        runqueue_process_cancel_cb(q, t, type);
-    }
-
-    static void q_relay_complete(struct runqueue *q, struct runqueue_task *t)
-    {
-        struct relayer *r = container_of(t, struct relayer, proc.task);
-        iot_dbg("[%d/%d] finish relay\n", q->running_tasks, q->max_running_tasks);
-
-        iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n",
-                q->stopped, list_empty(&q->tasks_inactive.list), list_empty(&q->tasks_active.list),
-                q->running_tasks, q->empty, t->queued);
-        struct relayer *nr = calloc(1, sizeof(*r));
-
-        nr->proc = r->proc;
-        //nr->proc.task.run_timeout = r->proc.task.proc.task.run_timeout;
-        //nr->proc.task.complete = q_relay_complete;
-        nr->sock = r->sock;
-        nr->p_bd_info = r->p_bd_info;
-
-        memcpy(nr->bd_relay_msg, r->bd_relay_msg, sizeof(r->bd_relay_msg));
-
-        runqueue_task_add(q, &nr->proc.task, false);
-
-        free(r);
-    }
-
-    void add_relayer_task()
-    {
-        static const struct runqueue_task_type relayer_type = {
-            .run = q_relay_run,
-            .cancel = q_relay_cancel,
-            .kill = runqueue_process_kill_cb,
-        };
-
-        uint8_t bd_relay_msg[] = {
-            /* section ID */
-            0xBD, 0xBD,
-            /* local SIM no */
-            0x00, 0x00, 0x00, 0x00,
-            /* last minutes data */
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            /* this minutes data */
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0
-        };
-
-        int s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
-        if (s == -1)
-        {
-            perror("Socket creation failed");
-            exit (0);
-        }
-
-        //fd_set fds;
-        //FD_ZERO(&fds);
-        //FD_SET(pinf->rdss_ttyfd, &fds);
-        //FD_SET(s, &fds);
-        //fd_max = (s > pinf->rdss_ttyfd) ? s : pinf->rdss_ttyfd;
-
-        struct sockaddr_ll socket_address;
-        memset(&socket_address, 0, sizeof (socket_address));
-        socket_address.sll_family = PF_PACKET;
-        socket_address.sll_ifindex = if_nametoindex("lo");
-        socket_address.sll_protocol = htons(ETH_P_ALL);
-
-        int rc = bind(s, (struct sockaddr*)&socket_address, sizeof(socket_address));
-        if (rc == -1)
-        {
-            perror("Bind");
-            exit (0);
-        }
-
-        struct relayer *r = calloc(1, sizeof(*r));
-
-        r->proc.task.type = &relayer_type;
-        r->proc.task.run_timeout = 0;
-        r->proc.task.complete = q_relay_complete;
-        r->sock = s;
-        r->p_bd_info = &g_bd_inf;
-
-        memcpy(r->bd_relay_msg, bd_relay_msg, sizeof(r->bd_relay_msg));
-
-        iot_dbg("stopped %u empty inact %u empty act %u running %u empty %u queued %u\n",
-                q.stopped, list_empty(&q.tasks_inactive.list), list_empty(&q.tasks_active.list),
-                q.running_tasks, q.empty, &r->proc.task.queued);
-        runqueue_task_add(&q, &r->proc.task, false);
-    }
-#endif
-
-#if 0
-    void rdss_thread_func(void *params) {
-        BD_INFO* bd_info = (BD_INFO*)params;
-        int fd = bd_info->rnss_ttyfd;
-        while(true) {
-            // send ICJC every 3 seconds in order to check Beidou status
-
-        }
-
-        unsigned char txbuf[256];
-        unsigned char rxbuf[256];
-
-        struct timeval timeout;
-        timeout.tv_sec  = 2;
-        timeout.tv_usec = 0;
-
-        int fd = bd_info->rdss_ttyfd;
-
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-
-        size_t msg_len = 0;
-        size_t txlen = 0;
-        int retry = RDSS_MAX_RETRY;
-        int ret = 0;
-        int rc = 0;
-
-        while (retry--) {
-            memset(rxbuf, 0, sizeof(rxbuf));
-            memset(txbuf, 0, sizeof(txbuf));
-
-            txlen = compose_rdss_icjc_pdu(txbuf);
-            send_rdss_msg(pinf, txbuf, txlen);
-
-            rc = select(fd + 1, &fds, NULL, NULL, &timeout);
-            if (rc < 0) {
-                iot_dbg("%s: select error, ret %d, errno %d !!\n", __FUNCTION__, ret, errno);
-            } else if (rc > 0) { // data available
-                ret = rx_bd_msg(pinf, rxbuf, &msg_len);
-                if (ret > 0) {
-                    if (0 == memcmp(rxbuf, "$ICXX", 5)) {
-                        memcpy(g_bd_relay_msg + 2, &(rxbuf[7]), 3); // assign local user address
-                        uint32_t local_sim = ((rxbuf[7] << 16) | (rxbuf[8] << 8) | rxbuf[9]) & 0x1FFFFF;
-                        if (pinf->local_sim != local_sim) {
-                            pinf->local_sim = local_sim;
-                            iot_cfg_set_int(pinf->pcfg, IOT_BD_SEC_PM, IOT_BD_KEY_LOCAL_SIM_NO, pinf->local_sim);
-                            iot_cfg_sync(pinf->pcfg);
-                            iot_dbg("write down local_sim: %d", local_sim);
-                        }
-                    }
-                }
-                return CONNECTED;
-            } else { // (rc == 0) means timeout
-                return DISCONNECTED;
-            }
-        }
-        return DISCONNECTED;
-    }
-#endif
-
-    int main(int argc, char **argv)
-    {
-        int pid_fd = -1;
-        int ret = 0;
-        const char *ubus_socket = NULL;
-
-        if (argc == 2 && !(strcmp(argv[1], "-d"))) {
-            g_dbg_enabled = 1;
-        }
-
-        // initial the RDSS receiving buffer
-        g_rdss_rx_buf.raw_cursor = g_rdss_rx_buf.buf;
-        g_rdss_rx_buf.pdu_cursor = g_rdss_rx_buf.buf;
-        g_rdss_rx_buf.rest_size = sizeof(g_rdss_rx_buf.buf);
-        memset(g_rdss_rx_buf.buf, 0, sizeof(g_rdss_rx_buf.buf));
-
-        if (pthread_mutex_init(&g_rdss_rx_buf_lock, NULL) != 0) {
-            printf("\n mutex init has failed\n");
-            return -1;
-        } 
-
-        if (pthread_mutex_init(&g_rdss_rw_lock, NULL) != 0) {
-            printf("\n mutex init has failed\n");
-            return -1;
-        } 
-
-        //#if !(BD_DBG)
-        //#if !(BD_DBG)
-#if 0
-        //if (!g_dbg_enabled) {
+    //if (!g_dbg_enabled) {
         /* daemonize */
         if ((ret = daemon(0, 1))) {
             fprintf(stderr, "Err: daemonize. %s\n\n", strerror(errno));
@@ -2731,88 +2673,88 @@ out:
         }
         /* close all inheritated fd, excluding pid file */
         close_allfd(pid_fd);
-        //}
+    //}
 #endif
-        iot_inf("Starting zl100mt-app ...");
-        set_sighandler();
+    iot_inf("Starting zl100mt-app ...");
+    set_sighandler();
 
-        if (init_bdinf(&g_bd_inf)) {
-            goto out;
-        }
+    if (init_bdinf(&g_bd_inf)) {
+        goto out;
+    }
 
-        g_sock = init_dpi_socket();
+    g_sock = init_dpi_socket();
 
-        //wait_bd_ready(&g_bd_inf);
+    //wait_bd_ready(&g_bd_inf);
 
-        // start thread
-        pthread_t rnss_thread;
-        if (pthread_create(&rnss_thread, NULL, rnss_thread_func, (void*)&g_bd_inf)) {
-            fprintf(stderr, "Error creating RNSS thread\n");
-            return -1;
-        }   
+    // start thread
+    pthread_t rnss_thread;
+    if (pthread_create(&rnss_thread, NULL, rnss_thread_func, (void*)&g_bd_inf)) {
+        fprintf(stderr, "Error creating RNSS thread\n");
+        return -1;
+    }   
 
-        pthread_t rdss_thread;
-        if (pthread_create(&rdss_thread, NULL, rdss_thread_func, (void*)&g_bd_inf)) {
-            fprintf(stderr, "Error creating RDSS thread\n");
-            return -1;
-        }   
+    pthread_t rdss_thread;
+    if (pthread_create(&rdss_thread, NULL, rdss_thread_func, (void*)&g_bd_inf)) {
+        fprintf(stderr, "Error creating RDSS thread\n");
+        return -1;
+    }   
 
-        int rc = create_bd_relay_thread();
-        if (rc != 0) return rc;
+    int rc = create_bd_relay_thread();
+    if (rc != 0) return rc;
 
-        uloop_init();
+    uloop_init();
 
-        ctx = ubus_connect(ubus_socket);
-        if (!ctx) {
-            fprintf(stderr, "Failed to connect to ubus\n");
-            return -1;
-        }
+    ctx = ubus_connect(ubus_socket);
+    if (!ctx) {
+        fprintf(stderr, "Failed to connect to ubus\n");
+        return -1;
+    }
 
-        ubus_add_uloop(ctx);
+    ubus_add_uloop(ctx);
 
-        // add methods
-        ret = ubus_add_object(ctx, &zl100mt_object);
+    // add methods
+    ret = ubus_add_object(ctx, &zl100mt_object);
 
-        if (ret) fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
+    if (ret) fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
 
-        struct uloop_timeout rdss_check_status_timeout = {
-            .cb = rdss_check_status_cb
-        };
-        uloop_timeout_set(&rdss_check_status_timeout, 0);
+    struct uloop_timeout rdss_check_status_timeout = {
+        .cb = rdss_check_status_cb
+    };
+    uloop_timeout_set(&rdss_check_status_timeout, 0);
 
-        struct uloop_timeout rdss_txxx_poller_timeout = {
-            .cb = rdss_txxx_poller_cb
-        };
-        uloop_timeout_set(&rdss_txxx_poller_timeout, 0);
+    struct uloop_timeout rdss_txxx_poller_timeout = {
+        .cb = rdss_txxx_poller_cb
+    };
+    uloop_timeout_set(&rdss_txxx_poller_timeout, 0);
 
-        // listen on 0xBDBD messages
+    // listen on 0xBDBD messages
 #if 0
-        struct uloop_timeout relayer_timeout = {
-            .cb = rdss_bdbd_relayer_cb
-        };
-        uloop_timeout_set(&relayer_timeout, 0);
+    struct uloop_timeout relayer_timeout = {
+        .cb = rdss_bdbd_relayer_cb
+    };
+    uloop_timeout_set(&relayer_timeout, 0);
 #endif
 
-        // RDSS: poll beidou status and send relayed messages out
-        //struct uloop_timeout rdss_poller_timeout = {
-        //    .cb = bd_rdss_poller_cb
-        //};
-        //uloop_timeout_set(&rdss_poller_timeout, 0);
+    // RDSS: poll beidou status and send relayed messages out
+    //struct uloop_timeout rdss_poller_timeout = {
+    //    .cb = bd_rdss_poller_cb
+    //};
+    //uloop_timeout_set(&rdss_poller_timeout, 0);
 
-        uloop_run();
+    uloop_run();
 
-        ubus_free(ctx);
-        uloop_done();
-        close(g_sock);
+    ubus_free(ctx);
+    uloop_done();
+    close(g_sock);
 
 out:
-        if (pid_fd >= 0) {
-            unlink(IOT_BD_PID_PATH);
-            close(pid_fd);
-            pid_fd = -1;
-        }
-
-        pthread_mutex_destroy(&g_rdss_rx_buf_lock);
-        pthread_mutex_destroy(&g_rdss_rw_lock);
-        return 0;
+    if (pid_fd >= 0) {
+        unlink(IOT_BD_PID_PATH);
+        close(pid_fd);
+        pid_fd = -1;
     }
+
+    pthread_mutex_destroy(&g_rdss_rx_buf_lock);
+    pthread_mutex_destroy(&g_rdss_rw_lock);
+    return 0;
+}

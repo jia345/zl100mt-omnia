@@ -1,0 +1,16 @@
+{
+    "definitions": {
+        "lower": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+        },
+        "lower_object": {
+            "type": "object",
+            "properties": {
+                "substring": {"$ref": "#/definitions/lower"}
+            },
+            "additionalProperties": false,
+            "required": ["substring"]
+        }
+    }
+}

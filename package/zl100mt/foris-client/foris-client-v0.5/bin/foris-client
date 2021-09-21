@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+
+#
+# foris-client
+# Copyright (C) 2017 CZ.NIC, z.s.p.o. (http://www.nic.cz/)
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+#
+
+import argparse
+import logging
+import json
+
+logger = logging.getLogger("foris_client")
+
+
+if __name__ == "__main__":
+
+    # Parse the command line options
+    parser = argparse.ArgumentParser(prog="foris-client")
+    parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False)
+
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument(
+        "-i", "--input", dest="input", default=None, type=str, metavar="INPUT_FILE",
+        help="input data file in json format (when not present no data will be sent)."
+    )
+    input_group.add_argument(
+        "-I", "--input-json", dest="json", default=None, type=str, metavar="INPUT_JSON",
+        help="input data in json format (when not present no data will be sent)."
+    )
+    parser.add_argument(
+        "-o", "--output", dest="output", default=None, type=str, metavar="OUTPUT_FILE",
+        help="where to store output json data"
+    )
+    parser.add_argument(
+        "-m", "--module", dest="module", help="module which will be used",
+        required=True, type=str,
+    )
+    parser.add_argument(
+        "-a", "--action", dest="action", help="action which will be performed",
+        required=True, type=str
+    )
+    parser.add_argument(
+        "-t", "--timeout", dest="timeout", help="timeout in ms (default=0 - wait forever)",
+        type=int, default=0
+    )
+
+    subparsers = parser.add_subparsers(help="buses", dest="bus")
+    ubus_parser = subparsers.add_parser("ubus", help="use ubus to recieve commands")
+    ubus_parser.add_argument("--path", dest="path", default='/var/run/ubus.sock')
+    unix_parser = subparsers.add_parser("unix-socket", help="use unix socket to recieve commands")
+    unix_parser.add_argument("--path", dest="path", default='/tmp/foris-controller.soc')
+
+    options = parser.parse_args()
+
+    if options.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig()
+
+    if options.bus == "ubus":
+        from foris_client.buses.ubus import UbusSender
+        logger.debug("Using ubus to send commands.")
+        sender = UbusSender(options.path, options.timeout)
+
+    elif options.bus == "unix-socket":
+        from foris_client.buses.unix_socket import UnixSocketSender
+        logger.debug("Using unix-socket to send commands.")
+        sender = UnixSocketSender(options.path, options.timeout)
+
+    data = None
+    if options.input:
+        with open(options.input) as f:
+            data = json.load(f)
+
+    if options.json:
+        data = json.loads(options.json)
+
+    response = sender.send(options.module, options.action, data)
+    if not options.output:
+        print(json.dumps(response))
+    else:
+        with open(options.output, "w") as f:
+            json.dump(response, f)

@@ -1,0 +1,318 @@
+{
+    "definitions": {
+        "wifi_device_channel_number": {"type": "integer", "minimum": 1},
+        "wifi_device_channel_frequency": {"type": "integer", "minimum": 1},
+        "wifi_device_channel": {
+            "type": "object",
+            "properties": {
+                "number": {"$ref": "#/definitions/wifi_device_channel_number"},
+                "frequency": {"$ref": "#/definitions/wifi_device_channel_frequency"},
+                "radar": {"type": "boolean"}
+            },
+            "additionalProperties": false,
+            "required": ["frequency", "number", "radar"]
+        },
+        "wifi_device_channels_11g": {
+            "type": "array",
+            "items": {
+                "allOf": [
+                    {"$ref": "#/definitions/wifi_device_channel"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "frequency": {"type": "integer", "minimum": 2400, "maximum": 2500}
+                        }
+                    }
+                ]
+            }
+        },
+        "wifi_device_channels_11a": {
+            "type": "array",
+            "items": {
+                "allOf": [
+                    {"$ref": "#/definitions/wifi_device_channel"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "frequency": {"type": "integer", "minimum": 5000, "maximum": 6000}
+                        }
+                    }
+                ]
+            }
+        },
+        "wifi_device_hwmode": {"enum": ["11g", "11a"]},
+        "wifi_device_htmode": {"enum": ["NOHT", "HT20", "HT40", "VHT20", "VHT40", "VHT80"]},
+        "wifi_device_htmodes": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/wifi_device_htmode"}
+        },
+        "wifi_device_guest_get": {
+            "type": "object",
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "SSID": {"type": "string", "minLength": 1, "maxLength": 32},
+                "password": {"type": "string"}
+            },
+            "additionalProperties": false,
+            "required": ["enabled", "SSID", "password"]
+        },
+        "wifi_device_guest_set": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "enabled": {"enum": [true]},
+                        "SSID": {"type": "string", "minLength": 1, "maxLength": 32},
+                        "password": {"type": "string", "minLength": 8}
+                    },
+                    "additionalProperties": false,
+                    "required": ["enabled", "SSID", "password"]
+                },
+                {
+                    "properties": {
+                        "enabled": {"enum": [false]}
+                    },
+                    "additionalProperties": false,
+                    "required": ["enabled"]
+                }
+            ]
+        },
+        "wifi_device_band": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "hwmode": {
+                            "allOf": [{"$ref": "#/definitions/wifi_device_hwmode"}, {"enum": ["11g"]}]
+                        },
+                        "available_htmodes": {"$ref": "#/definitions/wifi_device_htmodes"},
+                        "available_channels": {"$ref": "#/definitions/wifi_device_channels_11g"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["hwmode", "available_htmodes", "available_channels"]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "hwmode": {
+                            "allOf": [{"$ref": "#/definitions/wifi_device_hwmode"}, {"enum": ["11a"]}]
+                        },
+                        "available_htmodes": {"$ref": "#/definitions/wifi_device_htmodes"},
+                        "available_channels": {"$ref": "#/definitions/wifi_device_channels_11a"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["hwmode", "available_htmodes", "available_channels"]
+                }
+            ]
+        },
+        "wifi_device_get": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "minimum": 0},
+                "enabled": {"type": "boolean"},
+                "SSID": {"type": "string", "minLength": 1, "maxLength": 32},
+                "hidden": {"type": "boolean"},
+                "available_bands": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/wifi_device_band"}
+                },
+                "hwmode": {"$ref": "#/definitions/wifi_device_hwmode"},
+                "htmode": {"$ref": "#/definitions/wifi_device_htmode"},
+                "channel": {
+                    "oneOf":[
+                        {"$ref": "#/definitions/wifi_device_channel_number"},
+                        {"enum": [0], "description": "zero means auto"}
+                    ]
+                },
+                "password": {"type": "string"},
+                "guest_wifi": {"$ref": "#/definitions/wifi_device_guest_get"}
+            },
+            "additionalProperties": false,
+            "required": [
+                "id", "enabled", "SSID", "hidden", "htmode", "available_bands",
+                "hwmode", "password", "guest_wifi", "channel"
+            ]
+        },
+        "wifi_device_set": {
+            "type": "object",
+            "oneOf": [
+               {
+                    "properties": {
+                        "id": {"type": "integer", "minimum": 0},
+                        "enabled": {"enum": [true]},
+                        "SSID": {"type": "string", "minLength": 1, "maxLength": 32},
+                        "hidden": {"type": "boolean"},
+                        "hwmode": {"enum":["11g"]},
+                        "htmode": {
+                            "$ref": "#/definitions/wifi_device_htmode",
+                            "enum": ["NOHT", "HT20", "HT40"]
+                        },
+                        "channel": {
+                            "oneOf": [
+                                {"enum": [0], "description": "zero means auto"},
+                                {
+                                    "$ref": "#/definitions/wifi_device_channel_number",
+                                    "type": "integer", "minimum": 1, "maximum": 14
+                                }
+                            ]
+                        },
+                        "password": {"type": "string", "minLength": 8},
+                        "guest_wifi": {"$ref": "#/definitions/wifi_device_guest_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "id", "enabled", "SSID", "hidden", "htmode", "hwmode", "password", "guest_wifi"
+                    ]
+                },
+                {
+                    "properties": {
+                        "id": {"type": "integer", "minimum": 0},
+                        "enabled": {"enum": [true]},
+                        "SSID": {"type": "string", "minLength": 1, "maxLength": 32},
+                        "hidden": {"type": "boolean"},
+                        "hwmode": {"enum":["11a"]},
+                        "htmode": {"$ref": "#/definitions/wifi_device_htmode"},
+                        "channel": {
+                            "oneOf": [
+                                {"enum": [0], "description": "zero means auto"},
+                                {
+                                    "$ref": "#/definitions/wifi_device_channel_number",
+                                    "type": "integer", "minimum": 34, "maximum": 173
+                                }
+                            ]
+                        },
+                        "password": {"type": "string", "minLength": 8},
+                        "guest_wifi": {"$ref": "#/definitions/wifi_device_guest_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "id", "enabled", "SSID", "hidden", "htmode", "hwmode", "password", "guest_wifi"
+                    ]
+                },
+                {
+                    "properties": {
+                        "id": {"type": "integer", "minimum": 0},
+                        "enabled": {"enum": [false]}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id", "enabled"]
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "description": "request to get wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "devices": {
+                            "type": "array",
+                            "items": {"$ref": "#/definitions/wifi_device_get"}
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["devices"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "devices": {
+                            "type": "array",
+                            "items": {"$ref": "#/definitions/wifi_device_set"}
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["devices"]
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to update wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that wifi settings were updated",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to reset wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["reset"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to reset wifi settings",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["reset"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that reset wifi settings was triggerd",
+            "properties": {
+                "module": {"enum": ["wifi"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["reset"]}
+            },
+            "additionalProperties": false
+        }
+    ]
+}

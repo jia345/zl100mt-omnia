@@ -1,0 +1,178 @@
+{
+    "oneOf": [
+        {
+            "description": "request to redirect settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to redirect settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "redirects": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "target" : {"type": "string"},
+                                            "proto" : {"type": "string"},
+                                            "src_zone" : {"type": "string"},
+                                            "src_dport": {"type": "string"},
+                                            "dest_zone": {"type": "string"},
+                                            "dest_port": {"type": "string"},
+                                            "dest_ip"  : {"type": "string"},
+                                            "name": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to port mapping settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_port_mapping"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to port mapping settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_port_mapping"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "redirects": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "target" : {"type": "string"},
+                                            "proto" : {"type": "string"},
+                                            "src" : {"type": "string"},
+                                            "src_dport": {"type": "string"},
+                                            "dest": {"type": "string"},
+                                            "dest_port": {"type": "string"},
+                                            "dest_ip"  : {"type": "string"},
+                                            "name": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to redirect settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string"},
+                        "redirects": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "target" : {"type": "string"},
+                                            "proto" : {"type": "string"},
+                                            "src_zone" : {"type": "string"},
+                                            "src_dport": {"type": "string"},
+                                            "dest_zone": {"type": "string"},
+                                            "dest_port": {"type": "string"},
+                                            "dest_ip"  : {"type": "string"},
+                                            "name": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to redirect settings",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that redirect were updated",
+            "properties": {
+                "module": {"enum": ["redirect"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string"},
+                        "redirects": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "target" : {"type": "string"},
+                                            "proto" : {"type": "string"},
+                                            "src_zone" : {"type": "string"},
+                                            "src_ip" : {"type": "string"},
+                                            "src_dport": {"type": "string"},
+                                            "dest_zone": {"type": "string"},
+                                            "dest_port": {"type": "string"},
+                                            "dest_ip"  : {"type": "string"},
+                                            "name": {"type": "string"}
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    ]
+}

@@ -1,0 +1,88 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get protocol forward settings",
+            "properties": {
+                "module": {"enum": ["proto_forward"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get protocol forward settings",
+            "properties": {
+                "module": {"enum": ["proto_forward"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "proto_forward_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "proto": {"type": "string"},
+                                        "port": {"type": "integer"},
+                                        "dest_proto": {"type": "string"},
+                                        "dest_ip": {"type": "string"},
+                                        "dest_port": {"type": "integer"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to update protocol forward table settings",
+            "properties": {
+                "module": {"enum": ["proto_forward"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_proto_forward"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "proto_forward_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "proto": {"type": "string"},
+                                        "port": {"type": "integer"},
+                                        "dest_proto": {"type": "string"},
+                                        "dest_ip": {"type": "string"},
+                                        "dest_port": {"type": "integer"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update protocol forward table settings",
+            "properties": {
+                "module": {"enum": ["proto_forward"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_proto_forward"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "oneOf": [
+        {
+            "description": "Test definitions",
+            "properties": {
+                "module": {"enum": ["definitions-external"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "object1": {"$ref": "#/definitions/lower_object"},
+                        "string1": {"$ref": "#/definitions/lower"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["object1", "string1"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

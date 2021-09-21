@@ -1,0 +1,230 @@
+{
+    "definitions": {
+        "how_to_set_time": {"enum": ["manual", "ntp"]},
+        "time_get": {
+            "type": "object",
+            "properties": {
+                "how_to_set_time": {"$ref": "#/definitions/how_to_set_time"},
+                "time": {"type": "string", "format": "date-time", "description": "local time"}
+            },
+            "required": ["how_to_set_time", "time"],
+            "additionalProperties": false
+        },
+        "time_set": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "how_to_set_time": {"enum": ["manual"]},
+                        "time": {"type": "string", "format": "date-time", "description": "local time"}
+                    },
+                    "required": ["how_to_set_time", "time"],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "how_to_set_time": {"enum": ["ntp"]}
+                    },
+                    "required": ["how_to_set_time"],
+                    "additionalProperties": false
+                }
+            ]
+        }
+    },
+    "oneOf": [
+        {
+            "description": "request to get time settings",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get time settings",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "region": { "type": "string" },
+                        "city": { "type": "string" },
+                        "timezone": { "type": "string" },
+                        "time_settings": {"$ref": "#/definitions/time_get"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["region", "city", "timezone", "time_settings"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update time settings",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "region": { "type": "string" },
+                        "city": { "type": "string" },
+                        "timezone": { "type": "string" },
+                        "time_settings": {"$ref": "#/definitions/time_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["region", "city", "timezone", "time_settings"]
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to update time settings",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that time settings were update",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "region": { "type": "string" },
+                        "city": { "type": "string" },
+                        "timezone": { "type": "string" },
+                        "time_settings": {"$ref": "#/definitions/time_set"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["region", "city", "timezone", "time_settings"]
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to get current time of the router",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_router_time"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get current time of the router",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_router_time"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "time": {"type": "string", "format": "date-time"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["time"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to trigger ntpdate",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["ntpdate_trigger"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to trigger ntpdate",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["ntpdate_trigger"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that ntpdate started",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["ntpdate_started"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "notification that ntpdate finished",
+            "properties": {
+                "module": {"enum": ["time"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["ntpdate_finished"]},
+                "data": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "result": {"enum": [true]},
+                                "id": {"type": "string"},
+                                "time": {"type": "string", "format": "date-time"}
+                            },
+                            "additionalProperties": false,
+                            "required": ["id", "result", "time"]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "result": {"enum": [false]},
+                                "id": {"type": "string"}
+                            },
+                            "additionalProperties": false,
+                            "required": ["id", "result"]
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

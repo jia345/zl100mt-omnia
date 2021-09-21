@@ -1,0 +1,12 @@
+image: registry.labs.nic.cz/turris/foris-ci
+
+stages:
+  - test
+
+test:
+  stage: test
+
+  script:
+    - pip install .
+    - python setup.py test
+

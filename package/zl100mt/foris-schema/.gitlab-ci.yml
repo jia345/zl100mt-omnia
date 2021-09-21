@@ -1,0 +1,12 @@
+stages:
+  - test
+
+.run_script: &run_script
+  script:
+    - pip install .
+    - python setup.py test
+
+test_python3:
+  image: registry.labs.nic.cz/turris/foris-ci/python3
+  stage: test
+  <<: *run_script

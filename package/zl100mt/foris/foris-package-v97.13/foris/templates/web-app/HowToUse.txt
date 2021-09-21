@@ -1,0 +1,18 @@
+2019-04-ZL100MT-V1.0
+
+1. find the file named 'appcfg-release.js'
+2. be sure the "var cur_url" is correct.
+3. be sure the "type = real"
+    // @param 'type' => define the enable type of the server link for this app
+    // @param 'link' => define the multi lines of server link, in case of multi debug/running server data
+3. running
+4. (option)
+    max_timeout_s: 10, //timerout value, which to control the 'pull data from device' button
+----------------
+1. 在目标路径下找到配置文件 'appcfg-release.js'
+2. 确保该文件的 type = real; link指向正确的量产server请求地址
+   @param 参数'type' => 当前app使用的server数据来源，比如：量产时填写为'real'
+   @param 参数'link' => 为本app定义多个server数据来源以方便debug调试或者量产，其格式见文件内容。
+3. 运行 start.html
+4. (option)
+    max_timeout_s: 10, //用于控制主界面上 '拉取设备数据' 按钮行为：点击后等待 10s 才能再次操作改按钮，避免过于频繁的设备操作。

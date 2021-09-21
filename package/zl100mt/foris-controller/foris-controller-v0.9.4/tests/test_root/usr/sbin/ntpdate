@@ -1,0 +1,5 @@
+#!/bin/sh
+
+sleep 0.3
+[ -f /tmp/foris-controller-ntp-fail ] && exit 1
+exit 0

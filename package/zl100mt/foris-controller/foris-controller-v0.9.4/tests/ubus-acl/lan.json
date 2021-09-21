@@ -1,0 +1,10 @@
+{
+    "user": "stepan",
+    "access": {
+        "foris-controller-lan": {
+            "methods": [ "get_settings", "update_settings"]
+        }
+    },
+    "publish": [ "foris-controller-lan" ],
+    "subscribe": [ "foris-controller-lan" ]
+}

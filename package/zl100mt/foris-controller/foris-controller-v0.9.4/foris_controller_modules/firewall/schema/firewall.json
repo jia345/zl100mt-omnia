@@ -1,0 +1,188 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get firewall settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get firewall settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "ip_filter_enabled": { "type": "boolean" },
+                        "mac_filter_enabled": { "type": "boolean" },
+                        "dmz_enabled": { "type": "boolean" },
+                        "dmz_ip": { "format": "ipv4" },
+                        "ip_filter_table": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "timeout": {"type": "integer"},
+                                        "lan_ips": {"type": "string"},
+                                        "lan_ports": {"type": "string"},
+                                        "wan_ips": {"type": "string"},
+                                        "wan_ports": {"type": "string"},
+                                        "proto": {"type": "string"},
+                                        "enabled": {"type": "boolean"}
+                                    }
+                                }]
+                            }
+                        },
+                        "mac_filter_table": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "mac": {"format": "macaddress"},
+                                        "enabled": {"type": "boolean"},
+                                        "desc": {"type": "string"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "request to update firewall settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_firewall"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "ip_filter_enabled": {"type": "boolean"},
+                        "mac_filter_enabled": {"type": "boolean"},
+                        "dmz_enabled": {"type": "boolean"},
+                        "dmz_ip": {"format": "ipv4"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update firewall settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_firewall"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update ip filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_ip_filter"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "ip_filter_table": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "timeout": {"type": "integer"},
+                                        "lan_ips": {"type": "string"},
+                                        "lan_ports": {"type": "string"},
+                                        "wan_ips": {"type": "string"},
+                                        "wan_ports": {"type": "string"},
+                                        "proto": {"type": "string"},
+                                        "enabled": {"type": "boolean"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update ip filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_ip_filter"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to update mac filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_mac_filter"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "mac_filter_table": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "mac": {"format": "macaddress"},
+                                        "enabled": {"type": "boolean"},
+                                        "desc": {"type": "string"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update mac filter table settings",
+            "properties": {
+                "module": {"enum": ["firewall"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_mac_filter"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

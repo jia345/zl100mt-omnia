@@ -1,0 +1,116 @@
+{
+    "oneOf": [
+        {
+            "description": "request to get rtmp information",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_info"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "reply to get rtmp settings",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_info"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "server_ip": { "format": "ipv4" },
+                        "channel_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                        "code": {"type": "string"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to set rtmp server ip",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_server_ip"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "server_ip": { "format": "ipv4" }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to update rtmp settings",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_server_ip"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "request to set rtmp channel list",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["set_channel_list"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "channel_list": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [{
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                        "code": {"type": "string"}
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "reply to set rtmp channel list",
+            "properties": {
+                "module": {"enum": ["rtmp"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["set_channel_list"]},
+                "data":{
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    }
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}

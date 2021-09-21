@@ -1,0 +1,19 @@
+{
+    "definitions": {
+        "lower": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+        }
+    },
+    "oneOf": [
+        {
+            "properties": {
+                "module": {"enum": ["redefinition2"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get"]},
+                "data": {"$ref": "#/definitions/lower"}
+            },
+            "additionalProperties": false
+        }
+    ]
+}

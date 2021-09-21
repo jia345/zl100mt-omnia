@@ -27,7 +27,7 @@ from foris.zl100mt.gnss import cmdGnssSetRemoteCfg
 from foris.zl100mt.Lan import cmdLanCfg
 from foris.zl100mt.dhcp import cmdDhcpCfg
 from foris.zl100mt.rtmp import cmdSetRtmpServerIp, cmdSetRtmpChannel
-from foris.zl100mt.portmapping import setportmapping, channelmapping
+from foris.zl100mt.portmapping import setportmapping, channelmapping, cmdSetProtoForward
 from foris.zl100mt.firewall import cmdSetFirewall, cmdSetIpFilter, cmdSetMacFilter
 
 CONFIG_COMMANDS = {
@@ -55,6 +55,7 @@ CONFIG_COMMANDS = {
     'setIPFilterTable': cmdSetIpFilter,
     'setMacFilterTable': cmdSetMacFilter,
     'setPortMapping': setportmapping,
+    'setProtoForward': cmdSetProtoForward,
     'setSlotChannelMapping': channelmapping,
     'setMacIPMapping': cmdIpmacbind,
     'setRtmpChannel': cmdSetRtmpChannel,
@@ -65,7 +66,7 @@ CONFIG_COMMANDS = {
 
 @bottle.view("index.html")
 def zl100mt_top_index():
-    print "zl100mt top index"
+    print("zl100mt top index")
     session = bottle.request.environ['foris.session']
     if session.is_anonymous:
         session.recreate()
@@ -88,7 +89,7 @@ def static_main(filename):
     return bottle.static_file(filename, os.path.join(BASE_DIR, "templates/web-app"))
 
 def zl100mt_main():
-    print "zl100mt main"
+    print("zl100mt main")
     session = bottle.request.environ['foris.session']
     # bottle.static_file("start.html",os.path.join(BASE_DIR, "templates/web-app/"))
     # print("GET: {0}".format(bottle.request.GET))
@@ -168,12 +169,12 @@ def ts_form():
     '''.format(token)
 
 def ts_post():
-    print request.forms
+    print(request.forms)
     return "<p>Your login information was correct.</p>"
 
 
 def init_zl100mt(app):
-    print "init_zl100mt"
+    print("init_zl100mt")
     app.route("/zl_index",method=('POST','GET'),name="index", callback=zl100mt_top_index)
     app.route("/zl_main", method='POST', callback=zl100mt_main)
     app.route("/get_csrf", methond='GET', callback=get_csrf)

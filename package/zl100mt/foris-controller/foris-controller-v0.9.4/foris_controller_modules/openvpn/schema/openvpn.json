@@ -1,0 +1,438 @@
+{
+    "definitions": {
+        "openvpn_cert_id": {"type": "string", "pattern": "^([0-9a-fA-F][0-9a-fA-F])+$"},
+        "openvpn_cert_name": {"type": "string", "pattern": "^[a-zA-Z0-9_.-]{1,64}$"}
+    },
+    "oneOf": [
+        {
+            "description": "Request to generate CA (asynchronously)",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["generate_ca"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to generate CA (asynchronously)",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["generate_ca"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["task_id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification during CA generation",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["generate_ca"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"},
+                        "status": {"enum": ["succeeded", "failed", "ca_generating", "ca_done", "server_generating", "server_done"]}
+                    },
+                    "additionalProperties": false,
+                    "required": ["task_id", "status"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to obtain info about openvpn CA",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_status"]}
+            },
+            "additionalProperties": false
+        },
+        {
+
+            "description": "Reply to obtain info about openvpn CA",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_status"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "status": {"enum": ["ready", "missing", "generating"]},
+                        "clients": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"$ref": "#/definitions/openvpn_cert_id"},
+                                    "name": {"$ref": "#/definitions/openvpn_cert_name"},
+                                    "status": {"enum": ["valid", "revoked", "expired", "generating"]}
+                                },
+                                "required": ["id", "name", "status"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["status", "clients"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to generate client cert (asynchronously)",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["generate_client"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"$ref": "#/definitions/openvpn_cert_name"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["name"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to generate client cert (asynchronously)",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["generate_client"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["task_id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification during client generation",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["generate_client"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"},
+                        "name": {"$ref": "#/definitions/openvpn_cert_name"},
+                        "status": {"enum": ["succeeded", "failed", "client_generating", "client_done"]}
+                    },
+                    "additionalProperties": false,
+                    "required": ["task_id", "status"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to revoke client cert",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"$ref": "#/definitions/openvpn_cert_id"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to revoke client cert",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that client certificate was revoked",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["revoke"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"$ref": "#/definitions/openvpn_cert_id"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to delete CA",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["delete_ca"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to delete CA",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["delete_ca"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that CA was deleted",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["delete_ca"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Request to get openvpn settings",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_settings"]}
+            },
+            "additionalProperties": false
+        },
+        {
+            "description": "Reply to get openvpn settings",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "network": {"format": "ipv4", "type": "string"},
+                        "network_netmask": { "format": "ipv4", "type": "string"},
+                        "ipv6": {"type": "boolean"},
+                        "protocol": {"enum": ["udp", "tcp"]},
+                        "routes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "network": {"format": "ipv4", "type": "string"},
+                                    "netmask": {"format": "ipv4", "type": "string"}
+                                },
+                                "additionalProperties": false,
+                                "required": ["network", "netmask"]
+                            }
+                        },
+                        "device": {"type": "string"},
+                        "port": {"type": "integer", "minimum": 0, "maximum": 65535},
+                        "server_hostname": {"type": "string"},
+                        "route_all": {"type": "boolean"},
+                        "use_dns": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "enabled", "network", "network_netmask", "routes", "device", "port", "protocol",
+                        "route_all", "use_dns", "server_hostname", "ipv6"
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request to update openvpn settings",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"enum": [true]},
+                                "ipv6": {"type": "boolean"},
+                                "protocol": {"enum": ["udp", "tcp"]},
+                                "network": {"format": "ipv4", "type": "string"},
+                                "network_netmask": { "format": "ipv4", "type": "string"},
+                                "route_all": {"type": "boolean"},
+                                "use_dns": {"type": "boolean"}
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "enabled", "network", "network_netmask", "route_all", "use_dns",
+                                "protocol", "ipv6"
+                            ]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"enum": [false]}
+                            },
+                            "additionalProperties": false,
+                            "required": ["enabled"]
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to update openvpn settings",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "result": {"type": "boolean"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["result"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Notification that openvpn settings were updated",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["notification"]},
+                "action": {"enum": ["update_settings"]},
+                "data": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"enum": [true]},
+                                "ipv6": {"type": "boolean"},
+                                "protocol": {"enum": ["udp", "tcp"]},
+                                "network": {"format": "ipv4", "type": "string"},
+                                "network_netmask": { "format": "ipv4", "type": "string"},
+                                "route_all": {"type": "boolean"},
+                                "use_dns": {"type": "boolean"}
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "enabled", "network", "network_netmask", "route_all", "use_dns",
+                                "protocol", "ipv6"
+                            ]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"enum": [false]}
+                            },
+                            "additionalProperties": false,
+                            "required": ["enabled"]
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Request get client config",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["request"]},
+                "action": {"enum": ["get_client_config"]},
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"$ref": "#/definitions/openvpn_cert_id"},
+                        "hostname": {"type": "string"}
+                    },
+                    "additionalProperties": false,
+                    "required": ["id"]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        },
+        {
+            "description": "Reply to get client config",
+            "properties": {
+                "module": {"enum": ["openvpn"]},
+                "kind": {"enum": ["reply"]},
+                "action": {"enum": ["get_client_config"]},
+                "data": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "status": {"enum": ["revoked", "not_found"]}
+                            },
+                            "additionalProperties": false,
+                            "required": ["status"]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "status": {"enum": ["valid"]},
+                                "config": {"type": "string"}
+                            },
+                            "additionalProperties": false,
+                            "required": ["status", "config"]
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": ["data"]
+        }
+    ]
+}
