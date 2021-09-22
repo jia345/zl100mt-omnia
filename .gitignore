@@ -23,3 +23,5 @@ TAGS*~
 git-src
 .vagrant/
 /Vagrantfile
+package/feeds
+feeds
