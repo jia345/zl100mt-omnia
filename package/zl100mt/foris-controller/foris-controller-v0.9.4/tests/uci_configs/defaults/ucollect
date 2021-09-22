@@ -1,4 +1,0 @@
-package 'ucollect'
-
-config interface
-	option ifname 'eth0.2'

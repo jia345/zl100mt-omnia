@@ -1,4 +1,0 @@
-#!/bin/sh
-
-# simply read and print the file
-cat "/tmp/foris-controller-stored-notifications.json" 2>/dev/null || echo '{"notifications": []}'

@@ -1,8 +1,0 @@
-#!/bin/sh
-
-set -e
-
-DIR=/tmp/restore-$$
-mkdir -p "$DIR"
-cd "$DIR"
-base64 -d | bzip2 -cd | tar xp

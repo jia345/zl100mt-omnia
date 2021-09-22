@@ -221,7 +221,7 @@ index 0000000..b030d87
 +    description="Python bindings for libubus",
 +    ext_modules=[extension],
 +    provides=['ubus'],
-+    setup_requires=['pytest-runner'],
++    setup_requires=[''],
 +    tests_require=['pytest'],
 +)
 diff --git a/python/tests/__init__.py b/python/tests/__init__.py

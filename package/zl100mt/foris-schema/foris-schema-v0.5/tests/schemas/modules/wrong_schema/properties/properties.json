@@ -1,7 +1,0 @@
-{
-    "oneOf": [
-        {
-            "additionalProperties": false
-        }
-    ]
-}

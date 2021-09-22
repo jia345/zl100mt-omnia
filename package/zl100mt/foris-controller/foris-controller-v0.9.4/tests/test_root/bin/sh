@@ -1,3 +1,0 @@
-#!/bin/sh
-echo $@ >> /tmp/sh_called
-exit 0
