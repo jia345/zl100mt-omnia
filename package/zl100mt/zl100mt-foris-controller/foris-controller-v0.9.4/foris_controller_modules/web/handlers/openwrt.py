@@ -22,9 +22,9 @@ import logging
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
 
-from foris_controller_backends.updater import Updater
+#from foris_controller_backends.updater import Updater
 from foris_controller_backends.web import WebUciCommands, Languages
-from foris_controller_backends.maintain import MaintainCommands
+#from foris_controller_backends.maintain import MaintainCommands
 from foris_controller_backends.router_notifications import RouterNotificationsCmds
 
 from .. import Handler
@@ -35,9 +35,9 @@ logger = logging.getLogger(__name__)
 class OpenwrtWebHandler(Handler, BaseOpenwrtHandler):
     web_uci_cmds = WebUciCommands()
     langs = Languages()
-    maintain_cmds = MaintainCommands()
+    #maintain_cmds = MaintainCommands()
     notifications_cmds = RouterNotificationsCmds()
-    updater = Updater()
+    #updater = Updater()
 
     @logger_wrapper(logger)
     def get_language(self):
@@ -72,7 +72,8 @@ class OpenwrtWebHandler(Handler, BaseOpenwrtHandler):
         :returns: True if reboot is required False otherwise
         :rtype: bool
         """
-        return self.maintain_cmds.reboot_required()
+        #return self.maintain_cmds.reboot_required()
+        return False
 
     @logger_wrapper(logger)
     def get_notification_count(self):
@@ -89,4 +90,5 @@ class OpenwrtWebHandler(Handler, BaseOpenwrtHandler):
         :returns: True if updater is running False otherwise
         :rtype: bool
         """
-        return self.updater.updater_running()
+        #return self.updater.updater_running()
+        return False

@@ -27,7 +27,8 @@ from foris.zl100mt.gnss import cmdGnssSetRemoteCfg
 from foris.zl100mt.Lan import cmdLanCfg
 from foris.zl100mt.dhcp import cmdDhcpCfg
 from foris.zl100mt.rtmp import cmdSetRtmpServerIp, cmdSetRtmpChannel
-from foris.zl100mt.portmapping import setportmapping, channelmapping, cmdSetProtoForward
+from foris.zl100mt.portmapping import setportmapping, channelmapping
+from foris.zl100mt.proto_forward import cmdProtoForward
 from foris.zl100mt.firewall import cmdSetFirewall, cmdSetIpFilter, cmdSetMacFilter
 
 CONFIG_COMMANDS = {
@@ -55,7 +56,7 @@ CONFIG_COMMANDS = {
     'setIPFilterTable': cmdSetIpFilter,
     'setMacFilterTable': cmdSetMacFilter,
     'setPortMapping': setportmapping,
-    'setProtoForward': cmdSetProtoForward,
+    'setProtoForward': cmdProtoForward,
     'setSlotChannelMapping': channelmapping,
     'setMacIPMapping': cmdIpmacbind,
     'setRtmpChannel': cmdSetRtmpChannel,

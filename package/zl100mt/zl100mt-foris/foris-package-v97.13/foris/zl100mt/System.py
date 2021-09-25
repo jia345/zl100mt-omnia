@@ -8,6 +8,7 @@ from foris.zl100mt.Routing import cmdGetRoutingInfo
 from foris.zl100mt.firewall import cmdGetFirewall
 from foris.zl100mt.portmapping import channelmapping,setportmapping
 from foris.zl100mt.ipmacbind import cmdIpmacbind
+from foris.zl100mt.proto_forward import cmdProtoForward
 
 class SysReboot():
     def __init__(self):
@@ -179,6 +180,7 @@ class GetNetworkCfgInfoCmd():
                 "mac2ip": cmdIpmacbind.get_ip2mac(),
                 "portMapping":setportmapping.get_portmapping(),
             },
+            "ProtoForward": cmdProtoForward.get_proto_forward()
         }
 
         res = {

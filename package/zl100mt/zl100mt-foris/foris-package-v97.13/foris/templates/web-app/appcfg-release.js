@@ -6,6 +6,7 @@
  * YangYutong
  * 2019-6-3
  ***********/ 
+//var cur_url = '../app'; //for real url
 var cur_url = window.location.href.substring(0, location.href.indexOf("web-app")) + 'zl_main'; //for real url
 console.log('Current webapp url=>' + cur_url);
 

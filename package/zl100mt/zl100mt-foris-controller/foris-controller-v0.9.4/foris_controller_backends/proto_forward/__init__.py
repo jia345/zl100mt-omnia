@@ -21,23 +21,24 @@ class ProtoForwardUciCommands(object):
 
         forward_list = []
         '''
+        <<<example:>>>
         config socat
 	        option enable '1'
 	        option SocatOptions '-d -d TCP6-LISTEN:8000,fork TCP4:192.168.1.20:80'
         '''
         for port in ports:
-            # TODO
-            options = port['data']['SocatOptions']
-            m = re.match(r'^-d -d\s(.+)-LISTEN:(\d+),fork (.+):(.+):(\d+)$', options)
+            if port['data']['enable'] == '1':
+                options = port['data']['SocatOptions']
+                m = re.match(r'^-d -d\s(.+)-LISTEN:(\d+),fork (.+):(.+):(\d+)$', options)
 
-            if m:
-                forward_list.append({
-                    "proto": "udp",
-                    "port": m.group(1),
-                    "dest_proto": "tcp",
-                    "dest_ip": m.group(4),
-                    "dest_port": m.group(5)
-                })
+                if m:
+                    forward_list.append({
+                        "proto": "udp",
+                        "port": int(m.group(2)),
+                        "dest_proto": "tcp",
+                        "dest_ip": m.group(4),
+                        "dest_port": int(m.group(5))
+                    })
 
         res = {
             "proto_forward_list": forward_list
@@ -45,12 +46,12 @@ class ProtoForwardUciCommands(object):
 
         return res
 
-    def update_settings(self, data):
+    def set_proto_forward(self, data):
         print('protocol forward update_settings :')
         with UciBackend() as backend:
-            data = backend.read("socat")
+            cfg = backend.read("socat")
             try:
-                items = get_sections_by_type(data, "socat", "socat")
+                items = get_sections_by_type(cfg, "socat", "socat")
                 for i in range(len(items)):
                     section_name = '@socat[0]'
                     backend.del_section('socat', section_name)
@@ -60,7 +61,10 @@ class ProtoForwardUciCommands(object):
             for item in data['proto_forward_list']:
                 options = '-d -d UDP4-LISTEN:%d,fork TCP4:%s:%d' % (item['port'], item['dest_ip'], item['dest_port'])
                 backend.add_section('socat','socat')
-                backend.set_option('socat','@host[-1]','SocatOptions', options)
-                backend.set_option('socat', '@host[-1]', 'enable', '1')
+                backend.set_option('socat','@socat[-1]','SocatOptions', options)
+                backend.set_option('socat', '@socat[-1]', 'enable', '1')
+
+        with OpenwrtServices() as services:
+            services.restart("socat")
 
         return True

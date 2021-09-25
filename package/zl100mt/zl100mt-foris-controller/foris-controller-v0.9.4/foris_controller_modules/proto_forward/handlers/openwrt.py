@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 class OpenwrtProtoForwardHandler(Handler, BaseOpenwrtHandler):
-    uci_firewall_cmds = ProtoForwardUciCommands()
+    uci_proto_forward_cmds = ProtoForwardUciCommands()
 
     @logger_wrapper(logger)
     def get_settings(self):
-        return OpenwrtProtoForwardHandler.uci_firewall_cmds.get_settings()
+        return OpenwrtProtoForwardHandler.uci_proto_forward_cmds.get_settings()
 
     @logger_wrapper(logger)
     def set_proto_forward(self, data):
-        return OpenwrtProtoForwardHandler.uci_firewall_cmds.set_proto_forward(data)
+        return OpenwrtProtoForwardHandler.uci_proto_forward_cmds.set_proto_forward(data)

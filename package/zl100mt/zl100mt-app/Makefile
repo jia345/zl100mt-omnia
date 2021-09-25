@@ -52,6 +52,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/rtmp.conf $(1)/etc/config/rtmp
+	$(INSTALL_DATA) ./files/etc/zl100mt-app/socat.conf $(1)/etc/config/socat
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/zl100mt-poller $(1)/usr/sbin/

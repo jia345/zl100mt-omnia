@@ -1,6 +1,6 @@
 from foris.state import current_state
 
-class SetProtoForwardCmd():
+class ProtoForwardCmd():
     def __init__(self):
         self.action = 'setProtoForward'
         self.default_data = {}
@@ -9,7 +9,10 @@ class SetProtoForwardCmd():
         print('set protocol forwarding:: {}'.format(data))
 
         pfList = data['dat']["ProtoForwardList"]
-        rc = current_state.backend.perform("proto_forward", "update_settings", {"action": "set_proto_forward", "proto_forward_list": pfList})
+        for item in pfList:
+            item['port'] = int(item['port'])
+            item['dest_port'] = int(item['dest_port'])
+        rc = current_state.backend.perform("proto_forward", "set_proto_forward", {"proto_forward_list": pfList})
         res = {"rc": rc, "errCode": "success", "dat": None}
         return res
 
@@ -17,4 +20,4 @@ class SetProtoForwardCmd():
         rc = current_state.backend.perform("proto_forward", "get_settings", {})
         return rc["proto_forward_list"]
 
-cmdSetProtoForward = SetProtoForwardCmd()
+cmdProtoForward = ProtoForwardCmd()
