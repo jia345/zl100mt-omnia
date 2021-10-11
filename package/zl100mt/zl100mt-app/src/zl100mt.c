@@ -71,6 +71,9 @@ typedef enum {
     BEIDOU_STATUS_MAX
 } eBeidouStatus;
 
+static char gngga_curr[105] = { 0 };
+static char gngga_prev[105] = { 0 };
+
 typedef struct {
     char time_utc[16];
     char date_utc[16];
@@ -1217,7 +1220,10 @@ static ssize_t rdss_send_pdu(const char* pdu, size_t pdu_len)
 {
     hexdump(LOG_DEBUG, "RDSS sending...", pdu, pdu_len);
 
+    iot_dbg("gngga good sending, pdu_len %d", pdu_len);
     int ret = write(g_bd_inf.rdss_ttyfd, pdu, pdu_len);
+    iot_dbg("gngga write done");
+
     return ret;
 }
 
@@ -1631,7 +1637,52 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
             status = DISCONNECTED;
         }
     }
+
     pthread_mutex_unlock(&g_rdss_rw_lock);
+
+    if (status == CONNECTED) {
+        // TODO send GNGGA to target SIM
+        char txbuf[256] = {0};
+        rdss_msg_txsq_t msg = {
+            .local_sim = g_bd_inf.local_sim,
+            .target_sim = g_bd_inf.target_sim,
+            .data = {0},
+            .data_len = 0
+        };
+        int bank_size = 105;
+        int max_size = 210; // NOTE: 210 is max data size per TXSQ spec
+        memcpy(msg.data, gngga_curr, bank_size);
+        memcpy(msg.data + bank_size, gngga_prev, bank_size);
+
+        iot_dbg("gngga_curr: %s", msg.data);
+        iot_dbg("gngga_prev: %s", msg.data + bank_size);
+
+        msg.data_len = max_size;
+        ssize_t txlen = compose_rdss_txsq_pdu(txbuf, sizeof(txbuf), &msg);
+        iot_dbg("compose done, txlen %d\n", txlen);
+        if (txlen > 0) {
+            pthread_mutex_lock(&g_rdss_rw_lock);
+            iot_dbg("sending gngga, txlen %d...\n", txlen);
+            ssize_t ret = rdss_send_pdu(txbuf, txlen);
+            iot_dbg("sending gngga, end\n");
+            if (ret >= 0) {
+                g_rdss_info.tx_total++;
+                char rxbuf[512] = {0};
+                ssize_t rxlen = rdss_recv_pdu(RDSS_FKXX, rxbuf, RDSS_RESPONSE_TIMEOUT_MS);
+                if (rxlen <= 0) {
+                    iot_dbg("recvd gngga fail\n");
+                    g_rdss_info.tx_fail++;
+                } else {
+                    iot_dbg("recvd gngga ok\n");
+                    g_rdss_info.tx_succ++;
+                    memset(gngga_prev, 0, sizeof(gngga_prev));
+                    memcpy(gngga_prev, gngga_curr, bank_size);
+                }
+            }
+            pthread_mutex_unlock(&g_rdss_rw_lock);
+        }
+    }
+
     return status;
 }
 
@@ -1913,6 +1964,8 @@ static void* rnss_thread_func(void *params)
                 iot_dbg("\nRNSS <--: %s", line);
                 // time_UTC
                 // latitude
+                memset(gngga_curr, 0, sizeof(gngga_curr));
+                strncpy(gngga_curr, line, sizeof(gngga_curr)-1);
                 ptr_prev = find_comma(line, strlen(line), 2);
                 ptr_next = find_comma(line, strlen(line), 4);
                 memset(g_rnss_info.latitude, 0, sizeof(g_rnss_info.latitude));
@@ -2057,7 +2110,7 @@ static void* rnss_thread_func(void *params)
 static void rdss_check_status_cb(struct uloop_timeout *t)
 {
     g_rdss_info.rdss_status = check_beidou_status(&g_bd_inf);
-    uloop_timeout_set(t, 60000);
+    uloop_timeout_set(t, 61000);
 }
 
 static void rdss_txxx_poller_cb(struct uloop_timeout *t)

@@ -66,7 +66,9 @@ void hexdump(int pri, const char * desc, const void * addr, const int len) {
 #else
 void hexdump(int pri, const char * desc, const void * addr, const int len) {
     int i;
-    char out_buff[512] = {0};
+    char out_buff[2048];
+    memset(out_buff, 0, 2048);
+
     char buff[17] = {0};
     const unsigned char * pc = (const unsigned char *)addr;
     int out_len = 0;
