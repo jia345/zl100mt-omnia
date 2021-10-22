@@ -389,7 +389,7 @@ CONFIG_PACKAGE_zl100mt-foris-controller=y
 CONFIG_PACKAGE_zl100mt-foris-schema=y
 CONFIG_PACKAGE_zl100mt-foris-wizard=y
 
-#CONFIG_PACKAGE_vcversioner=y
+CONFIG_PACKAGE_vcversioner=y
 CONFIG_KERNEL_NAMESPACES=y
 CONFIG_KERNEL_UTS_NS=y
 CONFIG_KERNEL_IPC_NS=y

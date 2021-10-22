@@ -30,7 +30,6 @@ cron
 done
 smartd
 led
-rainbow
 start-indicator
 setup_led
 lxc-auto
@@ -39,3 +38,4 @@ asm1062-fix
 foris-controller
 foris-ws
 zl100mt-app
+socat

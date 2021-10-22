@@ -15,24 +15,28 @@ PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 #PKG_SOURCE_URL:=https://gitlab.labs.nic.cz/turris/foris-schema
 #PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_VERSION).tar.gz
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_LICENSE:=GPL-3.0
 
+include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/package.mk
+$(call include_mk, python-host.mk)
 $(call include_mk, python-package.mk)
-
 
 define Package/$(PKG_NAME)
 	TITLE:=python-vcversioner
 	CATEGORY:=ZL100MT
-	#URL:=https://gitlab.labs.nic.cz/turris/foris-schema
-	#DEPENDS:=+python-jsonschema
-	#MAINTAINER:=CZ.NIC <packaging@turris.cz>
 endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
+endef
+
+define Host/Prepare
+	mkdir -p $(BUILD_DIR_HOST)/$(PKG_NAME)-$(PKG_VERSION)
+	$(CP) ./src/* $(BUILD_DIR_HOST)/$(PKG_NAME)-$(PKG_VERSION)
 endef
 
 define Package/$(PKG_NAME)/description
@@ -41,18 +45,28 @@ define Package/$(PKG_NAME)/description
 endef
 
 define Build/Compile
-	$(call Build/Compile/PyMod,,install --prefix=/usr --root=$(PKG_INSTALL_DIR))
+	$(call Build/Compile/PyMod,,install --prefix="/usr" --root="$(STAGING_DIR)")
 endef
 
-define Package/$(PKG_NAME)/conffiles
-endef
+#define Package/$(PKG_NAME)/conffiles
+#endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)$(PYTHON_PKG_DIR)/
 	$(CP) \
 		$(PKG_INSTALL_DIR)$(PYTHON_PKG_DIR)/* \
-		$(1)$(PYTHON_PKG_DIR)/
+		$(1)$(PYTHON_PKG_DIR)/usr/lib/python2.7/site-packages/
 endef
 
+define Host/Compile
+	$(call Build/Compile/HostPyMod,,build)
+endef
 
+define Host/Install
+	$(call Build/Compile/HostPyMod,,install --prefix="" --root="$(STAGING_DIR)/host")
+endef
+
+$(eval $(call HostBuild))
+
+$(eval $(call PyPackage,$(PKG_NAME)))
 $(eval $(call BuildPackage,$(PKG_NAME)))
