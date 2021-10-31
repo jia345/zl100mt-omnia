@@ -4,6 +4,8 @@ START=80
 STOP=90
 
 start() {
+    /usr/sbin/syncfile_workaround.sh &
+    /usr/sbin/force100m.sh on &
     /usr/sbin/zl100mt-app &
     /usr/sbin/zl100mt-poller &
 }

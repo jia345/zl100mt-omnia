@@ -1,0 +1,82 @@
+Index: linux-4.4.161/drivers/net/phy/mvsw61xx.c
+===================================================================
+--- linux-4.4.161.orig/drivers/net/phy/mvsw61xx.c	2021-10-24 03:17:52.615577951 +0000
++++ linux-4.4.161/drivers/net/phy/mvsw61xx.c	2021-10-24 08:00:07.392228734 +0000
+@@ -742,6 +742,69 @@
+ 	return 0;
+ }
+ 
++static int
++mvsw61xx_set_port_link(struct switch_dev *dev, int port,
++		struct switch_port_link *link)
++{
++	u16 pagereg, copperreg, reg;
++
++    /* select page */
++    pagereg = smisr16(dev, PHY_ADDR(port, PHY_PAGE_REG));
++    pagereg &= ~(PHY_PAGE_MASK);
++    smisw16(dev, PHY_ADDR(port, PHY_PAGE_REG), pagereg);
++
++    copperreg = smisr16(dev, PHY_ADDR(port, PHY_CONTROL_REG));
++
++	if (link->aneg) {
++        // set 1000M advertisement
++        reg = smisr16(dev, PHY_ADDR(port, PHY_1000CONTROL_REG));
++        reg |= (MV_1000CONTROL_ADV1000FULL | MV_1000CONTROL_ADV1000HALF);
++        smisw16(dev, PHY_ADDR(port, PHY_1000CONTROL_REG), reg);
++
++        // set 10M/100M advertisement
++        reg = smisr16(dev, PHY_ADDR(port, PHY_ANEG_REG));
++        reg &= ~(MV_ANEG_ADV100T4 | MV_ANEG_ADVPAUSE | MV_ANEG_ADVASYMPAUSE);
++        reg |= (MV_ANEG_ADV10HALF | MV_ANEG_ADV10FULL | MV_ANEG_ADV100HALF | MV_ANEG_ADV100FULL);
++        smisw16(dev, PHY_ADDR(port, PHY_ANEG_REG), reg);
++
++        // enable auto-negotiation
++        copperreg |= (MV_CONTROL_ANEG | MV_CONTROL_ANEG_RESTART);
++        smisw16(dev, PHY_ADDR(port, PHY_CONTROL_REG), (copperreg | MV_CONTROL_RESET));
++	} else {
++        // duplex: full or half
++		if (link->duplex) {
++            copperreg |= (1<<8);
++        } else {
++            copperreg &= ~(1<<8);
++        }
++
++        // speed
++		switch (link->speed) {
++		case SWITCH_PORT_SPEED_10:
++            copperreg &= ~(1<<6);
++            copperreg &= ~(1<<13);
++			break;
++		case SWITCH_PORT_SPEED_100:
++            copperreg &= ~(1<<6);
++            copperreg |= (1<<13);
++			break;
++		case SWITCH_PORT_SPEED_1000:
++            copperreg |= (1<<6);
++            copperreg &= ~(1<<13);
++			break;
++		default:
++			return -ENOTSUPP;
++		}
++
++        /* disable auto-negotiation then restart */
++        copperreg &= ~MV_CONTROL_ANEG;
++        copperreg |= MV_CONTROL_ANEG_RESTART;
++        smisw16(dev, PHY_ADDR(port, PHY_CONTROL_REG), (copperreg | MV_CONTROL_RESET));
++	}
++
++	return 0;
++}
++
+ enum {
+ 	MVSW61XX_ENABLE_VLAN,
+ };
+@@ -819,6 +882,7 @@
+ 		.n_attr = ARRAY_SIZE(mvsw61xx_port),
+ 	},
+ 	.get_port_link = mvsw61xx_get_port_link,
++	.set_port_link = mvsw61xx_set_port_link,
+ 	.get_port_pvid = mvsw61xx_get_port_pvid,
+ 	.set_port_pvid = mvsw61xx_set_port_pvid,
+ 	.get_vlan_ports = mvsw61xx_get_vlan_ports,

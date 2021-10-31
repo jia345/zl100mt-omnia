@@ -315,6 +315,23 @@ _procd_append_param() {
 	json_select ..
 }
 
+_procd_append_param_str() {
+	local type="$1"; shift
+	local _json_no_warning=1
+
+	json_select "$type"
+	[ $? = 0 ] || {
+		_procd_set_param "$type" "$@"
+		return
+	}
+	case "$type" in
+		command)
+			json_add_string "" "$@"
+		;;
+	esac
+	json_select ..
+}
+
 _procd_close_instance() {
 	json_close_object
 }
@@ -425,6 +442,7 @@ _procd_wrapper \
 	procd_add_jail_mount_rw \
 	procd_set_param \
 	procd_append_param \
+	procd_append_param_str \
 	procd_add_validation \
 	procd_set_config_changed \
 	procd_kill

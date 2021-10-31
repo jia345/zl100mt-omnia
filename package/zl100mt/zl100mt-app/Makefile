@@ -52,12 +52,14 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/zl100mt-app.conf $(1)/etc/zl100mt-app/
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DATA) ./files/etc/zl100mt-app/rtmp.conf $(1)/etc/config/rtmp
-	$(INSTALL_DATA) ./files/etc/zl100mt-app/socat.conf $(1)/etc/config/socat
+	#$(INSTALL_DATA) ./files/etc/zl100mt-app/socat.conf $(1)/etc/config/socat
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/zl100mt-poller $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/zl100mt_lte_z_keepalive.sh $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/zl100mt_lte_4g_keepalive.sh $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/force100m.sh $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/syncfile_workaround.sh $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ft4232_bitbang $(1)/usr/sbin/
 
 	$(INSTALL_DIR) $(1)/etc/cron.d
@@ -84,6 +86,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./files/inno_cdc.json $(1)/etc/gcom/inno_cdc.json
 	$(INSTALL_DIR) $(1)/root
 	$(INSTALL_DATA) ./files/.vimrc $(1)/root
+	#$(INSTALL_BIN) ./files/etc/zl100mt-app/socat.init $(1)/etc/init.d/socat
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
