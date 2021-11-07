@@ -99,6 +99,7 @@ static rnss_info_t g_rnss_info = {
 };
 
 typedef struct {
+    uint32_t auto_forward_enabled;
     eBeidouStatus rdss_status;
     uint8_t max_power;
     uint32_t tx_total;
@@ -107,6 +108,7 @@ typedef struct {
 } rdss_info_t;
 
 static rdss_info_t g_rdss_info = {
+    .auto_forward_enabled = 1,
     .rdss_status  = UNINITIALIZED,
     .max_power    = 0,
     .tx_total     = 0,
@@ -228,6 +230,14 @@ enum {
 
 static const struct blobmsg_policy set_gnss_target_sim_policy[] = {
     [GNSS_TARGET_SIM]      = { .name = "target_sim", .type = BLOBMSG_TYPE_INT32 },
+};
+
+enum {
+    GNGGA_AUTO_FORWARD,
+    __SET_GNGGA_AUTO_FORWARD_MAX
+};
+static const struct blobmsg_policy set_gngga_auto_forward_policy[] = {
+    [GNGGA_AUTO_FORWARD]      = { .name = "auto", .type = BLOBMSG_TYPE_INT32 },
 };
 
 enum {
@@ -543,6 +553,29 @@ static int zl100mt_set_gnss_target_sim(struct ubus_context *ctx, struct ubus_obj
     return 0;
 }
 
+static int zl100mt_set_gngga_auto_forward(struct ubus_context *ctx, struct ubus_object *obj,
+                                       struct ubus_request_data *req, const char *method,
+                                       struct blob_attr *msg)
+{
+
+    struct blob_attr *tb[__SET_GNGGA_AUTO_FORWARD_MAX];
+
+    blobmsg_parse(set_gngga_auto_forward_policy, ARRAY_SIZE(set_gngga_auto_forward_policy), tb, blob_data(msg), blob_len(msg));
+
+    blob_buf_init(&b, 0);
+
+	if (tb[GNGGA_AUTO_FORWARD]) {
+		g_rdss_info.auto_forward_enabled = blobmsg_get_u32(tb[GNGGA_AUTO_FORWARD]);
+        blobmsg_add_string(&b, "result", "ok");
+    } else {
+        blobmsg_add_string(&b, "result", "fail, please make sure 'auto' is integer number");
+    }
+
+    ubus_send_reply(ctx, req, b.head);
+
+    return 0;
+}
+
 static int zl100mt_send_rdss_txsq(struct ubus_context *ctx, struct ubus_object *obj,
                                        struct ubus_request_data *req, const char *method,
                                        struct blob_attr *msg)
@@ -803,6 +836,7 @@ static int zl100mt_send_rdss_bbdq(struct ubus_context *ctx, struct ubus_object *
 static const struct ubus_method zl100mt_methods[] = {
     UBUS_METHOD("get_gnss_info", zl100mt_get_gnss_info, get_gnss_info_policy),
     UBUS_METHOD("set_gnss_target_sim", zl100mt_set_gnss_target_sim, set_gnss_target_sim_policy),
+    UBUS_METHOD("set_gngga_auto_forward", zl100mt_set_gngga_auto_forward, set_gngga_auto_forward_policy),
     UBUS_METHOD("send_rdss_txsq", zl100mt_send_rdss_txsq, send_rdss_txsq_policy),
     UBUS_METHOD("send_rdss_icjc", zl100mt_send_rdss_icjc, send_rdss_icjc_policy),
     UBUS_METHOD("send_rdss_gljc", zl100mt_send_rdss_gljc, send_rdss_gljc_policy),
@@ -1640,7 +1674,7 @@ static eBeidouStatus check_beidou_status(BD_INFO *pinf)
 
     pthread_mutex_unlock(&g_rdss_rw_lock);
 
-    if (status == CONNECTED) {
+    if (status == CONNECTED && (g_rdss_info.auto_forward_enabled != 0)) {
         // TODO send GNGGA to target SIM
         char txbuf[256] = {0};
         rdss_msg_txsq_t msg = {

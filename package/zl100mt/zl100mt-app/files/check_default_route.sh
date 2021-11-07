@@ -2,13 +2,13 @@
 
 line=`ip addr show usb0 | grep UP`
 
-if [ -z "$line" ]
-    then
-    logger "Lte 4G interface is down!"
-    exit 0
-fi
+#if [ -z "$line" ]
+#    then
+#    logger "Lte 4G interface is down!"
+#    exit 0
+#fi
 
-line=`ip addr show usb0 | grep inet`
+line=`ip addr show usb0 | grep 'inet '`
 echo $line
 
 if [ -z "$line" ]

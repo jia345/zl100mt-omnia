@@ -60,6 +60,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) ./files/zl100mt_lte_4g_keepalive.sh $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/force100m.sh $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/syncfile_workaround.sh $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/echoloop.sh $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ft4232_bitbang $(1)/usr/sbin/
 
 	$(INSTALL_DIR) $(1)/etc/cron.d

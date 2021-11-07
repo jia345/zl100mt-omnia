@@ -32,8 +32,8 @@ class ProtoForwardUciCommands(object):
                 src_addr = port['data']['src']
                 dst_addr = port['data']['dst']
                 print("src %s dst %s" % (src_addr, dst_addr))
-                m1 = re.match(r'^-u -T3\s(.+)-LISTEN:(\d+),.+,fork$', src_addr)
-                m2 = re.match(r'^SYSTEM:"(.+)\| socat - \'TCP4:(.+):(\d+),forever,interval=3\'"$', dst_addr)
+                m1 = re.match(r'^-T3\s(.+)-LISTEN:(\d+),.+,fork$', src_addr)
+                m2 = re.match(r'^SYSTEM:"(.+)\| while true; do socat - \'TCP4:(.+):(\d+)\';.+"$', dst_addr)
 
                 proto = 'udp'
                 dest_proto = 'tcp'
@@ -86,9 +86,9 @@ class ProtoForwardUciCommands(object):
 
             for item in data['proto_forward_list']:
                 #options = '-u -T3 UDP4-LISTEN:%d,fork TCP4:%s:%d' % (item['port'], item['dest_ip'], item['dest_port'])
-                system_cmd = "tee -a /root/udp_%d_tcp_%s_%d.socat | socat - \'TCP4:%s:%d,forever,interval=3\'" % (item['port'], item['dest_ip'], item['dest_port'], item['dest_ip'], item['dest_port'])
+                system_cmd = "tee -a /root/udp_%d_tcp_%s_%d.socat | while true; do socat - \'TCP4:%s:%d\'; sleep 1; done" % (item['port'], item['dest_ip'], item['dest_port'], item['dest_ip'], item['dest_port'])
                 #options = '-u -T3 UDP4-LISTEN:%d,reuseaddr,ignoreeof,fork SYSTEM:\"%s\"' % (item['port'], system_cmd)
-                src_addr = '-u -T3 UDP4-LISTEN:%d,reuseaddr,ignoreeof,fork' % item['port']
+                src_addr = '-T3 UDP4-LISTEN:%d,reuseaddr,ignoreeof,fork' % item['port']
                 # system:"tee -a /root/udp_8181_tcp_49.51.96.94_3389.socat | socat - 'TCP4:49.51.96.94:3389'"
                 dst_addr = 'SYSTEM:"%s"' % system_cmd
                 backend.add_section('socat','socat')

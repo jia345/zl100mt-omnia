@@ -1,8 +1,8 @@
 Index: linux-4.4.161/drivers/net/phy/mvsw61xx.c
 ===================================================================
---- linux-4.4.161.orig/drivers/net/phy/mvsw61xx.c	2021-10-24 03:17:52.615577951 +0000
-+++ linux-4.4.161/drivers/net/phy/mvsw61xx.c	2021-10-24 08:00:07.392228734 +0000
-@@ -742,6 +742,69 @@
+--- linux-4.4.161.orig/drivers/net/phy/mvsw61xx.c	2021-11-04 16:06:49.759182280 +0000
++++ linux-4.4.161/drivers/net/phy/mvsw61xx.c	2021-11-04 16:08:07.659137014 +0000
+@@ -742,6 +742,80 @@
  	return 0;
  }
  
@@ -42,24 +42,35 @@ Index: linux-4.4.161/drivers/net/phy/mvsw61xx.c
 +            copperreg &= ~(1<<8);
 +        }
 +
++        reg = smisr16(dev, PHY_ADDR(port, PHY_ANEG_REG));
++        // enable MAC PAUSE
++        reg |= MV_ANEG_ADVPAUSE | MV_ANEG_ADVASYMPAUSE;
++
 +        // speed
-+		switch (link->speed) {
-+		case SWITCH_PORT_SPEED_10:
++        switch (link->speed) {
++        case SWITCH_PORT_SPEED_10:
++            // disable advertisement
++            reg &= ~(MV_ANEG_ADV10HALF | MV_ANEG_ADV10FULL);
++
 +            copperreg &= ~(1<<6);
 +            copperreg &= ~(1<<13);
-+			break;
-+		case SWITCH_PORT_SPEED_100:
++            break;
++        case SWITCH_PORT_SPEED_100:
++            // disable advertisement
++            reg &= ~(MV_ANEG_ADV100HALF | MV_ANEG_ADV100FULL);
++
 +            copperreg &= ~(1<<6);
 +            copperreg |= (1<<13);
-+			break;
-+		case SWITCH_PORT_SPEED_1000:
++            break;
++        case SWITCH_PORT_SPEED_1000:
 +            copperreg |= (1<<6);
 +            copperreg &= ~(1<<13);
-+			break;
-+		default:
-+			return -ENOTSUPP;
++            break;
++        default:
++            return -ENOTSUPP;
 +		}
 +
++        smisw16(dev, PHY_ADDR(port, PHY_ANEG_REG), reg);
 +        /* disable auto-negotiation then restart */
 +        copperreg &= ~MV_CONTROL_ANEG;
 +        copperreg |= MV_CONTROL_ANEG_RESTART;
@@ -72,7 +83,7 @@ Index: linux-4.4.161/drivers/net/phy/mvsw61xx.c
  enum {
  	MVSW61XX_ENABLE_VLAN,
  };
-@@ -819,6 +882,7 @@
+@@ -819,6 +893,7 @@
  		.n_attr = ARRAY_SIZE(mvsw61xx_port),
  	},
  	.get_port_link = mvsw61xx_get_port_link,

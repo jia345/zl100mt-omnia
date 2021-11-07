@@ -6,7 +6,7 @@ STOP=99
 
 USE_PROCD=1
 PROG=/usr/bin/socat
-PROCD_DEBUG=1
+#PROCD_DEBUG=1
 NAME=socat
 
 validate_section_socat()

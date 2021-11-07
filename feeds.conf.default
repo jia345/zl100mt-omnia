@@ -3,7 +3,8 @@
 #src-git lucics https://gitlab.labs.nic.cz/turris/luci-cs.git^526a8767846acbe57c521912b35feb4d97354db6
 src-git lucics https://gitee.com/jia345/luci-cs.git^526a8767846acbe57c521912b35feb4d97354db6
 #src-git turrispackages https://gitlab.labs.nic.cz/turris/turris-os-packages.git^f29b4179ceed5c8fdb4f0d2cc4994b1069dd6ed7
-src-git turrispackages https://gitee.com/jia345/turris-os-packages.git^5a0a7f2b98b13e178cdfa694de4da637a14dd02f
+#src-git turrispackages https://gitee.com/jia345/turris-os-packages.git^5a0a7f2b98b13e178cdfa694de4da637a14dd02f
+src-git turrispackages https://gitee.com/jia345/turris-os-packages.git^ebe8cae1e55411bd196313c7a350feab4a46a92a
 src-git hardware https://gitee.com/jia345/turris-packages.git^d81453b1df48ec1c8945feaf96a1e744c3218b38
 #src-git php https://github.com/openwrt/packages.git^d6c333b705e53b99bd216f0a7e5c22aa493dfefc .*php.*
 src-git php https://gitee.com/sync-github-mirror/openwrt-packages.git^d6c333b705e53b99bd216f0a7e5c22aa493dfefc .*php.*
